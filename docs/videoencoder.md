@@ -1,16 +1,20 @@
 *Menu*:
-- [1. QC VideoEncoder Data Structures](#1-qc-videoencoder-data-structures)
-  - [1.1 The details of image properties.](#11-the-details-of-videoencoder_config_t)
-- [2. Video Encoder Configuraion](#2-video-encoder-configuraion)
-  - [2.1 Video Encoder Node Configuraion](#21-video-encoder-node-configuraion)
-- [3. QC buffer APIs](#2-qc-videoencoder-apis)
-- [4. Typical VideoEncoder Use Case](#3-typical-videoencoder-use-cases)
-  - [4.1 Dynamic input/output buffer](#31-dynamic-inputoutput-buffer)
-  - [4.2 Non-Dynamic input/output buffer](#32-non-dynamic-inputoutput-buffer)
-    - [4.2.1 not set input/output buffer by config](#321-not-set-inputoutput-buffer-by-config)
-    - [4.2.2 set input/output buffer by config](#322-set-inputoutput-buffer-by-config)
+- [1. Introduction](#1-introduction)
+- [2. QC VideoEncoder Data Structures](#2-qc-videoencoder-data-structures)
+  - [2.1 The details of image properties.](#21-the-details-of-videoframedescriptor_t)
+- [3. Video Encoder Configuration](#3-video-encoder-configuration)
+  - [3.1 Video Encoder Node Configuration](#31-video-encoder-node-configuration)
+- [4. QC Video Encoder APIs](#4-qc-videoencoder-apis)
+- [5. Typical VideoEncoder Use Case](#5-typical-videoencoder-use-cases)
+  - [5.1 Dynamic input/output buffer](#51-dynamic-inputoutput-buffer)
+  - [5.2 Non-Dynamic input/output buffer](#52-non-dynamic-inputoutput-buffer)
+    - [5.2.1 set input/output buffer by config](#521-set-inputoutput-buffer-by-config)
 
-# 1. QC VideoEncoder Data Structures
+# 1. Introduction
+The QC VideoEncoder node provides APIs for video encoding. It calls vidc library to process video frames based on video hardware. 
+This node supports QNX and HGY Linux/Ubuntu platforms.
+
+# 2. QC VideoEncoder Data Structures
 
 - [VideoFrameDescriptor_t](../include/QC/Infras/Memory/VideoFrameDescriptor.hpp#L50)
 
@@ -22,18 +26,18 @@ VideoFrameDescriptor_t contains all the parameters of input and output video fra
 - frameType: Indication of I/P/B/IDR frame, used by encoder
 - frameFlag: Indication of whether some error occurred during decoding this frame
 
-# 2. Video Encoder Configuraion
+# 3. Video Encoder Configuration
 
-## 2.1 Video Encoder Node Configuraion
+## 3.1 Video Encoder Node Configuration
 | Parameter            | Required  | Type        | Default | Description            |
-|----------------------|-----------|-------------|------------------------|
+|----------------------|-----------|-------------|---------|------------------------|
 | `name`               | true      | string      |         | The Node unique name.  |
 | `id`                 | true      | uint32_t    |         | The Node unique ID.    |
 | `width`              | true      | uint32_t    |         | Video frame width.     |
 | `height`             | true      | uint32_t    |         | Video frame height.    |
 | `frameRate`          | true      | uint32_t    |         | Frames per second.     |
-| `bitrate`            | false     | uint32_t    | 8000000 | The encoding bitrate |
-| `gop`                | false     | uint32_t    | 0       |
+| `bitrate`            | false     | uint32_t    | 8000000 | The encoding bitrate   |
+| `gop`                | false     | uint32_t    | 0       |                        |
 | `rateControlMode`    | false     | string      | CBR_CFR | Bit rate control profile
 | `format`             | false     | string      | nv12    | The image format, options from [nv12, nv12_ubwc] |
 | `output_format`      | false     | string      | h265    | The output image format, options from [h264, h265] |
@@ -62,20 +66,21 @@ VideoFrameDescriptor_t contains all the parameters of input and output video fra
         "numInputBufferReq": 4,
     }
 }
+```
 
-# 3. QC VideoEncoder APIs
+# 4. QC VideoEncoder APIs
 
 - [Init the video encoder](../include/QC/Node/VideoEncoder.hpp#L275)
 - [Start the video encoder](../include/QC/Node/VideoEncoder.hpp#L316)
 - [Stop the video encoder](../include/QC/Node/VideoEncoder.hpp#L317)
 - [Submit Input and Output Frame](../include/QC/Node/VideoEncoder.hpp#L308)
 
-# 4. Typical VideoEncoder Use Cases
+# 5. Typical VideoEncoder Use Cases
 
 - [gtest_VideoEncoder](../tests/unit_test/Node/VideoEncoder/gtest_VideoEncoder.cpp)
 - [SampleVideoEncoder](../tests/sample/source/SampleVideoEncoder.cpp)
 
-## 4.1 Dynamic input/output buffer
+## 5.1 Dynamic input/output buffer
 ```c++
 //...
     QCStatus_e ret;
@@ -178,7 +183,7 @@ VideoFrameDescriptor_t contains all the parameters of input and output video fra
 
 //...
 ```
-## 4.2 Non-Dynamic input/output buffer
+## 5.2 Non-Dynamic input/output buffer
 ```c++
 //...
     QCStatus_e ret;
@@ -282,11 +287,9 @@ VideoFrameDescriptor_t contains all the parameters of input and output video fra
     }
 
     ASSERT_EQ( QC_OBJECT_STATE_RUNNING, pNodeVide->GetState() );
-
-### 4.2.1 not set input/output buffer by config
-//...
 ```
-### 4.2.2 set input/output buffer by config
+
+### 5.2.1 set input/output buffer by config
 ```c++
 //...
     frameDesc.Clear();
@@ -296,4 +299,3 @@ VideoFrameDescriptor_t contains all the parameters of input and output video fra
     ret = pNodeVide->ProcessFrameDescriptor( frameDesc );
 //...
 ```
-
