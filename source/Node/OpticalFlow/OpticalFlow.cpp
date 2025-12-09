@@ -440,7 +440,7 @@ PixelFormat OpticalFlow::GetMotionMapFormat( MotionMapFormat_e motionMapFormat )
 }
 
 
-void OpticalFlow::UpdateIconfig( LME::ConfigMap &configMap, OpticalFlow_Config_t configuration )
+void OpticalFlow::UpdateIconfig( LME::ConfigMap &configMap, const OpticalFlow_Config_t &configuration )
 {
 
     configMap.Set( LME::ConfigId::AVERAGE_FPS, configuration.frameRate );
@@ -555,7 +555,7 @@ QCStatus_e OpticalFlow::ValidateImageDesc( const ImageDescriptor_t &imgDesc,
 }
 
 void OpticalFlow::SetInitialFrameConfig( LME::ConfigMap &configMapFrame,
-                                         OpticalFlow_Config_t configuration )
+                                         const OpticalFlow_Config_t &configuration )
 {
 
     noiseTolerances.nScaleSrc = configuration.noiseScaleSrc;
