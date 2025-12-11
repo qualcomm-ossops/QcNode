@@ -5,6 +5,7 @@
 #define QC_SAMPLE_COMPUTE_LIDAR_COORD_HPP
 
 #include "QC/sample/SampleIF.hpp"
+#include <arm_neon.h>
 
 using namespace QC;
 
