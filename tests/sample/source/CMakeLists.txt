@@ -22,6 +22,7 @@ set( QCNODE_SAMPLE_SOURCES
     SysTrace.cpp
     SampleGL2DFlex.cpp
     SampleTemporal.cpp
+    SampleComputeLidarCoord.cpp
 )
 
 if ( ENABLE_EVA )
