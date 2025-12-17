@@ -113,7 +113,7 @@ typedef struct
     bool bAsync = false;
 } QnnTest_Parameters_t;
 
-static uint32_t s_nodeId = 0;
+static uint8_t s_nodeId = 0;
 
 class QnnTestRunner
 {

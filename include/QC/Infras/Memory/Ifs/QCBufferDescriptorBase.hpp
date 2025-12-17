@@ -95,8 +95,7 @@ public:
             result = allocatorType < other.allocatorType;
         }
         else
-        {
-        }
+        {}
         return result;
     }
 

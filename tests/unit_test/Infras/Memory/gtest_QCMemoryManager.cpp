@@ -8,6 +8,23 @@
 using namespace QC;
 using namespace QC::Memory;
 
+
+class FakeAllocator : public QCMemoryAllocatorIfs
+{
+public:
+    FakeAllocator() : QCMemoryAllocatorIfs( { "Fake Allocator" }, QC_MEMORY_ALLOCATOR_HEAP ) {}
+    ~FakeAllocator(){};
+
+    virtual QCStatus_e Allocate( const QCBufferPropBase_t &request,
+                                 QCBufferDescriptorBase_t &response )
+    {
+        response.size = request.size;
+        response.allocatorType = QC_MEMORY_ALLOCATOR_HEAP;
+        return QC_STATUS_OK;
+    };
+    virtual QCStatus_e Free( const QCBufferDescriptorBase_t &buff ) { return QC_STATUS_FAIL; };
+};
+
 class Test_QCMemorymanager : public testing::Test
 {
 protected:
@@ -54,7 +71,8 @@ TEST_F( Test_QCMemorymanager, SANITY_creation_and_destruction )
 
         QCNodeID_t nodeExtra = { "Test node", QC_NODE_TYPE_LAST, 1 };
         QCMemoryHandle_t handleExtra;
-        handleExtra.SetHandle( 0x100d100100000000 );
+        handleExtra.SetNodeCount( 255 );
+        handleExtra.SetNodeType( (QCNodeType_e) ( QC_NODE_TYPE_LAST + 1 ) );
 
         status = Ifs->Register( nodeExtra, handleExtra );
         ASSERT_EQ( QC_STATUS_BAD_ARGUMENTS, status );
@@ -83,9 +101,6 @@ TEST_F( Test_QCMemorymanager, SANITY_creation_and_destruction )
 
         QCMemoryManagerInit_t mmInit( 0, allocators );
 
-        status = Ifs->Initialize( mmInit );
-        ASSERT_EQ( QC_STATUS_BAD_STATE, status );
-
         status = instance.Initialize( mmInit );
         ASSERT_EQ( QC_STATUS_BAD_ARGUMENTS, status );
     }
@@ -107,6 +122,10 @@ TEST_F( Test_QCMemorymanager, SANITY_creation_and_destruction )
 
         status = instance->Initialize( mmInit );
         ASSERT_EQ( QC_STATUS_OK, status );
+
+        status = instance->Initialize( mmInit );
+        ASSERT_EQ( QC_STATUS_BAD_STATE, status );
+
         instance->~ManagerLocal();
     }
 }
@@ -136,12 +155,12 @@ TEST_F( Test_QCMemorymanager, SANITY_creation_and_registration )
         status = Ifs->Register( node2, handle2 );
         ASSERT_EQ( QC_STATUS_OK, status );
         ASSERT_EQ( QC_NODE_TYPE_EVA_DFS, handle2.GetNodeType() );
-        ASSERT_EQ( 1, handle2.GetNodeCount() );
+        ASSERT_EQ( 2, handle2.GetNodeCount() );
 
         status = Ifs->Register( node3, handle3 );
         ASSERT_EQ( QC_STATUS_OK, status );
         ASSERT_EQ( QC_NODE_TYPE_FADAS_REMAP, handle3.GetNodeType() );
-        ASSERT_EQ( 2, handle3.GetNodeCount() );
+        ASSERT_EQ( 3, handle3.GetNodeCount() );
 
         QCMemoryHandle_t handleDummy;
         status = Ifs->Register( node3, handleDummy );
@@ -150,7 +169,7 @@ TEST_F( Test_QCMemorymanager, SANITY_creation_and_registration )
         status = Ifs->Register( node4, handle4 );
         ASSERT_EQ( QC_STATUS_OK, status );
         ASSERT_EQ( QC_NODE_TYPE_CUSTOM_3, handle4.GetNodeType() );
-        ASSERT_EQ( 1, handle4.GetNodeCount() );
+        ASSERT_EQ( 4, handle4.GetNodeCount() );
 
         QCNodeID_t nodeExtra = { "Test node4", QC_NODE_TYPE_CUSTOM_3, 3 };
         QCMemoryHandle_t handleExtra;
@@ -225,17 +244,17 @@ TEST_F( Test_QCMemorymanager, SANITY_basic_stand_alone_buffer_allocation )
         status = Ifs->Register( node2, handle2 );
         ASSERT_EQ( QC_STATUS_OK, status );
         ASSERT_EQ( QC_NODE_TYPE_EVA_DFS, handle2.GetNodeType() );
-        ASSERT_EQ( 1, handle2.GetNodeCount() );
+        ASSERT_EQ( 2, handle2.GetNodeCount() );
 
         status = Ifs->Register( node3, handle3 );
         ASSERT_EQ( QC_STATUS_OK, status );
         ASSERT_EQ( QC_NODE_TYPE_FADAS_REMAP, handle3.GetNodeType() );
-        ASSERT_EQ( 2, handle3.GetNodeCount() );
+        ASSERT_EQ( 3, handle3.GetNodeCount() );
 
         status = Ifs->Register( node4, handle4 );
         ASSERT_EQ( QC_STATUS_OK, status );
         ASSERT_EQ( QC_NODE_TYPE_CUSTOM_3, handle4.GetNodeType() );
-        ASSERT_EQ( 1, handle4.GetNodeCount() );
+        ASSERT_EQ( 4, handle4.GetNodeCount() );
 
         status = Ifs->AllocateBuffer( handle1, QC_MEMORY_ALLOCATOR_HEAP, request[0], response[0] );
         ASSERT_EQ( QC_STATUS_OK, status );
@@ -272,8 +291,21 @@ TEST_F( Test_QCMemorymanager, SANITY_basic_stand_alone_buffer_allocation )
 
         status = Ifs->UnRegister( handle4 );
         ASSERT_EQ( QC_STATUS_OK, status );
-    }
 
+        status = Ifs->Register( node4, handle4 );
+        ASSERT_EQ( QC_STATUS_OK, status );
+        ASSERT_EQ( QC_NODE_TYPE_CUSTOM_3, handle4.GetNodeType() );
+        ASSERT_EQ( 1, handle4.GetNodeCount() );
+
+        request[3].size = (size_t) -1;
+        status = Ifs->AllocateBuffer( handle4, QC_MEMORY_ALLOCATOR_HEAP, request[3], response[3] );
+        ASSERT_EQ( QC_STATUS_FAIL, status );
+    }
+}
+
+
+TEST_F( Test_QCMemorymanager, SANITY_basic_stand_alone_buffer_allocation_2 )
+{
     {
         QCBufferPropBase_t request;
         request.size = 0;
@@ -298,7 +330,6 @@ TEST_F( Test_QCMemorymanager, SANITY_basic_stand_alone_buffer_allocation )
         request.size = 10;
 
         QCMemoryHandle_t handle2;
-        handle2.SetHandle( 0 );
 
         status = Ifs->AllocateBuffer( handle2, QC_MEMORY_ALLOCATOR_HEAP, request, response );
         ASSERT_EQ( QC_STATUS_BAD_ARGUMENTS, status );
@@ -361,17 +392,17 @@ TEST_F( Test_QCMemorymanager, SANITY_stand_alone_buffer_allocation )
         status = Ifs->Register( node2, handle2 );
         ASSERT_EQ( QC_STATUS_OK, status );
         ASSERT_EQ( QC_NODE_TYPE_EVA_DFS, handle2.GetNodeType() );
-        ASSERT_EQ( 1, handle2.GetNodeCount() );
+        ASSERT_EQ( 2, handle2.GetNodeCount() );
 
         status = Ifs->Register( node3, handle3 );
         ASSERT_EQ( QC_STATUS_OK, status );
         ASSERT_EQ( QC_NODE_TYPE_FADAS_REMAP, handle3.GetNodeType() );
-        ASSERT_EQ( 2, handle3.GetNodeCount() );
+        ASSERT_EQ( 3, handle3.GetNodeCount() );
 
         status = Ifs->Register( node4, handle4 );
         ASSERT_EQ( QC_STATUS_OK, status );
         ASSERT_EQ( QC_NODE_TYPE_CUSTOM_3, handle4.GetNodeType() );
-        ASSERT_EQ( 1, handle4.GetNodeCount() );
+        ASSERT_EQ( 4, handle4.GetNodeCount() );
 
         status = Ifs->AllocateBuffer( handle1, QC_MEMORY_ALLOCATOR_HEAP, request[0], response[0] );
         ASSERT_EQ( QC_STATUS_OK, status );
@@ -503,17 +534,17 @@ TEST_F( Test_QCMemorymanager, SANITY_reclaim_resources )
         status = Ifs->Register( node2, handle2 );
         ASSERT_EQ( QC_STATUS_OK, status );
         ASSERT_EQ( QC_NODE_TYPE_EVA_DFS, handle2.GetNodeType() );
-        ASSERT_EQ( 1, handle2.GetNodeCount() );
+        ASSERT_EQ( 2, handle2.GetNodeCount() );
 
         status = Ifs->Register( node3, handle3 );
         ASSERT_EQ( QC_STATUS_OK, status );
         ASSERT_EQ( QC_NODE_TYPE_FADAS_REMAP, handle3.GetNodeType() );
-        ASSERT_EQ( 2, handle3.GetNodeCount() );
+        ASSERT_EQ( 3, handle3.GetNodeCount() );
 
         status = Ifs->Register( node4, handle4 );
         ASSERT_EQ( QC_STATUS_OK, status );
         ASSERT_EQ( QC_NODE_TYPE_CUSTOM_3, handle4.GetNodeType() );
-        ASSERT_EQ( 1, handle4.GetNodeCount() );
+        ASSERT_EQ( 4, handle4.GetNodeCount() );
 
         status = Ifs->AllocateBuffer( handle1, QC_MEMORY_ALLOCATOR_HEAP, request[0], response[0] );
         ASSERT_EQ( QC_STATUS_OK, status );
@@ -540,30 +571,28 @@ TEST_F( Test_QCMemorymanager, SANITY_reclaim_resources )
         ASSERT_EQ( QC_STATUS_OK, status );
 
         QCBufferDescriptorBase_t buff1;
-        status = Ifs->AllocateBufferFromPool( handle1, poolHandle, buff1 );
+        status = Ifs->AllocateBufferFromPool( poolHandle, buff1 );
         ASSERT_EQ( QC_STATUS_OK, status );
 
         QCBufferDescriptorBase_t buff2;
-        status = Ifs->AllocateBufferFromPool( handle1, poolHandle, buff2 );
+        status = Ifs->AllocateBufferFromPool( poolHandle, buff2 );
         ASSERT_EQ( QC_STATUS_OK, status );
 
         QCMemoryPoolHandle_t poolHandleDummy;
         QCBufferDescriptorBase_t buffDummy;
-        poolHandleDummy.SetHandle( 0 );
-        status = Ifs->AllocateBufferFromPool( handle1, poolHandleDummy, buffDummy );
+        status = Ifs->AllocateBufferFromPool( poolHandleDummy, buffDummy );
+        ASSERT_EQ( QC_STATUS_BAD_ARGUMENTS, status );
+
+        poolHandleDummy.SetMemoryHandle( handle1 );
+        status = Ifs->AllocateBufferFromPool( poolHandleDummy, buffDummy );
         ASSERT_EQ( QC_STATUS_BAD_ARGUMENTS, status );
 
         QCMemoryHandle_t handle;
-        handle.SetHandle( 0 );
         status = Ifs->ReclaimResources( handle );
         ASSERT_EQ( QC_STATUS_BAD_ARGUMENTS, status );
 
         status = Ifs->ReclaimResources( handle1 );
         ASSERT_EQ( QC_STATUS_OK, status );
-
-        // correct free
-        // status = Ifs->FreeBuffer( handle1, response[0] );
-        // ASSERT_EQ( QC_STATUS_OK, status );
 
         status = Ifs->FreeBuffer( handle2, response[1] );
         ASSERT_EQ( QC_STATUS_OK, status );
@@ -609,53 +638,250 @@ TEST_F( Test_QCMemorymanager, SANITY_pool_create_destroy )
     ASSERT_EQ( QC_STATUS_OK, status );
 
     QCBufferDescriptorBase_t buff;
-    status = Ifs->AllocateBufferFromPool( handle1, poolHandle, buff );
+    status = Ifs->AllocateBufferFromPool( poolHandle, buff );
     ASSERT_EQ( QC_STATUS_OK, status );
 
     QCMemoryPoolHandle_t poolHandleDummy;
-    poolHandleDummy.SetHandle( 0 );
-    status = Ifs->AllocateBufferFromPool( handle1, poolHandleDummy, buff );
+    status = Ifs->AllocateBufferFromPool( poolHandleDummy, buff );
     ASSERT_EQ( QC_STATUS_BAD_ARGUMENTS, status );
 
-    status = Ifs->PutBufferToPool( handle1, poolHandle, buff );
+    status = Ifs->PutBufferToPool( poolHandle, buff );
     ASSERT_EQ( QC_STATUS_OK, status );
 
-    status = Ifs->PutBufferToPool( handle1, poolHandleDummy, buff );
+    status = Ifs->PutBufferToPool( poolHandleDummy, buff );
     ASSERT_EQ( QC_STATUS_BAD_ARGUMENTS, status );
 
-    status = Ifs->DestroyPool( handle1, poolHandle );
+    status = Ifs->DestroyPool( poolHandle );
     ASSERT_EQ( QC_STATUS_OK, status );
+
+    poolCfg.buff.alignment = 0;
+    status = Ifs->CreatePool( handle1, poolCfg, poolHandle );
+    ASSERT_EQ( QC_STATUS_BAD_ARGUMENTS, status );
 
     QCMemoryHandle_t handle1Dummy;
-    handle1Dummy.SetHandle( 0 );
+    QCMemoryPoolHandle_t poolHandle1Dummy;
+    poolCfg.buff.alignment = QC_MEMORY_DEFAULT_ALLIGNMENT;
     status = Ifs->CreatePool( handle1Dummy, poolCfg, poolHandle );
     ASSERT_EQ( QC_STATUS_BAD_ARGUMENTS, status );
 
-    status = Ifs->AllocateBufferFromPool( handle1Dummy, poolHandle, buff );
+    poolHandle1Dummy = poolHandle;
+    poolHandle1Dummy.SetMemoryHandle( handle1Dummy );
+    status = Ifs->AllocateBufferFromPool( poolHandle1Dummy, buff );
     ASSERT_EQ( QC_STATUS_BAD_ARGUMENTS, status );
 
-    status = Ifs->DestroyPool( handle1Dummy, poolHandleDummy );
+    poolHandleDummy.SetMemoryHandle( handle1Dummy );
+    status = Ifs->DestroyPool( poolHandleDummy );
     ASSERT_EQ( QC_STATUS_BAD_ARGUMENTS, status );
 
-    status = Ifs->DestroyPool( handle1, poolHandleDummy );
+    poolHandleDummy.SetMemoryHandle( handle1 );
+    status = Ifs->DestroyPool( poolHandleDummy );
     ASSERT_EQ( QC_STATUS_BAD_ARGUMENTS, status );
 
-    status = Ifs->PutBufferToPool( handle1Dummy, poolHandle, buff );
+    poolHandle1Dummy = poolHandle;
+    poolHandle1Dummy.SetMemoryHandle( handle1Dummy );
+    status = Ifs->PutBufferToPool( poolHandle, buff );
     ASSERT_EQ( QC_STATUS_BAD_ARGUMENTS, status );
 
     {
         ManagerLocal instance;
 
-        status = instance.DestroyPool( handle1Dummy, poolHandle );
+        QCMemoryPoolHandle_t poolHandle1Dummy = poolHandle;
+        poolHandle1Dummy.SetMemoryHandle( handle1Dummy );
+        status = instance.DestroyPool( poolHandle1Dummy );
         ASSERT_EQ( QC_STATUS_BAD_STATE, status );
 
         status = instance.CreatePool( handle1Dummy, poolCfg, poolHandle );
         ASSERT_EQ( QC_STATUS_BAD_STATE, status );
 
-        status = instance.AllocateBufferFromPool( handle1, poolHandle, buff );
+        poolHandle.SetMemoryHandle( handle1 );
+        status = instance.AllocateBufferFromPool( poolHandle, buff );
         ASSERT_EQ( QC_STATUS_BAD_STATE, status );
 
-        status = instance.PutBufferToPool( handle1Dummy, poolHandle, buff );
+        poolHandle.SetMemoryHandle( handle1Dummy );
+        status = instance.PutBufferToPool( poolHandle, buff );
         ASSERT_EQ( QC_STATUS_BAD_STATE, status );
     }
+
+    {
+        FakeAllocator allocator;
+        std::array<std::reference_wrapper<QCMemoryAllocatorIfs>, QC_MEMORY_ALLOCATOR_LAST>
+                fakeAllocators = { allocator, allocator, allocator, allocator,
+                                   allocator, allocator, allocator };
+
+        QCMemoryManagerInit_t mmInit( 4, fakeAllocators );
+
+        ManagerLocal instance;
+        status = instance.Initialize( mmInit );
+        ASSERT_EQ( QC_STATUS_OK, status );
+
+        poolCfg.maxElements = 0;
+
+        status = instance.Register( node1, handle1 );
+        ASSERT_EQ( QC_STATUS_OK, status );
+
+        status = instance.CreatePool( handle1, poolCfg, poolHandle );
+        ASSERT_EQ( QC_STATUS_BAD_ARGUMENTS, status );
+    }
+}
+
+TEST_F( Test_QCMemorymanager, SANITY_pool_create_destroy_max )
+{
+    QCMemoryPoolConfig_t poolCfg( allocatorIfs1 );
+    poolCfg.buff.size = 16;
+    poolCfg.buff.alignment = 16;
+    poolCfg.buff.cache = QC_MEMORY_DEFAULT_CACHE_ATTRIBUTES;
+    poolCfg.maxElements = 1;
+    poolCfg.name = "test pool";
+
+    QCMemoryPoolHandle_t poolHandle[QC_MEMORY_MAX_POOLS_PER_NODE];
+
+    QCNodeID_t node1 = { "Test node1", QC_NODE_TYPE_FADAS_REMAP, 0 };
+    QCMemoryHandle_t handle1;
+
+    status = Ifs->Register( node1, handle1 );
+    ASSERT_EQ( QC_STATUS_OK, status );
+
+    for ( uint32_t i = 0; i < ( QC_MEMORY_MAX_POOLS_PER_NODE ); i++ )
+    {
+        status = Ifs->CreatePool( handle1, poolCfg, poolHandle[i] );
+        ASSERT_EQ( QC_STATUS_OK, status );
+    }
+
+    QCMemoryPoolHandle_t poolHandleLast;
+    status = Ifs->CreatePool( handle1, poolCfg, poolHandleLast );
+    ASSERT_EQ( QC_STATUS_OUT_OF_BOUND, status );
+}
+
+TEST_F( Test_QCMemorymanager, SANITY_registration_fail )
+{
+    QCNodeID_t node1 = { "Test node1", QC_NODE_TYPE_MAX, 0 };
+    QCMemoryHandle_t handle1;
+
+    status = Ifs->Register( node1, handle1 );
+    ASSERT_EQ( QC_STATUS_BAD_ARGUMENTS, status );
+
+    node1.type = QC_NODE_TYPE_RESERVED;
+
+    status = Ifs->Register( node1, handle1 );
+    ASSERT_EQ( QC_STATUS_BAD_ARGUMENTS, status );
+}
+
+TEST_F( Test_QCMemorymanager, SANITY_fake_allocator )
+{
+    FakeAllocator allocator;
+    std::array<std::reference_wrapper<QCMemoryAllocatorIfs>, QC_MEMORY_ALLOCATOR_LAST>
+            fakeAllocators = { allocator, allocator, allocator, allocator,
+                               allocator, allocator, allocator };
+
+    QCMemoryManagerInit_t mmInit( 4, fakeAllocators );
+
+    ManagerLocal instance;
+    status = instance.Initialize( mmInit );
+    ASSERT_EQ( QC_STATUS_OK, status );
+
+    QCNodeID_t node1 = { "Test node1", QC_NODE_TYPE_FADAS_REMAP, 0 };
+    QCMemoryHandle_t handle1;
+
+    status = instance.Register( node1, handle1 );
+    ASSERT_EQ( QC_STATUS_OK, status );
+
+    QCBufferPropBase_t request;
+    request.size = 20;
+    QCBufferDescriptorBase_t response;
+
+    status = instance.AllocateBuffer( handle1, QC_MEMORY_ALLOCATOR_HEAP, request, response );
+    ASSERT_EQ( QC_STATUS_OK, status );
+
+    status = instance.FreeBuffer( handle1, response );
+    ASSERT_EQ( QC_STATUS_FAIL, status );
+}
+
+TEST_F( Test_QCMemorymanager, SANITY_fake_allocator_reclaimresources )
+{
+    FakeAllocator allocator;
+    std::array<std::reference_wrapper<QCMemoryAllocatorIfs>, QC_MEMORY_ALLOCATOR_LAST>
+            fakeAllocators = { allocator, allocator, allocator, allocator,
+                               allocator, allocator, allocator };
+
+    QCMemoryManagerInit_t mmInit( 4, fakeAllocators );
+
+    ManagerLocal instance;
+    status = instance.Initialize( mmInit );
+    ASSERT_EQ( QC_STATUS_OK, status );
+
+    QCNodeID_t node1 = { "Test node1", QC_NODE_TYPE_FADAS_REMAP, 0 };
+    QCMemoryHandle_t handle1;
+
+    status = instance.Register( node1, handle1 );
+    ASSERT_EQ( QC_STATUS_OK, status );
+
+    QCBufferPropBase_t request;
+    request.size = 20;
+    QCBufferDescriptorBase_t response;
+
+    status = instance.AllocateBuffer( handle1, QC_MEMORY_ALLOCATOR_HEAP, request, response );
+    ASSERT_EQ( QC_STATUS_OK, status );
+
+    status = instance.ReclaimResources( handle1 );
+    ASSERT_EQ( QC_STATUS_FAIL, status );
+}
+
+TEST_F( Test_QCMemorymanager, SANITY_fake_allocator_reclaimresources_2 )
+{
+    FakeAllocator allocator;
+    std::array<std::reference_wrapper<QCMemoryAllocatorIfs>, QC_MEMORY_ALLOCATOR_LAST>
+            fakeAllocators = { allocator, allocator, allocator, allocator,
+                               allocator, allocator, allocator };
+
+    QCMemoryManagerInit_t mmInit( 4, fakeAllocators );
+
+    ManagerLocal instance;
+    status = instance.Initialize( mmInit );
+    ASSERT_EQ( QC_STATUS_OK, status );
+
+    QCNodeID_t node1 = { "Test node1", QC_NODE_TYPE_FADAS_REMAP, 0 };
+    QCMemoryHandle_t handle1;
+
+    status = instance.Register( node1, handle1 );
+    ASSERT_EQ( QC_STATUS_OK, status );
+
+    QCBufferPropBase_t request;
+    request.size = 20;
+    QCBufferDescriptorBase_t response;
+
+    status = instance.AllocateBuffer( handle1, QC_MEMORY_ALLOCATOR_HEAP, request, response );
+    ASSERT_EQ( QC_STATUS_OK, status );
+
+    status = instance.DeInitialize();
+    ASSERT_EQ( QC_STATUS_FAIL, status );
+}
+
+TEST_F( Test_QCMemorymanager, SANITY_fake_allocator_reclaimresources_3 )
+{
+    FakeAllocator allocator;
+    std::array<std::reference_wrapper<QCMemoryAllocatorIfs>, QC_MEMORY_ALLOCATOR_LAST>
+            fakeAllocators = { allocator, allocator, allocator, allocator,
+                               allocator, allocator, allocator };
+
+    QCMemoryManagerInit_t mmInit( 4, fakeAllocators );
+
+    ManagerLocal instance;
+    status = instance.Initialize( mmInit );
+    ASSERT_EQ( QC_STATUS_OK, status );
+
+    QCNodeID_t node1 = { "Test node1", QC_NODE_TYPE_FADAS_REMAP, 0 };
+    QCMemoryHandle_t handle1;
+
+    status = instance.Register( node1, handle1 );
+    ASSERT_EQ( QC_STATUS_OK, status );
+
+    QCBufferPropBase_t request;
+    request.size = 20;
+    QCBufferDescriptorBase_t response;
+
+    status = instance.AllocateBuffer( handle1, QC_MEMORY_ALLOCATOR_HEAP, request, response );
+    ASSERT_EQ( QC_STATUS_OK, status );
+
+    status = instance.UnRegister( handle1 );
+    ASSERT_EQ( QC_STATUS_FAIL, status );
 }

@@ -20,6 +20,8 @@ namespace Memory
 ** Typedefs & Enumerations
 ================================================================================================**/
 
+#define QC_MEMORY_MAX_POOLS_PER_NODE UINT8_MAX
+
 /**
  * @enum QCMemoryAllocator_e
  * @brief Enumerates the types of memory allocators.
@@ -115,6 +117,15 @@ typedef size_t QCAlignment_t;
  * This type is used to represent count values.
  */
 typedef unsigned long QCCount_t;
+
+/**
+ * @def QC_MEMORY_HEAP_MINIMAL_ALLIGNMENT
+ * @brief Default memory alignment value.
+ *
+ * This constant specifies the default memory alignment value.
+ */
+static const QCAlignment_t QC_MEMORY_HEAP_MINIMAL_ALLIGNMENT = 16;
+
 
 /**
  * @def QC_MEMORY_DEFAULT_ALLIGNMENT
@@ -217,7 +228,7 @@ typedef struct QCBufferPropBase
  * @param ALLIGNMENT The alignment of the buffer.
  */
 #define QC_ALIGN_SIZE( size, ALLIGNMENT )                                                          \
-    ( ( ( ( size ) + ( ALLIGNMENT ) - 1 ) / ( ALLIGNMENT ) ) * ( ALLIGNMENT ) )
+    ( ( ( ( size ) + (ALLIGNMENT) -1 ) / ( ALLIGNMENT ) ) * ( ALLIGNMENT ) )
 
 }   // namespace Memory
 }   // namespace QC

@@ -74,6 +74,7 @@ public:
             std::lock_guard<std::mutex> lk( m_lock );
             for ( auto _ = GetConfiguration().maxElements; _--; )
             {
+                QC_DEBUG( "Allocating %d out of %d elements", _, GetConfiguration().maxElements );
                 QCBufferDescriptorBase_t response;
                 QCStatus_e loopStatus = GetConfiguration().allocator.Allocate( request, response );
                 if ( QC_STATUS_OK != loopStatus )

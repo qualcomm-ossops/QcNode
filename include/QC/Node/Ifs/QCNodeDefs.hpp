@@ -41,7 +41,7 @@ typedef struct QCNodeID
      * @var id
      * @brief The unique id of the QCNode.
      * The id values are zero based countinuous value*/
-    uint32_t id;
+    uint8_t id;
 } QCNodeID_t;
 
 /**

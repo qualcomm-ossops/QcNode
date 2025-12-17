@@ -17,6 +17,8 @@ namespace QC
 namespace Memory
 {
 
+#define DMABUF_HEAP_ALLOCATOR_DEFAULT_FD_CACHED ( -1 )
+
 /**
  * @class DMABUFFAllocator
  * @brief A concrete implementation of the QCMemoryAllocatorIfs interface for DMA buffer allocation.
@@ -67,7 +69,7 @@ private:
      * @var dmaBufDevFdCached
      * @brief The DMA BUFF device file descriptor for cached memory.
      */
-    int32_t m_dmaBufDevFdCached;
+    int32_t m_dmaBufDevFdCached = DMABUF_HEAP_ALLOCATOR_DEFAULT_FD_CACHED;
 };
 
 }   // namespace Memory

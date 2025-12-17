@@ -1,6 +1,27 @@
 // Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
 // SPDX-License-Identifier: BSD-3-Clause-Clear
 
+/**
+ * @file QCMemoryManagerIfs.hpp
+ * @brief Interface definitions for the QC memory management system.
+ *
+ * This header defines the core interfaces and data structures for the QC memory management
+ * subsystem. It provides:
+ * - Handle types for identifying memory resources with proper comparison semantics
+ * - Initialization structure for memory managers with copy semantics
+ * - Abstract interface for memory manager implementations with state management
+ *
+ * The design emphasizes:
+ * - Type safety through dedicated handle classes
+ * - Clear ownership semantics via reference wrappers
+ * - State management to prevent invalid operations
+ * - Thread-safe operation requirements documented for each method
+ *
+ * @warning All handle types are process-specific and should not be shared across processes.
+ *          The pid field in handles helps prevent accidental cross-process usage.
+ */
+
+
 #ifndef QC_MEMORY_MANAGER_IFS_HPP
 #define QC_MEMORY_MANAGER_IFS_HPP
 
@@ -17,361 +38,390 @@ namespace Memory
 {
 
 /**
- * @struct QCMemoryHandle_t
- * @brief Structure for memory handles.
+ * @struct QCMemoryHandle
+ * @brief Type-safe identifier for memory resources associated with nodes.
  *
- * This structure provides a unique identifier for a memory allocation.
+ * This class provides a unique identifier for memory allocations with the following properties:
+ * - Encapsulates component fields rather than using raw bit manipulation
+ * - Provides proper comparison operators for container usage
+ * - Maintains process isolation via PID inclusion
+ * - Ensures type safety (prevents accidental mixing with other handle types)
+ *
+ * The handle structure:
+ * - nodeType: Type of the node that owns the memory (e.g., AI, DSP)
+ * - nodeCount: Instance count for nodes of the same type
+ * - randomNumber: Random value to ensure handle uniqueness
+ * - pid: Process ID to prevent cross-process handle confusion
+ *
+ * @note This implementation uses separate fields rather than bit-packed values for:
+ *       - Better type safety
+ *       - Easier debugging
+ *       - More maintainable code
+ *       - Natural comparison semantics
+ *
+ * @warning Handles are only valid within the process that created them. The pid field
+ *          helps detect accidental cross-process usage but is not a security measure.
  */
 typedef struct QCMemoryHandle
 {
-
     /**
-     * @brief Less-than operator for comparing memory handles.
+     * @brief Default constructor.
      *
-     * This operator compares two memory handles based on their internal handle values.
+     * Creates an invalid handle with all fields initialized to safe default values.
+     * This handle should not be used for actual operations until properly initialized.
+     */
+    QCMemoryHandle()
+        : nodeType( QC_NODE_TYPE_RESERVED ),
+          nodeCount( 0 ),
+          randomNumber( 0 ),
+          pid( 0 )
+    {}
+
+    /**
+     * @brief Copy constructor.
+     */
+    QCMemoryHandle( const QCMemoryHandle &other ) = default;
+
+    /**
+     * @brief Assignment operator.
      *
-     * @param other The other memory handle to compare with.
-     * @return True if this handle is less than the other handle, false otherwise.
+     * Copies all fields from the source handle to this handle.
+     * Enables assignment operations like: handle1 = handle2;
+     *
+     * @param other The memory handle to copy from
+     * @return Reference to this handle for assignment chaining
+     *
+     * @note This is a shallow copy that copies field values
+     * @note Handles self-assignment safely
      */
-    bool operator<( const QCMemoryHandle &other ) const { return handle < other.handle; }
-
-// Handle internal structure will be as follows:
-// MSB 63<->48 QCNodeType_e (16 bits)
-// MSB 47<->32 Instance count (16 bits)
-// MSB 31<->0  random number (32 bits)
-
-/**
- * @def QC_MEMORY_HANDLE_NODE_ID_ENUM_SHIFT
- * @brief Shift value for extracting the node ID from the handle.
- */
-#define QC_MEMORY_HANDLE_NODE_ID_ENUM_SHIFT 48
-
-/**
- * @def QC_MEMORY_HANDLE_NODE_COUNT_SHIFT
- * @brief Shift value for extracting the instance count from the handle.
- */
-#define QC_MEMORY_HANDLE_NODE_COUNT_SHIFT 32
-
-/**
- * @def QC_MEMORY_HANDLE_NODE_ID_ENUM_MASK
- * @brief Mask for extracting the node ID from the handle.
- */
-#define QC_MEMORY_HANDLE_NODE_ID_ENUM_MASK 0xFFFF000000000000
-
-/**
- * @def QC_MEMORY_HANDLE_NODE_COUNT_MASK
- * @brief Mask for extracting the instance count from the handle.
- */
-#define QC_MEMORY_HANDLE_NODE_COUNT_MASK 0x0000FFFF00000000
-
-/**
- * @def QC_MEMORY_HANDLE_RANDOM_MASK
- * @brief Mask for extracting the random number from the handle.
- */
-#define QC_MEMORY_HANDLE_RANDOM_MASK 0x00000000FFFFFFFF
-
-/**
- * @def QC_MEMORY_HANDLE_RANDOM_INV_MASK
- * @brief Mask for zeroing the random number bits of the handle.
- */
-#define QC_MEMORY_HANDLE_RANDOM_INV_MASK 0xFFFFFFFF00000000
+    QCMemoryHandle &operator=( const QCMemoryHandle &other ) = default;
 
     /**
-     * @brief Gets the node ID from the handle.
-     * This method extracts the node ID from the handle using the
-     * QC_MEMORY_HANDLE_NODE_ID_ENUM_MASK.
-     * @return The node type as a QCNodeType_e enum value.
+     * @brief Less-than comparison operator.
+     *
+     * Establishes a strict weak ordering of memory handles by comparing component
+     * fields in priority order. This enables use as a key in sorted containers
+     * like std::map and std::set.
+     *
+     * @param other The other memory handle to compare with
+     * @return true if this handle is strictly less than the other handle
+     *
+     * @note Comparison hierarchy (most significant to least):
+     *       1. nodeType
+     *       2. nodeCount
+     *       3. randomNumber
+     *       4. pid
+     *
+     * @note This implementation provides the strict weak ordering required by
+     *       the C++ standard for sorted containers.
      */
-    QCNodeType_e GetNodeType() const
+    bool operator<( const QCMemoryHandle &other ) const
     {
-        return static_cast<QCNodeType_e>( ( QC_MEMORY_HANDLE_NODE_ID_ENUM_MASK & handle ) >>
-                                          QC_MEMORY_HANDLE_NODE_ID_ENUM_SHIFT );
-    };
+        if ( nodeType != other.nodeType )
+        {
+            return nodeType < other.nodeType;
+        }
+        if ( nodeCount != other.nodeCount )
+        {
+            return nodeCount < other.nodeCount;
+        }
+        if ( randomNumber != other.randomNumber )
+        {
+            return randomNumber < other.randomNumber;
+        }
+        return pid < other.pid;
+    }
 
     /**
-     * @brief Gets the instance count from the handle.
-     * This method extracts the instance count from the handle using the
-     * QC_MEMORY_HANDLE_NODE_COUNT_MASK.
-     * @return The instance count as a 16-bit unsigned integer.
+     * @brief Equality operator.
+     *
+     * Determines if two memory handles are identical by comparing all component fields.
+     *
+     * @param other The other memory handle to compare with
+     * @return true if this handle equals the other handle
      */
-    uint16_t GetNodeCount() const
+    bool operator==( const QCMemoryHandle &other ) const
     {
-        return static_cast<uint16_t>( ( QC_MEMORY_HANDLE_NODE_COUNT_MASK & handle ) >>
-                                      QC_MEMORY_HANDLE_NODE_COUNT_SHIFT );
-    };
+        return ( nodeType == other.nodeType ) && ( nodeCount == other.nodeCount ) &&
+               ( randomNumber == other.randomNumber ) && ( pid == other.pid );
+    }
+
+    /**
+     * @brief Inequality operator.
+     *
+     * Determines if two memory handles are different.
+     *
+     * @param other The other memory handle to compare with
+     * @return true if this handle is not equal to the other handle
+     */
+    bool operator!=( const QCMemoryHandle &other ) const { return !( *this == other ); }
+
+    /**
+     * @brief Gets the node type from the handle.
+     *
+     * @return The node type as a QCNodeType_e enum value
+     *
+     * @note This is a const method for safe use with const handles
+     */
+    QCNodeType_e GetNodeType() const noexcept { return nodeType; }
+
+    /**
+     * @brief Gets the node count from the handle.
+     *
+     * @return The instance count as an 8-bit unsigned integer
+     *
+     * @note This is a const method for safe use with const handles
+     */
+    uint8_t GetNodeCount() const noexcept { return nodeCount; }
 
     /**
      * @brief Gets the random number from the handle.
-     * This method extracts the random number from the handle using the
-     * QC_MEMORY_HANDLE_RANDOM_MASK.
-     * @return The random number as a 32-bit unsigned integer.
+     *
+     * @return The random number as a 32-bit unsigned integer
+     *
+     * @note This is a const method for safe use with const handles
      */
-    uint32_t GetRandomNumber() const
-    {
-        return static_cast<uint32_t>( QC_MEMORY_HANDLE_RANDOM_MASK & handle );
-    };
+    uint32_t GetRandomNumber() const noexcept { return randomNumber; }
 
     /**
-     * @brief Sets the node ID in the handle.
-     * This method sets the node ID in the handle using the QC_MEMORY_HANDLE_NODE_ID_ENUM_MASK.
-     * @param nodeID The new node ID to set.
-     * @return The updated handle value.
+     * @brief Gets the process ID from the handle.
+     *
+     * @return The process ID as a pid_t type
+     *
+     * @note This is a const method for safe use with const handles
+     * @warning The pid helps prevent cross-process handle confusion but is not a security measure
      */
-    uint64_t SetNodeType( const QCNodeType_e nodeID )
-    {
-        handle &= ~QC_MEMORY_HANDLE_NODE_ID_ENUM_MASK;
-        handle |= ( ( ( static_cast<uint64_t>( nodeID ) ) << QC_MEMORY_HANDLE_NODE_ID_ENUM_SHIFT ) &
-                    QC_MEMORY_HANDLE_NODE_ID_ENUM_MASK );
-        return handle;
-    };
+    pid_t GetProcessId() const noexcept { return pid; }
 
     /**
-     * @brief Sets the instance count in the handle.
-     * This method sets the instance count in the handle using the QC_MEMORY_HANDLE_NODE_COUNT_MASK.
-     * @param count The new instance count to set.
-     * @return The updated handle value.
+     * @brief Sets the node type in the handle.
+     *
+     * @param nodeType_ The new node type to set
+     * @return Reference to this handle for method chaining
+     *
+     * @note This method returns a non-const reference to enable fluent interface
      */
-    uint64_t SetNodeCount( const uint16_t count )
+    QCMemoryHandle &SetNodeType( QCNodeType_e nodeType_ ) noexcept
     {
-        handle &= ~QC_MEMORY_HANDLE_NODE_COUNT_MASK;
-        handle |= ( ( ( static_cast<uint64_t>( count ) ) << QC_MEMORY_HANDLE_NODE_COUNT_SHIFT ) &
-                    QC_MEMORY_HANDLE_NODE_COUNT_MASK );
-        return handle;
-    };
+        nodeType = nodeType_;
+        return *this;
+    }
+
+    /**
+     * @brief Sets the node count in the handle.
+     *
+     * @param nodeCount_ The new node count to set
+     * @return Reference to this handle for method chaining
+     */
+    QCMemoryHandle &SetNodeCount( uint8_t nodeCount_ ) noexcept
+    {
+        nodeCount = nodeCount_;
+        return *this;
+    }
 
     /**
      * @brief Sets the random number in the handle.
-     * This method sets the random number in the handle using the QC_MEMORY_HANDLE_RANDOM_MASK.
-     * @param randomNumber The new random number to set.
-     * @return The updated handle value.
+     *
+     * @param randomNumber_ The new random number to set
+     * @return Reference to this handle for method chaining
      */
-    uint64_t SetRandomNumber( const uint32_t randomNumber )
+    QCMemoryHandle &SetRandomNumber( uint32_t randomNumber_ ) noexcept
     {
-        handle &= QC_MEMORY_HANDLE_RANDOM_INV_MASK;
-        handle |= ( ( static_cast<uint64_t>( randomNumber ) ) & QC_MEMORY_HANDLE_RANDOM_MASK );
-        return handle;
-    };
+        randomNumber = randomNumber_;
+        return *this;
+    }
 
     /**
-     * @brief Gets the handle value.
-     * This method gets the internal handle value.
-     * @return The updated handle value.
+     * @brief Sets the process ID in the handle.
+     *
+     * @param pid_ The new process ID to set
+     * @return Reference to this handle for method chaining
+     *
+     * @warning Normally this should be the current process ID (getpid())
+     *          Setting a different PID is generally not recommended
      */
-    uint64_t GetHandle() const
+    QCMemoryHandle &SetProcessId( pid_t pid_ ) noexcept
     {
-        return handle;
-    };
-
-    /**
-     * @brief Sets the handle value.
-     * This method sets the internal handle value.
-     * @param handleValue The new handle value to set.
-     */
-    void SetHandle( const uint64_t handleValue )
-    {
-        handle = handleValue;
-    };
-
+        pid = pid_;
+        return *this;
+    }
 
 private:
-    /**
-     * @var handle
-     * @brief The internal handle value.
-     */
-    uint64_t handle = 0;
+    QCNodeType_e nodeType;   ///< Type of node that owns the memory
+    uint8_t nodeCount;       ///< Instance count for nodes of the same type
+    uint32_t randomNumber;   ///< Random value to ensure handle uniqueness
+    pid_t pid;               ///< Process ID for cross-process isolation
 } QCMemoryHandle_t;
 
 /**
- * @struct QCMemoryPoolHandle_t
- * @brief Structure for memory pool handles.
+ * @class QCMemoryPoolHandle
+ * @brief Type-safe identifier for memory pools.
  *
- * This structure provides a unique identifier for a memory pool.
+ * This class provides a unique identifier for memory pools with the following properties:
+ * - Contains a reference to the owning node's memory handle
+ * - Includes pool-specific identifiers (count and random number)
+ * - Provides proper comparison operators for container usage
+ * - Maintains the relationship between pools and their owning nodes
+ *
+ * The handle structure:
+ * - memoryHandle: Reference to the node that owns the pool
+ * - poolCount: Count of pools for this node
+ * - randomNumber: Random value to ensure handle uniqueness
+ *
+ * @note This implementation separates the node reference from pool-specific data
+ *       for better modularity and maintainability.
+ *
+ * @warning Pool handles are only valid while their owning node is registered.
+ *          Unregistering a node automatically invalidates all its pool handles.
  */
 typedef struct QCMemoryPoolHandle
 {
+    /**
+     * @brief Default constructor.
+     *
+     * Creates an invalid handle with default values.
+     */
+    QCMemoryPoolHandle() : poolCount( 0 ), randomNumber( 0 ) {}
 
     /**
-     * @brief Less-than operator for comparing memory pool handles.
-     * This operator compares two memory pool handles based on their internal handle values.
-     * @param other The other memory pool handle to compare with.
-     * @return True if this handle is less than the other handle, false otherwise.
+     * @brief Copy constructor.
      */
-    bool operator<( const QCMemoryPoolHandle &other ) const { return handle < other.handle; }
-
-// Handle internal structure will be as follows:
-// MSB 63<->48 QCNodeType_e (16 bits)
-// MSB 47<->32 Pool count in a node (16 bits)
-// MSB 31<->0  random number (32 bits)
-
-/**
- * @def QC_MEMORY_POOL_HANDLE_NODE_ID_ENUM_SHIFT
- * @brief Shift value for extracting the node ID from the handle.
- */
-#define QC_MEMORY_POOL_HANDLE_NODE_ID_ENUM_SHIFT 48
-
-/**
- * @def QC_MEMORY_POOL_HANDLE_NODE_COUNT_SHIFT
- * @brief Shift value for extracting the pool count from the handle.
- */
-#define QC_MEMORY_POOL_HANDLE_NODE_COUNT_SHIFT 32
-
-/**
- * @def QC_MEMORY_POOL_HANDLE_NODE_ID_ENUM_MASK
- * @brief Mask for extracting the node ID from the handle.
- */
-#define QC_MEMORY_POOL_HANDLE_NODE_ID_ENUM_MASK 0xFFFF000000000000
-
-/**
- * @def QC_MEMORY_POOL_HANDLE_POOL_COUNT_MASK
- * @brief Mask for extracting the pool count from the handle.
- */
-#define QC_MEMORY_POOL_HANDLE_POOL_COUNT_MASK 0x0000FFFF00000000
-
-/**
- * @def QC_MEMORY_POOL_HANDLE_RANDOM_MASK
- * @brief Mask for extracting the random number from the handle.
- */
-#define QC_MEMORY_POOL_HANDLE_RANDOM_MASK 0x00000000FFFFFFFF
-
-/**
- * @def QC_MEMORY_POOL_HANDLE_RANDOM_INV_MASK
- * @brief Mask for zeroing the random number bits of the handle.
- */
-#define QC_MEMORY_POOL_HANDLE_RANDOM_INV_MASK 0xFFFFFFFF00000000
+    QCMemoryPoolHandle( const QCMemoryPoolHandle &other ) = default;
 
     /**
-     * @brief Gets the node ID from the handle.
-     * This method extracts the node ID from the handle using the
-     * QC_MEMORY_POOL_HANDLE_NODE_ID_ENUM_MASK.
-     * @return The node ID as a QCNodeType_e enum value.
+     * @brief Assignment operator.
      */
-    QCNodeType_e GetNodeType() const
+    QCMemoryPoolHandle &operator=( const QCMemoryPoolHandle &other ) = default;
+
+    /**
+     * @brief Less-than comparison operator.
+     *
+     * Establishes a strict weak ordering for pool handles.
+     *
+     * @param other The other pool handle to compare with
+     * @return true if this handle is strictly less than the other handle
+     *
+     * @note Comparison hierarchy:
+     *       1. memoryHandle (delegates to QCMemoryHandle comparison)
+     *       2. poolCount
+     *       3. randomNumber
+     */
+    bool operator<( const QCMemoryPoolHandle &other ) const
     {
-        return static_cast<QCNodeType_e>( ( QC_MEMORY_POOL_HANDLE_NODE_ID_ENUM_MASK & handle ) >>
-                                          QC_MEMORY_POOL_HANDLE_NODE_ID_ENUM_SHIFT );
-    };
+        if ( memoryHandle != other.memoryHandle )
+        {
+            return memoryHandle < other.memoryHandle;
+        }
+        if ( poolCount != other.poolCount )
+        {
+            return poolCount < other.poolCount;
+        }
+        return randomNumber < other.randomNumber;
+    }
+
+    /**
+     * @brief Equality operator.
+     */
+    bool operator==( const QCMemoryPoolHandle &other ) const
+    {
+        return ( poolCount == other.poolCount ) && ( randomNumber == other.randomNumber ) &&
+               ( memoryHandle == other.memoryHandle );
+    }
 
     /**
      * @brief Gets the pool count from the handle.
-     * This method extracts the pool count from the handle using the
-     * QC_MEMORY_POOL_HANDLE_POOL_COUNT_MASK.
-     * @return The pool count as a 16-bit unsigned integer.
      */
-    uint16_t GetPoolCount() const
-    {
-        return static_cast<uint16_t>( ( QC_MEMORY_POOL_HANDLE_POOL_COUNT_MASK & handle ) >>
-                                      QC_MEMORY_POOL_HANDLE_NODE_COUNT_SHIFT );
-    };
+    uint8_t GetPoolCount() const noexcept { return poolCount; }
 
     /**
      * @brief Gets the random number from the handle.
-     * This method extracts the random number from the handle using the
-     * QC_MEMORY_POOL_HANDLE_RANDOM_MASK.
-     * @return The random number as a 32-bit unsigned integer.
      */
-    uint32_t GetRandomNumber() const
-    {
-        return static_cast<uint32_t>( QC_MEMORY_POOL_HANDLE_RANDOM_MASK & handle );
-    };
+    uint32_t GetRandomNumber() const noexcept { return randomNumber; }
 
     /**
-     * @brief Sets the node ID in the handle.
-     * This method sets the node ID in the handle using the QC_MEMORY_POOL_HANDLE_NODE_ID_ENUM_MASK.
-     * @param nodeID The new node ID to set.
-     * @return The updated handle value.
+     * @brief Gets the memory handle of the owning node.
      */
-    uint64_t SetNodeType( const QCNodeType_e nodeID )
-    {
-        handle &= ~QC_MEMORY_POOL_HANDLE_NODE_ID_ENUM_MASK;
-        handle |= ( ( ( static_cast<uint64_t>( nodeID ) )
-                      << QC_MEMORY_POOL_HANDLE_NODE_ID_ENUM_SHIFT ) &
-                    QC_MEMORY_POOL_HANDLE_NODE_ID_ENUM_MASK );
-        return handle;
-    };
+    const QCMemoryHandle_t &GetMemoryHandle() const noexcept { return memoryHandle; }
+
 
     /**
      * @brief Sets the pool count in the handle.
-     * This method sets the pool count in the handle using the
-     * QC_MEMORY_POOL_HANDLE_POOL_COUNT_MASK.
-     * @param count The new pool count to set.
-     * @return The updated handle value.
      */
-    uint64_t SetPoolCount( const uint16_t count )
+    QCMemoryPoolHandle &SetPoolCount( uint8_t poolCount_ ) noexcept
     {
-        handle &= ~QC_MEMORY_POOL_HANDLE_POOL_COUNT_MASK;
-        handle |=
-                ( ( ( static_cast<uint64_t>( count ) ) << QC_MEMORY_POOL_HANDLE_NODE_COUNT_SHIFT ) &
-                  QC_MEMORY_POOL_HANDLE_POOL_COUNT_MASK );
-        return handle;
-    };
+        poolCount = poolCount_;
+        return *this;
+    }
 
     /**
      * @brief Sets the random number in the handle.
-     * This method sets the random number in the handle using the QC_MEMORY_POOL_HANDLE_RANDOM_MASK.
-     * @param randomNumber The new random number to set.
-     * @return The updated handle value.
      */
-    uint64_t SetRandomNumber( const uint32_t randomNumber )
+    QCMemoryPoolHandle &SetRandomNumber( uint32_t randomNumber_ ) noexcept
     {
-        handle &= QC_MEMORY_POOL_HANDLE_RANDOM_INV_MASK;
-        handle |= ( ( static_cast<uint64_t>( randomNumber ) ) & QC_MEMORY_POOL_HANDLE_RANDOM_MASK );
-        return handle;
-    };
+        randomNumber = randomNumber_;
+        return *this;
+    }
 
     /**
-     * @brief Gets the handle value.
-     * This method gets the internal handle value.
-     * @return The updated handle value.
+     * @brief Sets the memory handle of the owning node.
      */
-    uint64_t GetHandle() const
+    QCMemoryPoolHandle &SetMemoryHandle( const QCMemoryHandle_t &memoryHandle_ ) noexcept
     {
-        return handle;
-    };
-
-    /**
-     * @brief Sets the handle value.
-     * This method sets the internal handle value.
-     * @param handleValue The new handle value to set.
-     */
-    void SetHandle( const uint64_t handleValue )
-    {
-        handle = handleValue;
-    };
+        memoryHandle = memoryHandle_;
+        return *this;
+    }
 
 private:
-    /**
-     * @var handle
-     * @brief The internal handle value.
-     */
-    uint64_t handle;
+    uint8_t poolCount;               ///< Count of pools for this node
+    uint32_t randomNumber;           ///< Random value for uniqueness
+    QCMemoryHandle_t memoryHandle;   ///< Handle of the owning node
 } QCMemoryPoolHandle_t;
 
 /**
- * @struct QCMemoryManagerInit_t
- * @brief Structure for initializing a memory manager.
+ * @struct QCMemoryManagerInit
+ * @brief Configuration structure for initializing a memory manager.
  *
- * This structure provides the necessary information to initialize a memory manager,
- * including the number of nodes and an array of memory allocators.
+ * This structure provides the necessary information to initialize a memory manager instance.
+ * It follows the copyable-configuration pattern where:
+ * - The configuration can be copied and stored
+ * - The actual resources (allocators) are referenced, not owned
+ * - The configuration remains valid as long as referenced resources exist
+ *
+ * @note This is a value type with proper copy semantics, designed to be:
+ *       - Easily stored in containers
+ *       - Passed by value
+ *       - Compared for equality
+ *
+ * @warning The memory manager does NOT take ownership of the allocators.
+ *          The caller must ensure allocator objects outlive any memory manager
+ *          instances that reference them.
  */
 typedef struct QCMemoryManagerInit
 {
-
     /**
-     * @brief Deleted default constructor.
-     * This constructor is deleted to prevent default initialization of the QCMemoryManagerInit
-     * structure.
+     * @brief Default constructor.
+     *
+     * Creates an invalid configuration with 0 nodes and dummy allocators.
+     * This configuration is only suitable for default construction needs
+     * (e.g., in containers) and must be properly initialized before use.
      */
-    QCMemoryManagerInit() = delete;
+    QCMemoryManagerInit()
+        : numOfNodes( 0 ),
+          allocators( { s_dummyAllocator, s_dummyAllocator, s_dummyAllocator, s_dummyAllocator,
+                        s_dummyAllocator, s_dummyAllocator, s_dummyAllocator } )
+    {}
 
     /**
-     * @brief Constructor for the QCMemoryManagerInit structure.
-     * This constructor initializes the QCMemoryManagerInit structure with the provided number of
-     * nodes and array of memory allocators.
-     * @param numOfNodes The number of nodes in the system.
-     * @param allocators The array of memory allocators.
+     * @brief Constructor for a valid configuration.
+     *
+     * @param nodeCount Number of nodes the manager should support
+     * @param allocatorRefs Array of allocator references
+     *
+     * @warning The caller must ensure allocator objects outlive any memory manager
+     *          instances that reference them.
      */
     QCMemoryManagerInit(
-            uint32_t numOfNodes,
+            uint8_t numOfNodes,
             std::array<std::reference_wrapper<QCMemoryAllocatorIfs>, QC_MEMORY_ALLOCATOR_LAST>
                     allocators )
         : numOfNodes( numOfNodes ),
@@ -379,10 +429,30 @@ typedef struct QCMemoryManagerInit
     {}
 
     /**
+     * @brief Copy constructor.
+     */
+    QCMemoryManagerInit( const QCMemoryManagerInit &other ) = default;
+
+    /**
+     * @brief Assignment operator.
+     *
+     * Performs a shallow copy of the configuration, maintaining references
+     * to the same allocator objects.
+     *
+     * @param other Configuration to copy from
+     * @return Reference to this configuration
+     *
+     * @note This is a shallow copy - both configurations will reference
+     *       the same allocator objects.
+     */
+    QCMemoryManagerInit &operator=( const QCMemoryManagerInit &other ) = default;
+
+
+    /**
      * @var numOfNodes
      * @brief The number of nodes in the system.
      */
-    uint32_t numOfNodes;
+    uint8_t numOfNodes = 0;
 
     /**
      * @var allocators
@@ -390,78 +460,132 @@ typedef struct QCMemoryManagerInit
      */
     std::array<std::reference_wrapper<QCMemoryAllocatorIfs>, QC_MEMORY_ALLOCATOR_LAST> allocators;
 
+private:
+    DummyAllocator s_dummyAllocator;
+
 } QCMemoryManagerInit_t;
 
 /**
  * @class QCMemoryManagerIfs
- * @brief Interface for memory managers.
+ * @brief Abstract interface for memory manager implementations.
  *
- * This class provides a common interface for memory managers,
- * including methods for registration, unregistration, pool creation and destruction, buffer
- * allocation and deallocation, and resource reclamation.
+ * This interface defines the contract for memory manager implementations, providing methods for:
+ * - System initialization and cleanup
+ * - Node registration and management
+ * - Memory pool creation and management
+ * - Buffer allocation and deallocation
+ * - Resource reclamation
+ *
+ * The interface follows these key design principles:
+ * - State management to prevent invalid operations
+ * - Handle-based resource identification
+ * - Separation of memory pools from direct allocations
+ * - Clear error reporting through QCStatus_e
+ *
+ * @note Implementations must be thread-safe unless otherwise documented.
+ *       The interface does not specify internal synchronization mechanisms,
+ *       but all public methods must be safe for concurrent use.
+ *
+ * @warning Memory managers do NOT take ownership of allocator objects.
+ *          The caller must ensure allocator objects outlive the memory manager.
+ *
+ * @see ManagerLocal - A concrete implementation of this interface for local memory management
  */
 class QCMemoryManagerIfs
 {
 
 public:
     /**
-     * @brief Constructor.
-     * This Constructor is declared as virtual to ensure that the correct destructor is called
-     * when an object of a derived class is deleted through a pointer to the base class.
-     */
-    // QCMemoryManagerIfs(){};
-
-    /**
      * @brief Virtual destructor.
-     * This destructor is declared as virtual to ensure that the correct destructor is called
-     * when an object of a derived class is deleted through a pointer to the base class.
+     *
+     * Ensures proper cleanup of derived class resources when deleted
+     * through a base class pointer.
      */
-    virtual ~QCMemoryManagerIfs(){};
+    virtual ~QCMemoryManagerIfs() = default;
 
     /**
-     * @brief Initializes internal data bases.
-     * This Function allocates heap memory for internal data base structures.
-     * Validates the allocation process success.
-     * @param init The initialization parameters for the memory manager.
-     * @return The status of the initialization operation.
+     * @brief Initializes the memory manager.
+     *
+     * Sets up internal data structures based on the provided configuration.
+     * This must be called before any other operations on the memory manager.
+     *
+     * Thread Safety: Must be thread-safe; implementations should handle concurrent initialization
+     * attempts.
+     *
+     * @param init Configuration parameters for initialization
+     * @return QC_STATUS_OK on success, appropriate error code otherwise
+     *
+     * @note After successful initialization, the manager state becomes QC_OBJECT_STATE_READY
+     * @warning Calling Initialize() on an already initialized manager returns QC_STATUS_BAD_STATE
+     * @note The manager does NOT take ownership of allocator objects in the configuration
      */
     virtual QCStatus_e Initialize( const QCMemoryManagerInit_t &init ) = 0;
 
     /**
-     * @brief DeInitializes internal data bases and allocated resources.
-     * This Function Deinitializes all allocated resoces and
-     * heap memory for internal data base structures.
-     * Validates the deallocation process success.
-     * @return The status of the deinitialization operation.
+     * @brief Deinitializes the memory manager.
+     *
+     * Cleans up all resources and returns the manager to an uninitialized state.
+     * After this call, Initialize() must be called again before using the manager.
+     *
+     * Thread Safety: Must be thread-safe; implementations should handle concurrent deinitialization
+     * attempts.
+     *
+     * @return QC_STATUS_OK on success, appropriate error code otherwise
+     *
+     * @note All registered nodes and pools are automatically destroyed during deinitialization
+     * @warning Calling DeInitialize() on an uninitialized manager returns QC_STATUS_BAD_STATE
+     * @note The manager will attempt to reclaim all resources before deinitialization
      */
     virtual QCStatus_e DeInitialize() = 0;
 
     /**
      * @brief Registers a node with the memory manager.
-     * This method registers a node with the memory manager and returns a handle that can be used to
-     * identify the node.
-     * @param node The unique ID of the node to register.
-     * @param handle The unique handle that will be used to identify the node.
-     * @return The status of the registration operation.
+     *
+     * Associates a node ID with a unique memory handle that can be used for subsequent operations.
+     *
+     * Thread Safety: Must be thread-safe; multiple threads may register nodes concurrently.
+     *
+     * @param node Node ID to register
+     * @param handle Output parameter receiving the unique memory handle
+     * @return QC_STATUS_OK on success, appropriate error code otherwise
+     *
+     * @note The handle incorporates the node type, instance count, and random number
+     * @warning Registering more nodes than configured (numOfNodes) returns QC_STATUS_BAD_ARGUMENTS
+     * @note Each node must be unregistered before deinitialization
      */
     virtual QCStatus_e Register( const QCNodeID_t &node, QCMemoryHandle_t &handle ) = 0;
 
     /**
      * @brief Unregisters a node from the memory manager.
-     * This method unregisters a node from the memory manager using the provided handle.
-     * @param memHandle The handle of the node to unregister.
-     * @return The status of the unregistration operation.
+     *
+     * Removes a previously registered node and cleans up associated resources.
+     * Any pools or buffers associated with the node are automatically destroyed/freed.
+     *
+     * Thread Safety: Must be thread-safe; multiple threads may unregister nodes concurrently.
+     *
+     * @param handle Memory handle of the node to unregister
+     * @return QC_STATUS_OK on success, appropriate error code otherwise
+     *
+     * @warning Unregistering a node with active allocations may return QC_STATUS_RESOURCE_IN_USE
+     * @note The method automatically calls ReclaimResources() for the node
      */
     virtual QCStatus_e UnRegister( const QCMemoryHandle_t &memHandle ) = 0;
 
     /**
      * @brief Creates a memory pool.
-     * This method creates a memory pool using the provided handle, pool configuration, and returns
-     * a handle that can be used to identify the pool.
-     * @param handle The unique handle of the node that owns the pool.
-     * @param poolCfg The configuration of the pool to create.
-     * @param poolHandle The unique handle that will be used to identify the pool.
-     * @return The status of the pool creation operation.
+     *
+     * Creates a new memory pool with the specified configuration for the given node.
+     *
+     * Thread Safety: Must be thread-safe; multiple threads may create pools concurrently.
+     *
+     * @param handle Memory handle of the owning node
+     * @param poolCfg Configuration for the new pool
+     * @param poolHandle Output parameter receiving the unique pool handle
+     * @return QC_STATUS_OK on success, appropriate error code otherwise
+     *
+     * @note Pool handles incorporate the owning node's handle for context
+     * @warning Creating more pools than UINT8_MAX per node returns QC_STATUS_OUT_OF_BOUND
+     * @note The pool is automatically destroyed when the owning node is unregistered
      */
     virtual QCStatus_e CreatePool( const QCMemoryHandle_t &handle,
                                    const QCMemoryPoolConfig &poolCfg,
@@ -469,49 +593,73 @@ public:
 
     /**
      * @brief Destroys a memory pool.
-     * This method destroys a memory pool using the provided unique handle and pool handle.
-     * @param handle The handle of the node that owns the pool.
-     * @param poolHandle The handle of the pool to destroy.
-     * @return The status of the pool destruction operation.
+     *
+     * Destroys a previously created memory pool and releases all associated resources.
+     * Any buffers still allocated from the pool will be automatically freed.
+     *
+     * Thread Safety: Must be thread-safe; multiple threads may destroy pools concurrently.
+     *
+     * @param poolHandle Pool handle to destroy
+     * @return QC_STATUS_OK on success, appropriate error code otherwise
+     *
+     * @warning Destroying a pool with active allocations returns QC_STATUS_RESOURCE_IN_USE
+     * @note The method automatically frees all allocated buffers from the pool
      */
-    virtual QCStatus_e DestroyPool( const QCMemoryHandle_t &handle,
-                                    const QCMemoryPoolHandle_t &poolHandle ) = 0;
+    virtual QCStatus_e DestroyPool( const QCMemoryPoolHandle_t &poolHandle ) = 0;
 
     /**
      * @brief Allocates a buffer from a memory pool.
-     * This method allocates a buffer from a memory pool using the provided memory handle, pool
-     * handle, and returns a buffer descriptor.
-     * @param memoryHandle The unique handle of the node that owns the pool.
-     * @param poolHandle The unique handle of the pool to allocate from.
-     * @param buff The buffer descriptor that will be used to store the allocated buffer.
-     * @return The status of the buffer allocation operation.
+     *
+     * Retrieves an available buffer from the specified memory pool.
+     *
+     * Thread Safety: Must be thread-safe; multiple threads may allocate from the same pool
+     * concurrently.
+     *
+     * @param poolHandle Pool handle to allocate from
+     * @param buffer Output parameter receiving the buffer descriptor
+     * @return QC_STATUS_OK on success, appropriate error code otherwise
+     *
+     * @note The buffer descriptor contains all necessary information for usage and deallocation
+     * @warning Allocating from a destroyed pool returns QC_STATUS_BAD_ARGUMENTS
+     * @note The buffer must be returned to the same pool via PutBufferToPool()
      */
-    virtual QCStatus_e AllocateBufferFromPool( const QCMemoryHandle_t &memoryHandle,
-                                               const QCMemoryPoolHandle_t &poolHandle,
+    virtual QCStatus_e AllocateBufferFromPool( const QCMemoryPoolHandle_t &poolHandle,
                                                QCBufferDescriptorBase_t &buff ) = 0;
 
     /**
-     * @brief Puts a buffer back into a memory pool.
-     * This method puts a buffer back into a memory pool using the provided memory handle, pool
-     * handle, and buffer descriptor.
-     * @param memoryHandle The handle of the node that owns the pool.
-     * @param poolHandle The handle of the pool to put the buffer back into.
-     * @param buff The buffer descriptor of the buffer to put back into the pool.
-     * @return The status of the buffer put operation.
+     * @brief Returns a buffer to its memory pool.
+     *
+     * Returns a previously allocated buffer back to its originating pool.
+     *
+     * Thread Safety: Must be thread-safe; multiple threads may return buffers to the same pool
+     * concurrently.
+     *
+     * @param poolHandle Pool handle the buffer belongs to
+     * @param buffer Buffer descriptor to return
+     * @return QC_STATUS_OK on success, appropriate error code otherwise
+     *
+     * @warning Returning a buffer to the wrong pool returns QC_STATUS_BAD_ARGUMENTS
+     * @warning Returning an invalid buffer descriptor returns QC_STATUS_BAD_ARGUMENTS
      */
-    virtual QCStatus_e PutBufferToPool( const QCMemoryHandle_t &memoryHandle,
-                                        const QCMemoryPoolHandle_t &poolHandle,
+    virtual QCStatus_e PutBufferToPool( const QCMemoryPoolHandle_t &poolHandle,
                                         const QCBufferDescriptorBase_t &buff ) = 0;
 
     /**
-     * @brief Allocates a buffer.
-     * This method allocates a buffer using the provided memory handle, allocator, buffer
-     * properties, and returns a buffer descriptor.
-     * @param handle The handle of the node that owns the buffer.
-     * @param allocator The type of allocator to use.
-     * @param request The properties of the buffer to allocate.
-     * @param buff The buffer descriptor that will be used to store the allocated buffer.
-     * @return The status of the buffer allocation operation.
+     * @brief Allocates a buffer directly from an allocator.
+     *
+     * Allocates a new buffer using the specified allocator type.
+     *
+     * Thread Safety: Must be thread-safe; multiple threads may allocate concurrently.
+     *
+     * @param handle Memory handle of the requesting node
+     * @param allocator Type of allocator to use
+     * @param request Buffer properties specification
+     * @param buffer Output parameter receiving the buffer descriptor
+     * @return QC_STATUS_OK on success, appropriate error code otherwise
+     *
+     * @note This is for long-lived allocations not suitable for pooling
+     * @warning Direct allocations must be freed with FreeBuffer(), not PutBufferToPool()
+     * @note The buffer descriptor contains allocator type for proper deallocation
      */
     virtual QCStatus_e AllocateBuffer( const QCMemoryHandle_t handle,
                                        const QCMemoryAllocator_e allocator,
@@ -519,35 +667,78 @@ public:
                                        QCBufferDescriptorBase_t &buff ) = 0;
 
     /**
-     * @brief Frees a buffer.
-     * This method frees a buffer using the provided memory handle and buffer descriptor.
-     * @param handle The unique handle of the node that owns the buffer.
-     * @param buff The buffer descriptor of the buffer to free.
-     * @return The status of the buffer free operation.
+     * @brief Frees a buffer allocated directly from an allocator.
+     *
+     * Releases a buffer that was previously allocated using AllocateBuffer.
+     *
+     * Thread Safety: Must be thread-safe; multiple threads may free buffers concurrently.
+     *
+     * @param handle Memory handle of the requesting node
+     * @param buffer Buffer descriptor to free
+     * @return QC_STATUS_OK on success, appropriate error code otherwise
+     *
+     * @warning Freeing a buffer allocated from a pool returns QC_STATUS_BAD_ARGUMENTS
+     * @warning Freeing an invalid buffer descriptor returns QC_STATUS_BAD_ARGUMENTS
      */
     virtual QCStatus_e FreeBuffer( const QCMemoryHandle_t handle,
                                    const QCBufferDescriptorBase_t &buff ) = 0;
 
     /**
-     * @brief Reclaims resources.
-     * This method reclaims resources using the provided memory handle.
-     * @param handle The handle of the node that owns the resources to reclaim.
-     * @return The status of the resource reclamation operation.
+     * @brief Reclaims resources associated with a node.
+     *
+     * Attempts to reclaim resources that may be held by the specified node.
+     * Implementation-specific behavior, but typically:
+     * - Frees all direct allocations
+     * - Destroys all pools (after freeing their allocations)
+     *
+     * Thread Safety: Must be thread-safe; multiple threads may request reclamation concurrently.
+     *
+     * @param handle Memory handle of the node to reclaim resources for
+     * @return QC_STATUS_OK on success, appropriate error code otherwise
+     *
+     * @note This is effectively a "garbage collection" operation for the node
+     * @warning May fail if resources are in active use (QC_STATUS_RESOURCE_IN_USE)
+     * @note Called automatically during UnRegister() and DeInitialize()
      */
     virtual QCStatus_e ReclaimResources( const QCMemoryHandle_t &handle ) = 0;
 
     /**
-     * @brief Returns object state.
-     * @return The state of the  Memory manager object
+     * @brief Gets the current state of the memory manager.
+     *
+     * @return Current state of the memory manager
+     *
+     * Valid states:
+     * - QC_OBJECT_STATE_INITIAL: After construction, before Initialize()
+     * - QC_OBJECT_STATE_INITIALIZING: During initialization
+     * - QC_OBJECT_STATE_READY: Fully initialized and ready for use
+     * - QC_OBJECT_STATE_DEINITIALIZING: During deinitialization
+     * - QC_OBJECT_STATE_ERROR: An error has occurred
+     *
+     * @note This is a const method for safe use with const managers
      */
-    virtual QCObjectState_e GetState() { return m_state; };
+    QCObjectState_e GetState() const noexcept { return m_state; }
 
 protected:
+    /**
+     * @brief Protected constructor to prevent direct instantiation.
+     *
+     * Memory managers must be implemented as concrete classes.
+     */
+    QCMemoryManagerIfs() : m_state( QC_OBJECT_STATE_INITIAL ) {}
+
+    /**
+     * @brief Sets the state of the memory manager.
+     *
+     * @param state New state to set
+     */
+    void SetState( QCObjectState_e state ) noexcept { m_state = state; }
+
+private:
     /**
      * @var m_state
      * @brief Dsecribes the state of the memory manager.
      */
-    QCObjectState_e m_state;
+    QCObjectState_e m_state = QC_OBJECT_STATE_INITIAL;   ///< Creation state of the memory manager
 };
 
 }   // namespace Memory

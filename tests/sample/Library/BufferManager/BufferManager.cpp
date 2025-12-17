@@ -254,7 +254,8 @@ BufferManager *BufferManager::Get( const QCNodeID_t &nodeId, Logger_Level_e logL
         BufferManager *pBufMgrNew = new BufferManager( nodeId, logLevel );
         if ( nullptr != pBufMgrNew )
         {
-            if ( pBufMgrNew->m_memoryHandle.GetHandle() != 0u )
+            QCMemoryHandle_t memoryHandleDefault;
+            if ( pBufMgrNew->m_memoryHandle != memoryHandleDefault )
             {
                 pBufMgr = pBufMgrNew;
                 s_instanceMap[nodeId.id] = { pBufMgrNew, 1 };

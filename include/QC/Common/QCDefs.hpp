@@ -29,7 +29,8 @@ typedef enum
     QC_STATUS_FAIL,          /**< General failure. */
     QC_STATUS_NULL_PTR,      /**< nullptr */
     QC_STATUS_NO_RESOURCE,
-    QC_STATUS_LAST = -1
+    QC_STATUS_LAST,
+    QC_STATUS_MAX = UINT8_MAX
 } QCStatus_e;
 
 /** @brief QC Object state */
@@ -46,7 +47,8 @@ typedef enum
     QC_OBJECT_STATE_PAUSE,          /**< the paused state */
     QC_OBJECT_STATE_RESUMING,       /**< the state during resuming */
     QC_OBJECT_STATE_DEINITIALIZING, /**< the state during deinitializing */
-    QC_OBJECT_STATE_MAX = UINT32_MAX
+    QC_OBJECT_STATE_LAST,
+    QC_OBJECT_STATE_MAX = UINT8_MAX
 } QCObjectState_e;
 
 typedef enum
@@ -69,7 +71,7 @@ typedef enum
     QC_NODE_TYPE_CUSTOM_3,
     QC_NODE_TYPE_CUSTOM_4,
     QC_NODE_TYPE_LAST,
-    QC_NODE_TYPE_MAX = UINT32_MAX
+    QC_NODE_TYPE_MAX = UINT8_MAX
 } QCNodeType_e;
 
 /** @brief QC Buffer Type */
@@ -85,7 +87,7 @@ typedef enum
     QC_BUFFER_TYPE_CUSTOM_3,
     QC_BUFFER_TYPE_CUSTOM_4,
     QC_BUFFER_TYPE_LAST,
-    QC_BUFFER_TYPE_MAX = UINT32_MAX
+    QC_BUFFER_TYPE_MAX = UINT8_MAX
 } QCBufferType_e;
 
 }   // namespace QC
