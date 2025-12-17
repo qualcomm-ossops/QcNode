@@ -156,7 +156,7 @@ TEST( Camera, SANITY_Camera_IMX728_RequestMode )
     DataTree staticCfg;
     nlohmann::json jsonData;
     std::string errors;
-    std::string filePath = "./data/test/camera/camera_config.json";
+    std::string filePath = "./data/test/camera/camera_config_imx728_request.json";
 
     ReadJsonFile( filePath, jsonData );
     std::string jsonStr = jsonData.dump();
@@ -175,30 +175,13 @@ TEST( Camera, SANITY_Camera_OV3F_RequestMode )
     std::vector<DataTree> streamConfigs;
     nlohmann::json jsonData;
     std::string errors;
-    std::string filePath = "./data/test/camera/camera_config.json";
+    std::string filePath = "./data/test/camera/camera_config_ov3f_request.json";
 
     ReadJsonFile( filePath, jsonData );
     std::string jsonStr = jsonData.dump();
 
     ret = dt.Load( jsonStr, errors );
     ASSERT_EQ( QC_STATUS_OK, ret );
-
-    ret = dt.Get( "static", staticCfg );
-    ASSERT_EQ( QC_STATUS_OK, ret );
-
-    ret = staticCfg.Get( "streamConfigs", streamConfigs );
-    ASSERT_EQ( QC_STATUS_OK, ret );
-
-    staticCfg.Set<uint32_t>( "inputId", 4 );
-
-    for ( uint32_t i = 0; i < streamConfigs.size(); i++ )
-    {
-        streamConfigs[i].Set<uint32_t>( "width", 1824 );
-        streamConfigs[i].Set<uint32_t>( "height", 1536 );
-        DataTree streamConfig = streamConfigs[i];
-    }
-    staticCfg.Set( "streamConfigs", streamConfigs );
-    dt.Set( "static", staticCfg );
 
     SANITY_Camera( dt );
 }
