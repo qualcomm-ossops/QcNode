@@ -392,11 +392,11 @@ private:
     LME::Penalties penalties;
     PixelFormat GetInputImageFormat( QCImageFormat_e imageFormat );
     PixelFormat GetMotionMapFormat( MotionMapFormat_e motionFormat );
-    void UpdateIconfig( LME::ConfigMap &configMap, OpticalFlow_Config_t configuration );
+    void UpdateIconfig( LME::ConfigMap &configMap, const OpticalFlow_Config_t &configuration );
     QCStatus_e ValidateImageDesc( const ImageDescriptor_t &imgDesc,
                                   const OpticalFlow_Config_t &config );
     void SetInitialFrameConfig( LME::ConfigMap &configMapFrame,
-                                OpticalFlow_Config_t configuration );
+                                const OpticalFlow_Config_t &configuration );
     QCStatus_e RegisterMemory( const BufferDescriptor_t &bufferDesc, Buffer &pBuff );
 };
 
