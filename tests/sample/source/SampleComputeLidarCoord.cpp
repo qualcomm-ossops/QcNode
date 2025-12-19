@@ -188,25 +188,121 @@ QCStatus_e SampleComputeLidarCoord::ComputeLidarCoordCPU( DataFrames_t &tensors 
             float *raw = reinterpret_cast<float *>( pRawDesc->pBuf );
             float *firetime = reinterpret_cast<float *>( pFiretimeDesc->pBuf );
             float *correction = reinterpret_cast<float *>( pCorrectionDesc->pBuf );
-            for ( int i = 0; i < m_cols; i++ )
+
+            // Pre-calculate constants to avoid repeated computations
+            const float degToRad = M_PI / 180.0f;
+            const float inv256 = 1.0f / 256.0f;
+            const float inv1e9 = 1.0f / 1e9f;
+            const float radToDeg = 180.0f / M_PI;
+
+            // Process multiple elements at once when possible
+            int i = 0;
+
+            // Vectorized processing for better cache utilization
+            for ( ; i <= m_cols - 4; i += 4 )
             {
+                // Load 4 sets of raw data simultaneously
+                const int baseIdx = i * ( m_blocks * 2 + 2 );
+
+                // Process 4 columns in parallel
                 for ( int j = 0; j < m_blocks; j++ )
                 {
-                    const float distance = raw[i * ( m_blocks * 2 + 2 ) + j * 2];
-                    const float Azimuth = raw[i * ( m_blocks * 2 + 2 ) + m_blocks * 2];
-                    const float motor = raw[i * ( m_blocks * 2 + 2 ) + m_blocks * 2 + 1];
+                    // Load distance and intensity for 4 columns at once
+                    const float *rawBase = &raw[baseIdx + j * 2];
 
-                    const float fire_time = firetime[j];
-                    const float elevation = (float) ( correction[j] ) / 256.f * M_PI / 180.f;
-                    const float azimuth_deg =
-                            ( ( Azimuth + correction[j] ) / 256.f + fire_time * motor * 1e-9 / 8 );
-                    const float azimuth = azimuth_deg * M_PI / 180;
+                    // Process 4 elements in parallel using NEON
+                    // Load 4 distances and 4 intensities
+                    float32x4_t distances = vld1q_f32( &rawBase[0] );
+                    float32x4_t intensities = vld1q_f32( &rawBase[1] );
+
+                    // Load azimuth and motor values (same for all 4 columns)
+                    const float azimuth = raw[baseIdx + m_blocks * 2];
+                    const float motor = raw[baseIdx + m_blocks * 2 + 1];
+
+                    // Load correction values for current block (j)
+                    const int16_t correctionVal = correction[j];
+                    const float elevation = (float) correctionVal * inv256 * degToRad;
+
+                    // Calculate azimuth for all 4 columns
+                    const float azimuthBase =
+                            azimuth * inv256 + firetime[j] * motor * inv1e9 / 8.0f;
+                    const float azimuthDeg = azimuthBase * radToDeg;
+                    const float azimuthRad = azimuthDeg * degToRad;
+
+                    // Pre-compute trigonometric values
+                    const float cosElevation = std::cos( elevation );
+                    const float sinElevation = std::sin( elevation );
+                    const float sinAzimuth = std::sin( azimuthRad );
+                    const float cosAzimuth = std::cos( azimuthRad );
+
+                    // Vectorized coordinate calculations
+                    float32x4_t xyDistances = vmulq_n_f32( distances, cosElevation );
+                    float32x4_t xValues = vmulq_n_f32( xyDistances, sinAzimuth );
+                    float32x4_t yValues = vmulq_n_f32( xyDistances, cosAzimuth );
+                    float32x4_t zValues = vmulq_n_f32( distances, sinElevation );
+
+                    // Store results for 4 columns - using direct array access to avoid lane
+                    // extraction issues
+                    float *pPoints = reinterpret_cast<float *>( pTensor->pBuf );
+
+                    // Extract values using temporary arrays to avoid vgetq_lane_f32 issues
+                    float xVals[4], yVals[4], zVals[4], intensityVals[4];
+
+                    // Manually extract each element (this avoids the compile-time constant
+                    // requirement)
+                    xVals[0] = vgetq_lane_f32( xValues, 0 );
+                    xVals[1] = vgetq_lane_f32( xValues, 1 );
+                    xVals[2] = vgetq_lane_f32( xValues, 2 );
+                    xVals[3] = vgetq_lane_f32( xValues, 3 );
+
+                    yVals[0] = vgetq_lane_f32( yValues, 0 );
+                    yVals[1] = vgetq_lane_f32( yValues, 1 );
+                    yVals[2] = vgetq_lane_f32( yValues, 2 );
+                    yVals[3] = vgetq_lane_f32( yValues, 3 );
+
+                    zVals[0] = vgetq_lane_f32( zValues, 0 );
+                    zVals[1] = vgetq_lane_f32( zValues, 1 );
+                    zVals[2] = vgetq_lane_f32( zValues, 2 );
+                    zVals[3] = vgetq_lane_f32( zValues, 3 );
+
+                    intensityVals[0] = vgetq_lane_f32( intensities, 0 );
+                    intensityVals[1] = vgetq_lane_f32( intensities, 1 );
+                    intensityVals[2] = vgetq_lane_f32( intensities, 2 );
+                    intensityVals[3] = vgetq_lane_f32( intensities, 3 );
+
+                    // Store results for 4 columns
+                    for ( int k = 0; k < 4; k++ )
+                    {
+                        const int idx = ( i + k ) * m_blocks + j * 4;
+                        pPoints[idx + 0] = xVals[k];
+                        pPoints[idx + 1] = yVals[k];
+                        pPoints[idx + 2] = zVals[k];
+                        pPoints[idx + 3] = intensityVals[k];
+                    }
+                }
+            }
+
+            // Handle remaining columns (non-vectorizable part)
+            for ( ; i < m_cols; i++ )
+            {
+                const int baseIdx = i * ( m_blocks * 2 + 2 );
+
+                for ( int j = 0; j < m_blocks; j++ )
+                {
+                    const float distance = raw[baseIdx + j * 2];
+                    const float azimuth = raw[baseIdx + m_blocks * 2];
+                    const float motor = raw[baseIdx + m_blocks * 2 + 1];
+                    const float fireTime = firetime[j];
+                    const float elevation = (float) ( correction[j] ) * inv256 * degToRad;
+                    const float azimuthDeg =
+                            ( azimuth * inv256 + fireTime * motor * inv1e9 / 8.0f ) * radToDeg;
+                    const float azimuthRad = azimuthDeg * degToRad;
 
                     float xyDistance = distance * std::cos( elevation );
-                    float x = xyDistance * std::sin( azimuth );
-                    float y = xyDistance * std::cos( azimuth );
+                    float x = xyDistance * std::sin( azimuthRad );
+                    float y = xyDistance * std::cos( azimuthRad );
                     float z = distance * std::sin( elevation );
-                    float intensity = raw[i * ( m_blocks * 2 + 2 ) + j * 2 + 1];
+                    float intensity = raw[baseIdx + j * 2 + 1];
 
                     float *pPoints = reinterpret_cast<float *>( pTensor->pBuf );
                     pPoints[i * m_blocks + j * 4 + 0] = x;
