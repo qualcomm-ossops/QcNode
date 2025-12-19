@@ -490,6 +490,7 @@ The command line template example:
 | input_widthX  | false    | int       | 1920    | The input X image width |
 | input_heightX | false    | int       | 1024    | The input X image height|
 | input_formatX | false    | string    | nv12    | The input X image format, options from [uyvy, nv12, rgb, nv12_ubwc]|
+| deviceId      | false    | int       | 0       | The OpenCL device id  |
 | output_width  | false    | int       | 1920    | The output image width  |
 | output_height | false    | int       | 1024    | The output image height |
 | output_format | false    | string    | rgb     | The output image format, options from [rgb, nv12]|
@@ -511,6 +512,7 @@ The command line template example:
 
 ```sh
   -n CL2D -t CL2DFlex \
+    -k deviceId -v 0 \
     -k input_width0 -v 1920 -k input_height0 -v 1024 -k input_format0 -v nv12 \
     -k batch_size -v 1 -k work_mode0 -v letterbox_nearest \
     -k roi_x0 -v 960 -k roi_y0 -v 512 -k roi_width0 -v 960 -k roi_height0 -v 512 \

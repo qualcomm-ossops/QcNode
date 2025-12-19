@@ -78,6 +78,9 @@ QCStatus_e SampleCL2DFlex::ParseConfig( SampleConfig_t &config )
 
     m_bNoPadding = Get( config, "no_padding", false );
 
+    uint32_t deviceId = Get( config, "deviceId", 0 );
+    m_dataTree.Set<uint32_t>( "static.deviceId", deviceId );
+
     m_outputWidth = Get( config, "output_width", 1920 );
     if ( 0 == m_outputWidth )
     {
