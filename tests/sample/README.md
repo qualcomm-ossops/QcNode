@@ -30,6 +30,7 @@
     - [2.26 QCNode Temporal Sample](#226-qcnode-temporal-sample)
     - [2.27 QCNode ResMon Sample](#227-qcnode-resmon-sample)
     - [2.28 QCNode Genie Sample](#228-qcnode-genie-sample)
+    - [2.29 QCNode ComputeLidarCoord Sample](#229-qcnode-computelidarcoord-sample)
   - [3. Typical QCNode Sample Application pipelines](#3-typical-qcnode-sample-application-pipelines)
     - [3.1 4 DataReader based QNN perception pipelines](#31-4-datareader-based-qnn-perception-pipelines)
     - [3.2 1 DataReader and 1 Camera AR231 based QNN perception pipelines](#32-1-datareader-and-1-camera-ar231-based-qnn-perception-pipelines)
@@ -62,7 +63,7 @@ Note: the "-n componentX_name -t componentX_type" must be in the begin for each 
 | parameter | required | type      | comments |
 |-----------|----------|-----------|----------|
 | -n        | true     | string    | The unique component name |
-| -t        | true     | string    | The component type name, options from [DataReader, Camera, Remap, Qnn, C2D, PostProcCenternet, TinyViz, VideoEncoder, VideoDecoder, Recorder, PlrPre, PlrPost, DataOnline, CL2DFlex, GL2DFlex, SharedRing, FpsAdapter, OpticalFlow, OpticalFlowViz, FrameSync, DepthFromStereo, DepthFromStereoViz, Radar, C2C, Temporal] |
+| -t        | true     | string    | The component type name, options from [DataReader, Camera, Remap, Qnn, C2D, PostProcCenternet, TinyViz, VideoEncoder, VideoDecoder, Recorder, PlrPre, PlrPost, DataOnline, CL2DFlex, GL2DFlex, SharedRing, FpsAdapter, OpticalFlow, OpticalFlowViz, FrameSync, DepthFromStereo, DepthFromStereoViz, Radar, C2C, Temporal, ComputeLidarCoord] |
 | -k        | true     | string    | The unique component attribute name |
 | -v        | true     | string    | The attribute value for the previous attribute name |
 | -d        | false    |   -       | Direct the QCNode log to stdout |
@@ -979,6 +980,41 @@ The command line template example:
     -k embedding_table -v embedding_weights_152064x3584_ssd.bin \
     -k input_topic -v /sensor/genie/embeding/raw \
     -k output_topic -v /sensor/genie/decoder/text \
+```
+
+### 2.29 QCNode ComputeLidarCoord Sample
+
+The Sample ComputeLidarCoord is used for lidar raw data preprocessing, it computes points cloud coordinates from distance and azimuth angle, also do correction according to firetime matrix and angle correction matrix.
+The input topic should contain 3 float tensors with following dimensions:
+- raw data which contains distance, intensity, azimuth, motor information: [cols, blocks*2+2]
+- firetime correction matrix: [cols]
+- azimuth correction matrix: [cols]
+
+The command line template example:
+
+
+| attribute            | required | type      | default       | comments |
+|----------------------|----------|-----------|---------------|----------|
+| cols                 | false    | int       | 1000          | The lidar raw data colums number in vertical direction |
+| blocks               | false    | int       | 100           | The lidar raw data blocks number in horizontal direction |
+| pool_size            | false    | int       | 4             | The image memory pool size |
+| cache                | false    | bool      | true          | use cached memory or not for the image memory |
+| input_topic          | true     | string    |      -        | the input topic name |
+| output_topic         | true     | string    |      -        | the output topic name |
+
+The command line template example:
+
+```sh
+-n LIDAR0 -t DataReader \
+  -k number -v 3 \
+  -k type0 -v tensor -k dims0 -v "1000,202" \
+  -k type1 -v tensor -k dims1 -v "1000" \
+  -k type2 -v tensor -k dims2 -v "1000" \
+  -k topic -v /sensor/lidar/LIDAR0/input \
+-n LIDARPRE -t ComputeLidarCoord \
+  -k cols -v 1000 -k blocks -v 100 \
+  -k input_topic -v /sensor/lidar/LIDAR0/input \
+  -k output_topic -v /sensor/lidar/LIDAR1/output \
 ```
 
 ## 3. Typical QCNode Sample Application pipelines
