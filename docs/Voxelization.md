@@ -40,10 +40,11 @@ And this Component Voxelization is based on [FastADAS FadasVM library](https://d
 | `maxPointNumPerPlr`     | true      | uint32_t       | Maximum number of points to map to each pillar.           |
 | `inputMode`             | true      | string         | Voxelization input pointclouds type. <br> Options: `xyzr`, `xyzrt` <br> Default: `xyzr`       |
 | `outputFeatureDimNum`   | true      | uint32_t       | Number of features for each point in output point pillars.           |
+| `inputPcdBufferIds`        | false      | uint32_t[]     | A list of uint32_t values representing the indices of input pointcloud buffers in QCNodeInit::buffers.          |
 | `outputPlrBufferIds`        | true      | uint32_t[]     | A list of uint32_t values representing the indices of output pillar buffers in QCNodeInit::buffers.          |
 | `outputFeatureBufferIds`    | true      | uint32_t[]     | A list of uint32_t values representing the indices of output pillar buffers in QCNodeInit::buffers.      |
-| `plrPointsBufferId`         | true      | uint32_t       | The index of buffer for maximal pillar point number in QCNodeInit::buffers.      |
-| `coordToPlrIdxBufferId`     | true      | uint32_t       | The index of buffer to store coordinate to pillar point transform indices in QCNodeInit::buffers.      |
+| `plrPointsBufferId`         | false      | uint32_t       | The index of buffer for maximal pillar point number in QCNodeInit::buffers.<br>Required if processorType is gpu. |
+| `coordToPlrIdxBufferId`     | false      | uint32_t       | The index of buffer to store coordinate to pillar point transform indices in QCNodeInit::buffers.<br>Required if processorType is gpu. |
 | `globalBufferIdMap`     | false | object[] | Mapping of buffer names to buffer indices in `QCFrameDescriptorNodeIfs`. <br>Each object contains:<br> - `name` (string)<br> - `id` (uint32_t)   |
 | `deRegisterAllBuffersWhenStop` | false | bool     | Flag to deregister all buffers when stopped      <br>Default: `false` |
 
@@ -82,18 +83,17 @@ And this Component Voxelization is based on [FastADAS FadasVM library](https://d
 
 ## 3.1 QCNode Voxelization APIS
 
-- [Voxelization::Initialize](../include/QC/Node/Voxelization.hpp#L236)
-- [Voxelization::Start](../include/QC/Node/Voxelization.hpp#L254)
-- [Voxelization::ProcessFrameDescriptor](../include/QC/Node/Voxelization.hpp#L266)
-- [Voxelization::Stop](../include/QC/Node/Voxelization.hpp#L272)
-- [Voxelization::DeInitialize](../include/QC/Node/Voxelization.hpp#L278)
-- [Voxelization::DeInitialize](../include/QC/Node/Voxelization.hpp#L278)
-- [Voxelization::GetConfigurationIfs](../include/QC/Node/Voxelization.hpp#L242)
-- [Voxelization::GetMonitoringIfs](../include/QC/Node/Voxelization.hpp#L248)
+- [Voxelization::Initialize](../include/QC/Node/Voxelization.hpp#L249)
+- [Voxelization::Start](../include/QC/Node/Voxelization.hpp#L267)
+- [Voxelization::ProcessFrameDescriptor](../include/QC/Node/Voxelization.hpp#L279)
+- [Voxelization::Stop](../include/QC/Node/Voxelization.hpp#L285)
+- [Voxelization::DeInitialize](../include/QC/Node/Voxelization.hpp#L291)
+- [Voxelization::GetConfigurationIfs](../include/QC/Node/Voxelization.hpp#L255)
+- [Voxelization::GetMonitoringIfs](../include/QC/Node/Voxelization.hpp#L261)
 
 ## 3.2 QCNode Configuration Interfaces
 
-- [VoxelizationConfig::GetOptions](../include/QC/Node/Voxelization.hpp#L116) Get Configuration Options
+- [VoxelizationConfig::GetOptions](../include/QC/Node/Voxelization.hpp#L129) Get Configuration Options
   - Use this API to get the configuration options.
     - Below was a example output for Voxelization XYZR mode:
       ```json
@@ -143,8 +143,6 @@ using namespace QC::Node;
 using namespace QC::sample;
 
 #define EXPAND_JSON( ... ) #__VA_ARGS__
-
-extern const size_t VOXELIZATION_PILLAR_COORDS_DIM;
 
 std::string g_Config_XYZR = EXPAND_JSON( {
     "static": {

@@ -3,8 +3,6 @@
 
 #include "QC/sample/SamplePlrPre.hpp"
 
-extern const size_t VOXELIZATION_PILLAR_COORDS_DIM;
-
 namespace QC
 {
 namespace sample

@@ -79,6 +79,7 @@ classDiagram
         +allocatorType
         +cache
         +alignment
+        +id
     }
 
     class BufferDescriptor_t {
