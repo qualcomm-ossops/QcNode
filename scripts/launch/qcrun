@@ -30,4 +30,12 @@ if [ -f /mnt/lib64/libsocket.so.4 ] ; then
 export LD_PRELOAD=/mnt/lib64/libsocket.so.4
 fi
 
-$@
+LAUNCH=""
+
+if [ "$(uname -s)" = "QNX" ] && [ "$(uname -n | cut -d' ' -f1)" = "nord" ]; then
+    echo "Using secpol qcnode_t to launch app"
+    chown -R qcnode:qcnode ../../../pkg-aarch64-qnx
+    LAUNCH="on -T qcnode_t -u 66:66,68,73,801,802,807,809,810,816,817,832"
+fi
+
+$LAUNCH $@
