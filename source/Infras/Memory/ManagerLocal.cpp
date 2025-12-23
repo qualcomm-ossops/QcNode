@@ -40,7 +40,7 @@ QCStatus_e ManagerLocal::Initialize( const QCMemoryManagerInit_t &init )
     else
     {
         m_config = init;
-        QC_ERROR( "SetState( QC_OBJECT_STATE_INITIALIZING)" );
+        QC_DEBUG( "SetState( QC_OBJECT_STATE_INITIALIZING)" );
         SetState( QC_OBJECT_STATE_INITIALIZING );
     }
 
@@ -233,13 +233,15 @@ QCStatus_e ManagerLocal::UnRegister( const QCMemoryHandle_t &memHandle )
     else if ( false == IsMemoryHandleRegistered( memHandle, handleIt ) )
     {
         status = QC_STATUS_BAD_ARGUMENTS;
-        QC_ERROR( "Memory Handle node type %d count %d random Number %d pid %d",
-                  memHandle.GetNodeType(), memHandle.GetRandomNumber(), memHandle.GetProcessId() );
+        QC_ERROR( "Memory Handle node type %d count %d random Number %" PRIu32 " pid %" PRIu32 " ",
+                  memHandle.GetNodeType(), memHandle.GetNodeCount(), memHandle.GetRandomNumber(),
+                  memHandle.GetProcessId() );
     }
     else
     {
-        QC_DEBUG( "Memory Handle node type %d count %d random Number %d pid %d",
-                  memHandle.GetNodeType(), memHandle.GetRandomNumber(), memHandle.GetProcessId() );
+        QC_DEBUG( "Memory Handle node type %d count %d random Number %" PRIu32 " pid %" PRIu32 " ",
+                  memHandle.GetNodeType(), memHandle.GetNodeCount(), memHandle.GetRandomNumber(),
+                  memHandle.GetProcessId() );
         finalState = QC_OBJECT_STATE_ERROR;
         // clean all allocations related to this handle
         status = ReclaimResources( memHandle );
@@ -253,9 +255,10 @@ QCStatus_e ManagerLocal::UnRegister( const QCMemoryHandle_t &memHandle )
             {
                 finalState = QC_OBJECT_STATE_ERROR;
                 status = QC_STATUS_FAIL;
-                QC_ERROR( "Memory Handle node type %d count %d random Number %d pid %d",
-                          memHandle.GetNodeType(), memHandle.GetRandomNumber(),
-                          memHandle.GetProcessId() );
+                QC_ERROR( "Memory Handle node type %d count %d random Number %" PRIu32
+                          " pid %" PRIu32 " ",
+                          memHandle.GetNodeType(), memHandle.GetNodeCount(),
+                          memHandle.GetRandomNumber(), memHandle.GetProcessId() );
             }
         }
     }
@@ -286,8 +289,9 @@ QCStatus_e ManagerLocal::CreatePool( const QCMemoryHandle_t &handle,
     else if ( false == IsMemoryHandleRegistered( handle, itNodeMap ) )
     {
         status = QC_STATUS_BAD_ARGUMENTS;
-        QC_ERROR( "Memory Handle node type %d count %d random Number %d pid %d",
-                  handle.GetNodeType(), handle.GetRandomNumber(), handle.GetProcessId() );
+        QC_ERROR( "Memory Handle node type %d count %d random Number %" PRIu32 " pid %" PRIu32 " ",
+                  handle.GetNodeType(), handle.GetNodeCount(), handle.GetRandomNumber(),
+                  handle.GetProcessId() );
     }
     else if ( QC_MEMORY_MAX_POOLS_PER_NODE == m_pools[itNodeMap->second].size() )
     {
@@ -314,11 +318,12 @@ QCStatus_e ManagerLocal::CreatePool( const QCMemoryHandle_t &handle,
         // set new pool count
         uint64_t count = m_pools[itNodeMap->second].size();
         poolHandle.SetPoolCount( static_cast<uint16_t>( count + 1 ) );
-        QC_DEBUG( "Memory Pool Handle node type %d count %d random Number %d pid %d",
+        QC_DEBUG( "Memory Pool Handle node type %d count %d random Number %" PRIu32 " pid %" PRIu32
+                  "",
                   poolHandle.GetMemoryHandle().GetNodeType(),
                   poolHandle.GetMemoryHandle().GetRandomNumber(),
                   poolHandle.GetMemoryHandle().GetProcessId() );
-        QC_DEBUG( "Pool Handle created with pool count %d random,number %d",
+        QC_DEBUG( "Pool Handle created with pool count %d random,number %" PRIu32 "",
                   poolHandle.GetPoolCount(), poolHandle.GetRandomNumber() );
 
         std::map<QCMemoryPoolHandle_t, std::reference_wrapper<QCMemoryPoolIfs>> &poolsMap =
@@ -394,11 +399,12 @@ QCStatus_e ManagerLocal::DestroyPool( const QCMemoryPoolHandle_t &poolHandle )
     else if ( m_pools[itNodeMap->second].find( poolHandle ) == m_pools[itNodeMap->second].end() )
     {
         status = QC_STATUS_BAD_ARGUMENTS;
-        QC_ERROR( "Memory Pool Handle not found node type %d count %d random Number %d pid %d",
+        QC_ERROR( "Memory Pool Handle not found node type %d count %d random Number %" PRIu32
+                  " pid %" PRIu32 "",
                   poolHandle.GetMemoryHandle().GetNodeType(),
                   poolHandle.GetMemoryHandle().GetRandomNumber(),
                   poolHandle.GetMemoryHandle().GetProcessId() );
-        QC_ERROR( "Pool Handle created with pool count %d random,number %d",
+        QC_ERROR( "Pool Handle created with pool count %d random,number %" PRIu32 "",
                   poolHandle.GetPoolCount(), poolHandle.GetRandomNumber() );
     }
     else
@@ -443,18 +449,20 @@ QCStatus_e ManagerLocal::AllocateBufferFromPool( const QCMemoryPoolHandle_t &poo
     else if ( false == IsMemoryHandleRegistered( memoryHandle, itNodeMap ) )
     {
         status = QC_STATUS_BAD_ARGUMENTS;
-        QC_ERROR( "Memory Handle not found node type %d count %d random Number %d pid %d",
+        QC_ERROR( "Memory Handle not found node type %d count %d random Number %" PRIu32
+                  " pid %" PRIu32 "",
                   memoryHandle.GetNodeType(), memoryHandle.GetRandomNumber(),
                   memoryHandle.GetProcessId() );
     }
     else if ( m_pools[itNodeMap->second].find( poolHandle ) == m_pools[itNodeMap->second].end() )
     {
         status = QC_STATUS_BAD_ARGUMENTS;
-        QC_ERROR( "Memory Pool Handle not found node type %d count %d random Number %d pid %d",
+        QC_ERROR( "Memory Pool Handle not found node type %d count %d random Number %" PRIu32
+                  " pid %" PRIu32 "",
                   poolHandle.GetMemoryHandle().GetNodeType(),
                   poolHandle.GetMemoryHandle().GetRandomNumber(),
                   poolHandle.GetMemoryHandle().GetProcessId() );
-        QC_ERROR( "Pool Handle created with pool count %d random,number %d",
+        QC_ERROR( "Pool Handle created with pool count %d random,number %" PRIu32 "",
                   poolHandle.GetPoolCount(), poolHandle.GetRandomNumber() );
     }
     else
@@ -490,18 +498,20 @@ QCStatus_e ManagerLocal::PutBufferToPool( const QCMemoryPoolHandle_t &poolHandle
     else if ( false == IsMemoryHandleRegistered( memoryHandle, itNodeMap ) )
     {
         status = QC_STATUS_BAD_ARGUMENTS;
-        QC_ERROR( "Memory Handle not found node type %d count %d random Number %d pid %d",
+        QC_ERROR( "Memory Handle not found node type %d count %d random Number %" PRIu32
+                  " pid %" PRIu32 "",
                   memoryHandle.GetNodeType(), memoryHandle.GetRandomNumber(),
                   memoryHandle.GetProcessId() );
     }
     else if ( m_pools[itNodeMap->second].find( poolHandle ) == m_pools[itNodeMap->second].end() )
     {
         status = QC_STATUS_BAD_ARGUMENTS;
-        QC_ERROR( "Memory Pool Handle not found node type %d count %d random Number %d pid %d",
+        QC_ERROR( "Memory Pool Handle not found node type %d count %d random Number %" PRIu32
+                  " pid %" PRIu32 "",
                   poolHandle.GetMemoryHandle().GetNodeType(),
                   poolHandle.GetMemoryHandle().GetRandomNumber(),
                   poolHandle.GetMemoryHandle().GetProcessId() );
-        QC_ERROR( "Pool Handle created with pool count %d random,number %d",
+        QC_ERROR( "Pool Handle created with pool count %d random,number %" PRIu32 "",
                   poolHandle.GetPoolCount(), poolHandle.GetRandomNumber() );
     }
     else
@@ -545,7 +555,7 @@ QCStatus_e ManagerLocal::AllocateBuffer( const QCMemoryHandle_t handle,
     }
     else if ( false == IsMemoryHandleRegistered( handle, handleIt ) )
     {
-        QC_ERROR( "Memory Handle node type %d count %d random Number %d pid %d",
+        QC_ERROR( "Memory Handle node type %d count %d random Number %" PRIu32 " pid %" PRIu32 "",
                   handle.GetNodeType(), handle.GetRandomNumber(), handle.GetProcessId() );
         status = QC_STATUS_BAD_ARGUMENTS;
     }
@@ -556,7 +566,7 @@ QCStatus_e ManagerLocal::AllocateBuffer( const QCMemoryHandle_t handle,
     }
     else
     {
-        QC_DEBUG( "Memory Handle node type %d count %d random Number %d pid %d",
+        QC_DEBUG( "Memory Handle node type %d count %d random Number %" PRIu32 " pid %" PRIu32 "",
                   handle.GetNodeType(), handle.GetRandomNumber(), handle.GetProcessId() );
         QC_DEBUG( "Allocating buffer using allocator %d ", allocator );
         QCMemoryAllocatorIfs &allocatorRef = m_config.allocators[allocator];
@@ -608,7 +618,7 @@ QCStatus_e ManagerLocal::FreeBuffer( const QCMemoryHandle_t handle,
     // validate handle
     else if ( false == IsMemoryHandleRegistered( handle, handleIt ) )
     {
-        QC_ERROR( "Memory Handle node type %d count %d random Number %d pid %d",
+        QC_ERROR( "Memory Handle node type %d count %d random Number %" PRIu32 " pid %" PRIu32 "",
                   handle.GetNodeType(), handle.GetRandomNumber(), handle.GetProcessId() );
         status = QC_STATUS_BAD_ARGUMENTS;
     }
@@ -656,7 +666,7 @@ QCStatus_e ManagerLocal::ReclaimResources( const QCMemoryHandle_t &handle )
 
     if ( state != QC_OBJECT_STATE_READY )
     {
-        QC_DEBUG( "state != QC_OBJECT_STATE_READY" );
+        QC_ERROR( "state != QC_OBJECT_STATE_READY" );
         QC_ERROR( "GetState () == %d", state );
         // changing temporally object state to allow call to
         // memory release methods which are blocked by wrong state
@@ -668,7 +678,7 @@ QCStatus_e ManagerLocal::ReclaimResources( const QCMemoryHandle_t &handle )
     if ( false == IsMemoryHandleRegistered( handle, handleIt ) )
     {
         QC_ERROR( "handle elegal" );
-        QC_ERROR( "Memory Handle node type %d count %d random Number %d pid %d",
+        QC_ERROR( "Memory Handle node type %d count %d random Number %" PRIu32 " pid %" PRIu32 "",
                   handle.GetNodeType(), handle.GetRandomNumber(), handle.GetProcessId() );
         status = QC_STATUS_BAD_ARGUMENTS;
     }
@@ -742,12 +752,12 @@ QCStatus_e ManagerLocal::ReclaimResources( const QCMemoryHandle_t &handle )
             for ( ; it != poolMap.end(); )
             {
                 QC_DEBUG( "Destroy Pool with Memory Pool Handle node type %d count %d random "
-                          "Number %d pid %d",
+                          "Number %" PRIu32 " pid %" PRIu32 "",
                           it->first.GetMemoryHandle().GetNodeType(),
                           it->first.GetMemoryHandle().GetRandomNumber(),
                           it->first.GetMemoryHandle().GetProcessId() );
-                QC_DEBUG( "& Pool Handle pool count %d random,number %d", it->first.GetPoolCount(),
-                          it->first.GetRandomNumber() );
+                QC_DEBUG( "& Pool Handle pool count %d random,number %" PRIu32 "",
+                          it->first.GetPoolCount(), it->first.GetRandomNumber() );
                 QCStatus_e localStatus = DestroyPool( it->first );
                 if ( QC_STATUS_OK != localStatus )
                 {
@@ -755,11 +765,11 @@ QCStatus_e ManagerLocal::ReclaimResources( const QCMemoryHandle_t &handle )
                     state = QC_OBJECT_STATE_ERROR;
                     QC_ERROR( "GetState () == %d", state );
                     QC_ERROR( "Destroy Pool failed ith Memory Pool Handle node type %d count %d "
-                              "random Number %d pid %d",
+                              "random Number %" PRIu32 " pid %" PRIu32 "",
                               it->first.GetMemoryHandle().GetNodeType(),
                               it->first.GetMemoryHandle().GetRandomNumber(),
                               it->first.GetMemoryHandle().GetProcessId() );
-                    QC_ERROR( "& Pool Handle pool count %d random,number %d",
+                    QC_ERROR( "& Pool Handle pool count %d random,number %" PRIu32 "",
                               it->first.GetPoolCount(), it->first.GetRandomNumber() );
                 }
                 else
