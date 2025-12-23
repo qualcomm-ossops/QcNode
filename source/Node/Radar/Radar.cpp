@@ -111,7 +111,8 @@ QCStatus_e RadarConfigIfs::ParseStaticConfig( DataTree &dt, std::string &errors 
         m_config.params.serviceConfig.bEnablePerformanceLog =
                 dt.Get<bool>( "enablePerformanceLog", false );
 
-        m_config.bufferIds = dt.Get<uint32_t>( "bufferIds", std::vector<uint32_t>{} );
+        m_config.inputBufferIds = dt.Get<uint32_t>( "inputs", std::vector<uint32_t>{} );
+        m_config.outputBufferIds = dt.Get<uint32_t>( "outputs", std::vector<uint32_t>{} );
 
         std::vector<DataTree> globalBufferIdMap;
         (void) dt.Get( "globalBufferIdMap", globalBufferIdMap );
@@ -199,25 +200,15 @@ QCStatus_e Radar::SetupGlobalBufferIdMap( const RadarConfig_t &cfg )
     return status;
 }
 
-void Radar::NotifyEvent( QCFrameDescriptorNodeIfs &frameDesc, QCStatus_e status )
-{
-    if ( m_eventCallback )
-    {
-        QCNodeEventInfo_t eventInfo( frameDesc, m_nodeId, status, GetState() );
-        m_eventCallback( eventInfo );
-    }
-}
-
 QCStatus_e Radar::Initialize( QCNodeInit_t &config )
 {
     QCStatus_e status = QC_STATUS_OK;
     std::string errors;
     const QCNodeConfigBase_t &cfg = m_configIfs.Get();
     const RadarConfig_t *pConfig = dynamic_cast<const RadarConfig_t *>( &cfg );
+
     bool bNodeBaseInitDone = false;
     bool bRadarInitDone = false;
-
-    m_eventCallback = config.callback;
 
     status = m_configIfs.VerifyAndSet( config.config, errors );
 
@@ -232,8 +223,29 @@ QCStatus_e Radar::Initialize( QCNodeInit_t &config )
 
     if ( QC_STATUS_OK == status )
     {
+        m_state = QC_OBJECT_STATE_INITIALIZING;
         bNodeBaseInitDone = true;
-        status = m_radar.Init( m_nodeId.name.c_str(), &pConfig->params );
+        m_config = pConfig->params;
+
+        if ( pConfig->params.maxInputBufferSize == 0 || pConfig->params.maxOutputBufferSize == 0 )
+        {
+            status = QC_STATUS_BAD_ARGUMENTS;
+            QC_ERROR( "Invalid buffer sizes in configuration" );
+        }
+        else if ( pConfig->params.serviceConfig.serviceName.empty() )
+        {
+            status = QC_STATUS_BAD_ARGUMENTS;
+            QC_ERROR( "Service name cannot be empty" );
+        }
+        else
+        {
+            status = m_radarIface.Initialize( pConfig->params.serviceConfig.serviceName.c_str() );
+            if ( QC_STATUS_OK != status )
+            {
+                QC_ERROR( "Failed to initialize RadarIface with device: %s",
+                          pConfig->params.serviceConfig.serviceName.c_str() );
+            }
+        }
     }
 
     if ( QC_STATUS_OK == status )
@@ -252,33 +264,81 @@ QCStatus_e Radar::Initialize( QCNodeInit_t &config )
         // Register buffers during initialization if specified and available
         if ( config.buffers.size() > 0 )
         {
-            for ( uint32_t bufferId : pConfig->bufferIds )
+            // Register input buffers
+            for ( uint32_t bufferId : pConfig->inputBufferIds )
             {
                 if ( bufferId < config.buffers.size() )
                 {
                     QCBufferDescriptorBase_t &bufDesc = config.buffers[bufferId].get();
-                    const QCSharedBufferDescriptor_t *pSharedBuffer =
-                            dynamic_cast<const QCSharedBufferDescriptor_t *>( &bufDesc );
-                    if ( nullptr == pSharedBuffer )
+                    const TensorDescriptor_t *pTensor =
+                            dynamic_cast<const TensorDescriptor_t *>( &bufDesc );
+                    // Fallback to check if it's just a BufferDescriptor if not TensorDescriptor
+                    const BufferDescriptor_t *pBuffer =
+                            pTensor ? nullptr
+                                    : dynamic_cast<const BufferDescriptor_t *>( &bufDesc );
+
+                    if ( ( nullptr == pTensor ) && ( nullptr == pBuffer ) )
                     {
                         QC_ERROR( "buffer %u is invalid", bufferId );
                         status = QC_STATUS_INVALID_BUF;
                     }
                     else
                     {
-                        // Register as input buffer (assuming first buffer is input)
-                        status = m_radar.RegisterInputBuffer( &( pSharedBuffer->buffer ) );
+                        //
+                        // Placeholder for future low level registration/mapping
+                        //
+                        status = QC_STATUS_OK;
                     }
                 }
                 else
                 {
-                    QC_ERROR( "buffer index out of range" );
+                    QC_ERROR( "input buffer index out of range" );
                     status = QC_STATUS_BAD_ARGUMENTS;
                 }
 
                 if ( status != QC_STATUS_OK )
                 {
                     break;
+                }
+            }
+
+            // Register output buffers
+            if ( status == QC_STATUS_OK )
+            {
+                for ( uint32_t bufferId : pConfig->outputBufferIds )
+                {
+                    if ( bufferId < config.buffers.size() )
+                    {
+                        QCBufferDescriptorBase_t &bufDesc = config.buffers[bufferId].get();
+                        const TensorDescriptor_t *pTensor =
+                                dynamic_cast<const TensorDescriptor_t *>( &bufDesc );
+                        const BufferDescriptor_t *pBuffer =
+                                pTensor ? nullptr
+                                        : dynamic_cast<const BufferDescriptor_t *>( &bufDesc );
+
+                        if ( ( nullptr == pTensor ) && ( nullptr == pBuffer ) )
+                        {
+                            QC_ERROR( "buffer %u is invalid", bufferId );
+                            status = QC_STATUS_INVALID_BUF;
+                        }
+                        else
+                        {
+                            //
+                            // Placeholder for future low level registration/mapping
+                            //
+                            status = QC_STATUS_OK;
+                        }
+                    }
+                    else
+                    {
+                        QC_ERROR( "output buffer index out of range" );
+                        status = QC_STATUS_BAD_ARGUMENTS;
+                    }
+
+                    if ( status != QC_STATUS_OK )
+                    {
+                        break;
+                    }
                 }
             }
         }
@@ -296,12 +356,16 @@ QCStatus_e Radar::Initialize( QCNodeInit_t &config )
         // Error cleanup
         if ( bRadarInitDone )
         {
-            (void) m_radar.Deinit();
+            (void) m_radarIface.Deinitialize();
         }
         if ( bNodeBaseInitDone )
         {
             (void) NodeBase::DeInitialize();
         }
+    }
+    else
+    {
+        m_state = QC_OBJECT_STATE_READY;
     }
 
     return status;
@@ -309,93 +373,285 @@ QCStatus_e Radar::Initialize( QCNodeInit_t &config )
 
 QCStatus_e Radar::DeInitialize()
 {
-    QCStatus_e status = QC_STATUS_OK;
-    QCStatus_e status2;
-
-    status2 = m_radar.Deinit();
-    if ( QC_STATUS_OK != status2 )
+    QCStatus_e ret = QC_STATUS_OK;
+    // The error state arises from the fact that the radar service is not present,
+    // and Deinit should proceed in that case to allow reattempts
+    if ( QC_OBJECT_STATE_READY == m_state || QC_OBJECT_STATE_ERROR == m_state )
     {
-        status = status2;
+        // Deinitialize RadarIface
+        QCStatus_e ret2 = m_radarIface.Deinitialize();
+        if ( QC_STATUS_OK != ret2 )
+        {
+            QC_ERROR( "Failed to deinitialize RadarIface" );
+            ret = ret2;
+        }
+
+        ret2 = NodeBase::DeInitialize();
+        if ( QC_STATUS_OK != ret2 )
+        {
+            QC_ERROR( "NodeBase::DeInitialize() failed" );
+            ret = ret2;
+        }
+        m_state = QC_OBJECT_STATE_INITIAL;
+    }
+    else
+    {
+        ret = QC_STATUS_BAD_STATE;
+        QC_ERROR( "Radar component not in ready state for deinitialization" );
     }
 
-    status2 = NodeBase::DeInitialize();
-    if ( QC_STATUS_OK != status2 )
-    {
-        status = status2;
-    }
-
-    return status;
+    return ret;
 }
 
 QCStatus_e Radar::Start()
 {
-    QCStatus_e status = QC_STATUS_OK;
+    QCStatus_e ret = QC_STATUS_OK;
 
-    status = m_radar.Start();
+    if ( QC_OBJECT_STATE_READY != m_state )
+    {
+        ret = QC_STATUS_BAD_STATE;
+        QC_ERROR( "Radar component not in ready state" );
+    }
+    else
+    {
+        // Check if RadarIface is properly initialized
+        if ( !m_radarIface.IsInitialized() )
+        {
+            ret = QC_STATUS_BAD_STATE;
+            QC_ERROR( "RadarIface not initialized" );
+        }
+        else
+        {
+            m_state = QC_OBJECT_STATE_RUNNING;
+            QC_INFO( "Node Radar started" );
+        }
+    }
 
-    return status;
+    return ret;
 }
 
 QCStatus_e Radar::Stop()
 {
-    QCStatus_e status = QC_STATUS_OK;
+    QCStatus_e ret = QC_STATUS_OK;
 
-    status = m_radar.Stop();
+    if ( QC_OBJECT_STATE_RUNNING != m_state )
+    {
+        ret = QC_STATUS_BAD_STATE;
+        QC_ERROR( "Radar component not in running state" );
+    }
+    else
+    {
+        // Clear registered buffers
+        m_registeredInputBuffers.clear();
+        m_registeredOutputBuffers.clear();
 
-    return status;
+        m_state = QC_OBJECT_STATE_READY;
+        QC_INFO( "Node Radar stopped" );
+    }
+
+    return ret;
 }
 
 QCStatus_e Radar::ProcessFrameDescriptor( QCFrameDescriptorNodeIfs &frameDesc )
 {
     QCStatus_e status = QC_STATUS_OK;
 
-    // Ensure we have at least 2 buffers (input and output)
-    if ( m_globalBufferIdMap.size() < 2 )
+    if ( QC_OBJECT_STATE_RUNNING != m_state )
     {
+        status = QC_STATUS_BAD_STATE;
+        QC_ERROR( "Radar component not in ready state" );
+    }
+    else if ( m_globalBufferIdMap.size() < 2 )
+    {
+        // Ensure we have at least 2 buffers (input and output)
         status = QC_STATUS_BAD_ARGUMENTS;
         QC_ERROR( "Insufficient global buffer map entries: %zu", m_globalBufferIdMap.size() );
-        NotifyEvent( frameDesc, status );
+    }
+    else if ( !m_radarIface.IsInitialized() )
+    {
+        status = QC_STATUS_BAD_STATE;
+        QC_ERROR( "RadarIface not initialized" );
     }
     else
     {
         // Get input buffer (first entry in global buffer map)
         uint32_t inputGlobalBufferId = m_globalBufferIdMap[0].globalBufferId;
         QCBufferDescriptorBase_t &inputBufDesc = frameDesc.GetBuffer( inputGlobalBufferId );
-        const QCSharedBufferDescriptor_t *pInputSharedBuffer =
-                dynamic_cast<const QCSharedBufferDescriptor_t *>( &inputBufDesc );
-        if ( nullptr == pInputSharedBuffer )
+        const TensorDescriptor_t *pInputTensor =
+                dynamic_cast<const TensorDescriptor_t *>( &inputBufDesc );
+        const BufferDescriptor_t *pInputBuffer =
+                dynamic_cast<const BufferDescriptor_t *>( &inputBufDesc );
+
+        if ( ( nullptr == pInputTensor ) && ( nullptr == pInputBuffer ) )
         {
             status = QC_STATUS_INVALID_BUF;
             QC_ERROR( "Input buffer is invalid at global ID %u", inputGlobalBufferId );
-            NotifyEvent( frameDesc, status );
         }
         else
         {
             // Get output buffer (second entry in global buffer map)
             uint32_t outputGlobalBufferId = m_globalBufferIdMap[1].globalBufferId;
-            QCBufferDescriptorBase_t &outputBufDesc = frameDesc.GetBuffer( outputGlobalBufferId );
-            const QCSharedBufferDescriptor_t *pOutputSharedBuffer =
-                    dynamic_cast<const QCSharedBufferDescriptor_t *>( &outputBufDesc );
-            if ( nullptr == pOutputSharedBuffer )
+            QCBufferDescriptorBase_t &outputBufDesc =
+                    frameDesc.GetBuffer( outputGlobalBufferId );
+            const TensorDescriptor_t *pOutputTensor =
+                    dynamic_cast<const TensorDescriptor_t *>( &outputBufDesc );
+            const BufferDescriptor_t *pOutputBuffer =
+                    dynamic_cast<const BufferDescriptor_t *>( &outputBufDesc );
+
+            if ( ( nullptr == pOutputTensor ) && ( nullptr == pOutputBuffer ) )
             {
                 status = QC_STATUS_INVALID_BUF;
                 QC_ERROR( "Output buffer is invalid at global ID %u", outputGlobalBufferId );
-                NotifyEvent( frameDesc, status );
             }
             else
             {
                 // Execute radar processing
-                status = m_radar.Execute( &pInputSharedBuffer->buffer,
-                                          &pOutputSharedBuffer->buffer );
-
-                NotifyEvent( frameDesc, status );
+                const QCBufferDescriptorBase_t *pInput =
+                        pInputTensor ? static_cast<const QCBufferDescriptorBase_t *>(
+                                                pInputTensor )
+                                        : static_cast<const QCBufferDescriptorBase_t *>(
+                                                pInputBuffer );
+                const QCBufferDescriptorBase_t *pOutput =
+                        pOutputTensor ? static_cast<const QCBufferDescriptorBase_t *>(
+                                                pOutputTensor )
+                                        : static_cast<const QCBufferDescriptorBase_t *>(
+                                                pOutputBuffer );
+                status = Execute( pInput, pOutput );
             }
         }
     }
 
-
     return status;
 }
+
+QCStatus_e Radar::ValidateBuffer( const QCBufferDescriptorBase_t *pBuffer, bool isInput )
+{
+    QCStatus_e ret = QC_STATUS_OK;
+
+    if ( nullptr == pBuffer->GetDataPtr() )
+    {
+        ret = QC_STATUS_INVALID_BUF;
+        QC_ERROR( "Buffer data pointer is null" );
+    }
+    else
+    {
+        // Try casting to BufferDescriptor_t to access size and dmaHandle if possible
+        // But QCBufferDescriptorBase_t has size and dmaHandle
+        if ( pBuffer->size == 0 )
+        {
+            ret = QC_STATUS_INVALID_BUF;
+            QC_ERROR( "Buffer size is zero" );
+        }
+        else
+        {
+            if ( pBuffer->dmaHandle == 0 )
+            {
+                ret = QC_STATUS_INVALID_BUF;
+                QC_ERROR( "Invalid DMA handle" );
+            }
+            else
+            {
+                uint32_t maxSize =
+                        isInput ? m_config.maxInputBufferSize : m_config.maxOutputBufferSize;
+                if ( pBuffer->GetDataSize() > maxSize )
+                {
+                    ret = QC_STATUS_INVALID_BUF;
+                    QC_ERROR( "%s buffer size (%zu) exceeds maximum (%u)",
+                              isInput ? "Input" : "Output", pBuffer->GetDataSize(), maxSize );
+                }
+                else
+                {
+                    if ( pBuffer->type == QC_BUFFER_TYPE_RAW )
+                    {
+                        QC_DEBUG( "Processing RAW buffer type for radar data" );
+                    }
+                    else if ( pBuffer->type == QC_BUFFER_TYPE_TENSOR )
+                    {
+                        QC_DEBUG( "Processing TENSOR buffer type for radar data" );
+                    }
+                    else if ( pBuffer->type == QC_BUFFER_TYPE_IMAGE )
+                    {
+                        QC_DEBUG( "Processing IMAGE buffer type for radar data" );
+                    }
+                    else
+                    {
+                        QC_WARN( "Unexpected buffer type %d for radar processing", pBuffer->type );
+                    }
+                }
+            }
+        }
+    }
+
+    return ret;
+}
+
+QCStatus_e Radar::Execute( const QCBufferDescriptorBase_t *pInput,
+                           const QCBufferDescriptorBase_t *pOutput )
+{
+    QCStatus_e ret = QC_STATUS_OK;
+
+    if ( QC_OBJECT_STATE_RUNNING != m_state )
+    {
+        ret = QC_STATUS_BAD_STATE;
+        QC_ERROR( "Radar component not in running state" );
+    }
+    else
+    {
+        if ( nullptr == pInput || nullptr == pOutput )
+        {
+            ret = QC_STATUS_BAD_ARGUMENTS;
+            QC_ERROR( "Input or output buffer is null" );
+        }
+        else
+        {
+            // Validate buffers
+            ret = ValidateBuffer( pInput, true );
+            if ( QC_STATUS_OK != ret )
+            {
+                QC_ERROR( "Input buffer validation failed" );
+            }
+            else
+            {
+                ret = ValidateBuffer( pOutput, false );
+                if ( QC_STATUS_OK != ret )
+                {
+                    QC_ERROR( "Output buffer validation failed" );
+                }
+                else
+                {
+                    // Check if RadarIface is properly initialized
+                    if ( !m_radarIface.IsInitialized() )
+                    {
+                        ret = QC_STATUS_BAD_STATE;
+                        QC_ERROR( "RadarIface not initialized" );
+                    }
+                    else
+                    {
+                        // Use RadarIface to execute processing with buffer pointers and sizes
+                        uint8_t *pInputData = static_cast<uint8_t *>( pInput->GetDataPtr() );
+                        uint8_t *pOutputData = static_cast<uint8_t *>( pOutput->GetDataPtr() );
+                        size_t inputSize = pInput->GetDataSize();
+                        size_t outputSize = pOutput->GetDataSize();
+
+                        ret = m_radarIface.Execute( pInputData, inputSize, pOutputData,
+                                                    outputSize );
+                        if ( QC_STATUS_OK != ret )
+                        {
+                            QC_ERROR( "RadarIface execution failed" );
+                        }
+                        else
+                        {
+                            QC_DEBUG( "Radar processing completed successfully" );
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    return ret;
+}
+
 
 }   // namespace Node
 }   // namespace QC

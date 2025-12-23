@@ -123,6 +123,11 @@ if ! [[ -v ENABLE_GENIE ]] ; then
   export ENABLE_GENIE=OFF
 fi
 
+if ! [[ -v ENABLE_RADAR ]] ; then
+  export ENABLE_RADAR=OFF
+fi
+
+
 # Get dependent packages
 export THIRD_PARTY_DIR=$topdir/third_party
 $topdir/scripts/build/toolchain/get-3rd-party.sh
@@ -439,6 +444,7 @@ cmake \
     -DENABLE_C2C=${ENABLE_C2C} \
     -DENABLE_TRACE=${ENABLE_TRACE} \
     -DENABLE_GENIE=${ENABLE_GENIE} \
+    -DENABLE_RADAR=${ENABLE_RADAR} \
     -DQC_TARGET_SOC=${QC_TARGET_SOC} \
     .. || exit -1
 ${CTC_BUILD_PREFIX} make -j 16 || exit -1

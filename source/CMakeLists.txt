@@ -37,7 +37,6 @@ endif()
 
 if ( ENABLE_RADAR AND NOT CMAKE_SYSTEM_NAME STREQUAL "Linux" )
   list( APPEND TARGET_LIBRARIES
-            QCNodeRadar
             QCNodeNodeRadar
   )
 endif()

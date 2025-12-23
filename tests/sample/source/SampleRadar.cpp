@@ -361,7 +361,8 @@ QCStatus_e SampleRadar::SetupNodeConfiguration()
 
     // Set empty buffer IDs since we don't register buffers during initialization
     std::vector<uint32_t> bufferIds;   // empty - no initialization-time buffer registration
-    staticConfig.Set( "bufferIds", bufferIds );
+    staticConfig.Set( "inputs", bufferIds );
+    staticConfig.Set( "outputs", bufferIds );
 
     // Set global buffer ID mapping for Node interface
     std::vector<DataTree> bufferMapDts;
@@ -392,7 +393,7 @@ QCStatus_e SampleRadar::SetupNodeConfiguration()
 void SampleRadar::ThreadMain()
 {
     QCStatus_e ret = QC_STATUS_OK;
-    QC::Node::QCSharedFrameDescriptorNode frameDesc( 2 );   // Input + Output buffers
+    QC::Node::NodeFrameDescriptor frameDesc( 2 );   // Input + Output buffers
 
     QC_INFO( "Radar processing thread started" );
 
@@ -416,7 +417,7 @@ void SampleRadar::ThreadMain()
                 auto processingStart = std::chrono::high_resolution_clock::now();
 
                 // Setup frame descriptor following SampleRemap pattern
-                std::vector<QC::Node::QCSharedBufferDescriptor_t> bufferDescs;
+                std::vector<QC::Memory::TensorDescriptor_t> bufferDescs;
                 bufferDescs.resize( 2 );
                 frameDesc.Clear();
 
@@ -424,13 +425,13 @@ void SampleRadar::ThreadMain()
                 TRACE_BEGIN( inputFrames.FrameId( 0 ) );
 
                 // Set input buffer
-                bufferDescs[0].buffer = inputFrames.frames[0].buffer->sharedBuffer;
+                bufferDescs[0] = inputFrames.frames[0].GetBuffer();
                 ret = frameDesc.SetBuffer( 0, bufferDescs[0] );
 
                 if ( QC_STATUS_OK == ret )
                 {
                     // Set output buffer
-                    bufferDescs[1].buffer = outputBuffer->sharedBuffer;
+                    bufferDescs[1] = outputBuffer->GetBuffer();
                     ret = frameDesc.SetBuffer( 1, bufferDescs[1] );
                 }
                 if ( QC_STATUS_OK == ret )
@@ -490,7 +491,7 @@ QCStatus_e SampleRadar::ProcessFrame( const DataFrames_t &inputFrames )
     const DataFrame_t &inputFrame = inputFrames.frames[0];
 
     QC_DEBUG( "Processing radar frame: frameId=%lu, timestamp=%lu, size=%u", inputFrame.frameId,
-              inputFrame.timestamp, inputFrame.buffer->sharedBuffer.size );
+              inputFrame.timestamp, const_cast<DataFrame_t&>(inputFrame).GetBuffer().size );
 
     // Validate input data format and content
     ret = ValidateInputData( inputFrame );
@@ -510,15 +511,14 @@ QCStatus_e SampleRadar::ProcessFrame( const DataFrames_t &inputFrames )
 
     // Setup frame descriptor for Node processing
     // This maps input and output buffers for the Node component
-    QC::Node::QCSharedFrameDescriptorNode frameDesc( 2 );
-    std::vector<QC::Node::QCSharedBufferDescriptor_t> bufferDescs( 2 );
+    QC::Node::NodeFrameDescriptor frameDesc( 2 );
+    std::vector<QC::Memory::TensorDescriptor_t> bufferDescs( 2 );
 
     frameDesc.Clear();
 
     // Set input buffer descriptor with proper base class initialization
-    bufferDescs[0].buffer = inputFrame.buffer->sharedBuffer;
-    bufferDescs[0].pBuf = bufferDescs[0].buffer.data();
-    bufferDescs[0].size = bufferDescs[0].buffer.size;
+    // const_cast is safe here as we're just getting the buffer descriptor
+    bufferDescs[0] = const_cast<DataFrame_t&>(inputFrame).GetBuffer();
     bufferDescs[0].name = "InputBuffer";
     bufferDescs[0].type = QC_BUFFER_TYPE_TENSOR;
     ret = frameDesc.SetBuffer( 0, bufferDescs[0] );
@@ -529,9 +529,7 @@ QCStatus_e SampleRadar::ProcessFrame( const DataFrames_t &inputFrames )
     }
 
     // Set output buffer descriptor with proper base class initialization
-    bufferDescs[1].buffer = outputBuffer->sharedBuffer;
-    bufferDescs[1].pBuf = bufferDescs[1].buffer.data();
-    bufferDescs[1].size = bufferDescs[1].buffer.size;
+    bufferDescs[1] = outputBuffer->GetBuffer();
     bufferDescs[1].name = "OutputBuffer";
     bufferDescs[1].type = QC_BUFFER_TYPE_TENSOR;
     ret = frameDesc.SetBuffer( 1, bufferDescs[1] );
@@ -596,35 +594,35 @@ QCStatus_e SampleRadar::ValidateInputData( const DataFrame_t &frame )
     }
 
     // Check buffer data accessibility
-    if ( nullptr == frame.buffer->sharedBuffer.data() )
+    if ( nullptr == const_cast<DataFrame_t&>(frame).GetBuffer().GetDataPtr() )
     {
         QC_ERROR( "Input buffer data pointer is null" );
         return QC_STATUS_INVALID_BUF;
     }
 
     // Check buffer size constraints
-    if ( frame.buffer->sharedBuffer.size == 0 )
+    if ( const_cast<DataFrame_t&>(frame).GetBuffer().size == 0 )
     {
         QC_ERROR( "Input buffer size is zero" );
         return QC_STATUS_INVALID_BUF;
     }
 
-    if ( frame.buffer->sharedBuffer.size > m_maxInputBufferSize )
+    if ( const_cast<DataFrame_t&>(frame).GetBuffer().size > m_maxInputBufferSize )
     {
-        QC_ERROR( "Input buffer size (%u) exceeds maximum (%u)", frame.buffer->sharedBuffer.size,
+        QC_ERROR( "Input buffer size (%u) exceeds maximum (%u)", const_cast<DataFrame_t&>(frame).GetBuffer().size,
                   m_maxInputBufferSize );
         return QC_STATUS_INVALID_BUF;
     }
 
     // Check DMA handle validity
-    if ( frame.buffer->sharedBuffer.buffer.dmaHandle == 0 )
+    if ( const_cast<DataFrame_t&>(frame).GetBuffer().dmaHandle == 0 )
     {
         QC_ERROR( "Invalid DMA handle in input buffer" );
         return QC_STATUS_INVALID_BUF;
     }
 
     // Validate buffer type compatibility
-    QCBufferType_e bufferType = frame.buffer->sharedBuffer.type;
+    QCBufferType_e bufferType = const_cast<DataFrame_t&>(frame).GetBuffer().type;
     if ( bufferType != QC_BUFFER_TYPE_RAW && bufferType != QC_BUFFER_TYPE_TENSOR &&
          bufferType != QC_BUFFER_TYPE_IMAGE )
     {
@@ -633,7 +631,7 @@ QCStatus_e SampleRadar::ValidateInputData( const DataFrame_t &frame )
     }
 
     QC_DEBUG( "Input data validation passed: type=%d, size=%u", bufferType,
-              frame.buffer->sharedBuffer.size );
+              const_cast<DataFrame_t&>(frame).GetBuffer().size );
 
     return ret;
 }
