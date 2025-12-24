@@ -23,9 +23,7 @@ QCStatus_e CL2DPipelineConvertUBWC::Init(
     m_pOpenclSrvObj = pOpenclSrvObj;
     m_config = *pConfig;
 
-    if ( ( m_config.outputWidth == m_config.ROIs[m_inputId].width ) &&
-         ( m_config.outputHeight == m_config.ROIs[m_inputId].height ) &&
-         ( QC_IMAGE_FORMAT_NV12_UBWC == m_config.inputFormats[m_inputId] ) &&
+    if ( ( QC_IMAGE_FORMAT_NV12_UBWC == m_config.inputFormats[m_inputId] ) &&
          ( QC_IMAGE_FORMAT_NV12 == m_config.outputFormat ) )
     {
         m_pipeline = CL2DFLEX_PIPELINE_CONVERT_NV12UBWC_TO_NV12;
@@ -111,8 +109,8 @@ QCStatus_e CL2DPipelineConvertUBWC::ConvertUBWCFromNV12UBWCToNV12( ImageDescript
         inputYFormat.image_channel_data_type = CL_UNORM_INT8;
         cl_image_desc inputYDesc = { 0 };
         inputYDesc.image_type = CL_MEM_OBJECT_IMAGE2D;
-        inputYDesc.image_width = (size_t) output.width;
-        inputYDesc.image_height = (size_t) output.height;
+        inputYDesc.image_width = (size_t) input.width;
+        inputYDesc.image_height = (size_t) input.height;
         inputYDesc.mem_object = bufferSrc;
         ret = m_pOpenclSrvObj->RegPlane( input.pBuf, &bufferSrcY, &inputYFormat, &inputYDesc );
     }
@@ -128,8 +126,8 @@ QCStatus_e CL2DPipelineConvertUBWC::ConvertUBWCFromNV12UBWCToNV12( ImageDescript
         inputUVFormat.image_channel_data_type = CL_UNORM_INT8;
         cl_image_desc inputUVDesc = { 0 };
         inputUVDesc.image_type = CL_MEM_OBJECT_IMAGE2D;
-        inputUVDesc.image_width = (size_t) m_config.outputWidth;
-        inputUVDesc.image_height = (size_t) m_config.outputHeight;
+        inputUVDesc.image_width = (size_t) input.width;
+        inputUVDesc.image_height = (size_t) input.height;
         inputUVDesc.mem_object = bufferSrc;
         ret = m_pOpenclSrvObj->RegPlane( input.pBuf, &bufferSrcUV, &inputUVFormat, &inputUVDesc );
     }
@@ -141,8 +139,8 @@ QCStatus_e CL2DPipelineConvertUBWC::ConvertUBWCFromNV12UBWCToNV12( ImageDescript
     else
     {
 
-        size_t numOfArgs = 10;
-        OpenclIfcae_Arg_t OpenclArgs[10];
+        size_t numOfArgs = 17;
+        OpenclIfcae_Arg_t OpenclArgs[17];
         OpenclArgs[0].pArg = (void *) &bufferSrcY;
         OpenclArgs[0].argSize = sizeof( bufferSrcY );
         OpenclArgs[1].pArg = (void *) &bufferSrcUV;
@@ -152,19 +150,35 @@ QCStatus_e CL2DPipelineConvertUBWC::ConvertUBWCFromNV12UBWCToNV12( ImageDescript
         OpenclArgs[3].pArg = (void *) &bufferDst;
         OpenclArgs[3].argSize = sizeof( cl_mem );
         OpenclArgs[4].pArg = (void *) &dstOffset;
-        OpenclArgs[4].argSize = sizeof( cl_int );
-        OpenclArgs[5].pArg = (void *) &( output.stride[0] );
-        OpenclArgs[5].argSize = sizeof( cl_int );
-        OpenclArgs[6].pArg = (void *) &( output.planeBufSize[0] );
-        OpenclArgs[6].argSize = sizeof( cl_int );
-        OpenclArgs[7].pArg = (void *) &( output.stride[1] );
-        OpenclArgs[7].argSize = sizeof( cl_int );
-        uint32_t kernelROIX = m_config.ROIs[m_inputId].x;
-        uint32_t kernelROIY = m_config.ROIs[m_inputId].y;
-        OpenclArgs[8].pArg = (void *) &( kernelROIX );
-        OpenclArgs[8].argSize = sizeof( cl_int );
-        OpenclArgs[9].pArg = (void *) &( kernelROIY );
-        OpenclArgs[9].argSize = sizeof( cl_int );
+        OpenclArgs[4].argSize = sizeof( cl_uint );
+        OpenclArgs[5].pArg = (void *) &( m_config.ROIs[m_inputId].height );
+        OpenclArgs[5].argSize = sizeof( cl_uint );
+        OpenclArgs[6].pArg = (void *) &( m_config.ROIs[m_inputId].width );
+        OpenclArgs[6].argSize = sizeof( cl_uint );
+        OpenclArgs[7].pArg = (void *) &( m_config.outputHeight );
+        OpenclArgs[7].argSize = sizeof( cl_uint );
+        OpenclArgs[8].pArg = (void *) &( m_config.outputWidth );
+        OpenclArgs[8].argSize = sizeof( cl_uint );
+        OpenclArgs[9].pArg = (void *) &( input.stride[0] );
+        OpenclArgs[9].argSize = sizeof( cl_uint );
+        OpenclArgs[10].pArg = (void *) &( input.planeBufSize[0] );
+        OpenclArgs[10].argSize = sizeof( cl_uint );
+        OpenclArgs[11].pArg = (void *) &( input.stride[1] );
+        OpenclArgs[11].argSize = sizeof( cl_uint );
+        OpenclArgs[12].pArg = (void *) &( output.stride[0] );
+        OpenclArgs[12].argSize = sizeof( cl_uint );
+        OpenclArgs[13].pArg = (void *) &( output.planeBufSize[0] );
+        OpenclArgs[13].argSize = sizeof( cl_uint );
+        OpenclArgs[14].pArg = (void *) &( output.stride[1] );
+        OpenclArgs[14].argSize = sizeof( cl_uint );
+        uint32_t kernelROIX =
+                m_config.ROIs[m_inputId].x / m_config.ROIs[m_inputId].width * m_config.outputWidth;
+        uint32_t kernelROIY = m_config.ROIs[m_inputId].y / m_config.ROIs[m_inputId].height *
+                              m_config.outputHeight;
+        OpenclArgs[15].pArg = (void *) &( kernelROIX );
+        OpenclArgs[15].argSize = sizeof( cl_uint );
+        OpenclArgs[16].pArg = (void *) &( kernelROIY );
+        OpenclArgs[16].argSize = sizeof( cl_uint );
 
         OpenclIface_WorkParams_t OpenclWorkParams;
         OpenclWorkParams.workDim = 2;
