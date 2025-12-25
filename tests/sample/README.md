@@ -349,6 +349,7 @@ The command line template example for Lidar pipeline:
 | pool_size          | false    | int       | 4           | The image memory pool size |
 | bitrate            | false    | int       | 8000000     | The encoding bitrate |
 | fps                | false    | int       | 30          | The frame rate per second |
+| buffer_size        | false    | int       | 2097152     | The image buffer size |
 | input_topic        | true     | string    | -           | the input topic name |
 | output_topic       | true     | string    | -           | the output topic name |
 | format             | false    | string    | "nv12"      | The image format, options from [nv12, nv12_ubwc] |

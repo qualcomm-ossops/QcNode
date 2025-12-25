@@ -124,7 +124,7 @@ QCStatus_e SampleVideoEncoder::Init( std::string name, SampleConfig_t &samplecfg
     imgProp.height = m_height;
     imgProp.batchSize = 1;
     imgProp.numPlanes = 1;
-    imgProp.planeBufSize[0] = 2 * 1024 * 1024;
+    imgProp.planeBufSize[0] = m_bufSize;
 
     ret = m_frameBufferPools.Init( m_name, m_nodeId, LOGGER_LEVEL_INFO, m_numOutputBufferReq,
                                    imgProp, QC_MEMORY_ALLOCATOR_DMA_VPU );
@@ -382,6 +382,13 @@ QCStatus_e SampleVideoEncoder::ParseConfig( SampleConfig_t &config )
     }
     else
     {
+    }
+
+    m_bufSize = Get( config, "buffer_size", 2 * 1024 * 1024 );
+    if ( 0 == m_bufSize )
+    {
+        QC_ERROR( "invalid buffer_size = %u", m_bufSize );
+        ret = QC_STATUS_BAD_ARGUMENTS;
     }
 
     m_outputTopicName = Get( config, "output_topic", "" );
