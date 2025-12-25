@@ -152,10 +152,10 @@ QCStatus_e QnnImpl::GetQnnFunctionPointers( std::string backendPath, std::string
                       interfaceProviders[pIdx]->apiVersion.coreApiVersion.major,
                       interfaceProviders[pIdx]->apiVersion.coreApiVersion.minor,
                       interfaceProviders[pIdx]->apiVersion.coreApiVersion.patch );
-            if ( QNN_API_VERSION_MAJOR ==
-                         interfaceProviders[pIdx]->apiVersion.coreApiVersion.major &&
-                 QNN_API_VERSION_MINOR <=
-                         interfaceProviders[pIdx]->apiVersion.coreApiVersion.minor )
+            if ( ( QNN_API_VERSION_MAJOR ==
+                   interfaceProviders[pIdx]->apiVersion.coreApiVersion.major ) &&
+                 ( QNN_API_VERSION_MINOR <=
+                   interfaceProviders[pIdx]->apiVersion.coreApiVersion.minor ) )
             {
                 foundValidInterface = true;
                 m_qnnFunctionPointers.qnnInterface =

@@ -2565,7 +2565,8 @@ TEST( QNN, QnnImplUnitTest )
 
     {
         QnnImplTest qnn( nodeId, logger );
-        status = qnn.GetQnnFunctionPointers( "libQCNode.so", "libQnnModel.so", false );
+        status = qnn.GetQnnFunctionPointers( "libQnnHtpNetRunExtensions.so", "libQnnModel.so",
+                                             false );
         ASSERT_EQ( QC_STATUS_FAIL, status );
     }
 
@@ -2577,7 +2578,7 @@ TEST( QNN, QnnImplUnitTest )
 
     {
         QnnImplTest qnn( nodeId, logger );
-        status = qnn.GetQnnFunctionPointers( "libQnnHtp.so", "libQCNode.so", true );
+        status = qnn.GetQnnFunctionPointers( "libQnnHtp.so", "libQnnHtpNetRunExtensions.so", true );
         ASSERT_EQ( QC_STATUS_FAIL, status );
     }
 
@@ -2589,7 +2590,7 @@ TEST( QNN, QnnImplUnitTest )
 
     {
         QnnImplTest qnn( nodeId, logger );
-        status = qnn.GetQnnSystemFunctionPointers( "libQCNode.so" );
+        status = qnn.GetQnnSystemFunctionPointers( "libQnnHtpNetRunExtensions.so" );
         ASSERT_EQ( QC_STATUS_FAIL, status );
     }
 
