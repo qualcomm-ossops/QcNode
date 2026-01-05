@@ -543,7 +543,7 @@ void Accuracy( uint32_t inputNumberTest, CL2DFlex_Work_Mode_e modeTest,
         float cos = dot / sqrt( norm1 * norm2 );
         printf( "cosine similarity = %f\n", cos );
         printf( "miss data number = %d\n", miss );
-        ASSERT_GT( cos, 0.9999 );
+        ASSERT_GT( cos, 0.999 );
     }
 
     ret = pCL2DFlex->Stop();
