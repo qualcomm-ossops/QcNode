@@ -29,6 +29,7 @@ install(TARGETS FadasIface DESTINATION lib)
 install(FILES prebuilt/dsp/v68/libFadasIface_skel.so DESTINATION lib/dsp/v68)
 install(FILES prebuilt/dsp/v73/libFadasIface_skel.so DESTINATION lib/dsp/v73)
 install(FILES prebuilt/dsp/v75/libFadasIface_skel.so DESTINATION lib/dsp/v75)
+install(FILES prebuilt/dsp/v81/libFadasIface_skel.so DESTINATION lib/dsp/v81)
 install(FILES prebuilt/dsp/v73/libFadasIface_skel.so DESTINATION lib/dsp)
 
 install( FILES ${FADASIFACE_HEADERS} DESTINATION include/QC/Library/FadasIface )
