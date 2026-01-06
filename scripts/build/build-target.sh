@@ -314,7 +314,7 @@ setup_qnn_sdk() {
                 ln -sf $QC_TOOLCHAIN_PATH/qnn_sdk /opt/qnn_sdk
             else
                 echo "qnn_sdk not fould under $QC_TOOLCHAIN_PATH"
-                exit -1
+                return
             fi
         fi
         source /opt/qnn_sdk/bin/envsetup.sh
@@ -481,6 +481,7 @@ esac
 fi
 
 mkdir -p $destdir/opt/qcnode/lib/runtime
+if [ "$ENABLE_TINYVIZ" == "ON" ] ; then
 if [ -f /opt/toolchain/LiberationSans-Regular.ttf ]; then
     cp -v /opt/toolchain/LiberationSans-Regular.ttf $destdir/opt/qcnode/lib/runtime
 else
@@ -488,6 +489,7 @@ else
         unzip $THIRD_PARTY_DIR/liberation_sans.zip
     fi
     cp -v LiberationSans-Regular.ttf $destdir/opt/qcnode/lib/runtime
+fi
 fi
 
 if [[ "${QC_TARGET_SOC}" == "8797" ]] && [[ "${target}" == "aarch64-qnx" ]] ; then

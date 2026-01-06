@@ -1,0 +1,15 @@
+# QCNode sample apps
+
+PERM_BIN test/qcnode/bin/QCNodeSampleApp=aarch64le/bin/qcnode/bin/QCNodeSampleApp
+PERM_BIN test/qcnode/bin/QCNodeSharedRingInspect=aarch64le/bin/qcnode/bin/QCNodeSharedRingInspect
+PERM_BIN test/qcnode/bin/qcrun=aarch64le/bin/qcnode/bin/qcrun
+
+# QCNode Sample App lib
+[uid=QCNODE_UID gid=QCNODE_GID perms=PERM_APP_LIB] test/qcnode/lib/libOpenclIface.so=aarch64le/bin/qcnode/lib/libOpenclIface.so
+[uid=QCNODE_UID gid=QCNODE_GID perms=PERM_APP_LIB] test/qcnode/lib/libQCNodeSample.so=aarch64le/bin/qcnode/lib/libQCNodeSample.so
+[uid=QCNODE_UID gid=QCNODE_GID perms=PERM_APP_LIB] test/qcnode/lib/libQCNode.so=aarch64le/bin/qcnode/lib/libQCNode.so
+[uid=QCNODE_UID gid=QCNODE_GID perms=PERM_APP_LIB] test/qcnode/lib/libQCNodeVideoCodec.so=aarch64le/bin/qcnode/lib/libQCNodeVideoCodec.so
+[uid=QCNODE_UID gid=QCNODE_GID perms=PERM_APP_LIB] test/qcnode/lib/libFadasIface.so=aarch64le/bin/qcnode/lib/libFadasIface.so
+[uid=QCNODE_UID gid=QCNODE_GID perms=PERM_APP_LIB] test/qcnode/lib/libFadasIfaceStub.so=aarch64le/bin/qcnode/lib/libFadasIfaceStub.so
+[uid=QCNODE_UID gid=QCNODE_GID perms=PERM_APP_LIB] test/qcnode/lib/dsp/libFadasIface_skel.so=aarch64le/bin/qcnode/lib/dsp/v73/libFadasIface_skel.so
+

@@ -96,12 +96,12 @@ fi # ENABLE_TINYVIZ
 
 cd $THIRD_PARTY_DIR
 if [ ! -d $destdir/include/nlohmann ]; then
-    if [ ! -f json.tar.xz ]; then
-        echo "Package json.tar.xz not found under $THIRD_PARTY_DIR"
+    if [ ! -f json.tar.gz ]; then
+        echo "Package json.tar.gz not found under $THIRD_PARTY_DIR"
         exit -1
     else
-        tar -xf json.tar.xz -C $workdir
-        cd $workdir/json
+        tar -xf json.tar.gz -C $workdir
+        cd $workdir/json*
         mkdir -p build
         cd build
         cmake \
