@@ -853,7 +853,7 @@ CameraImpl::SetBuffers( std::vector<std::reference_wrapper<QCBufferDescriptorBas
                 pQcarcamBuf = &m_pQcarcamBuffers[streamId][j];
 
                 pCamFrame->streamId = streamId;
-                pCamFrame->frameIdx = bufferIdx;
+                pCamFrame->frameIdx = j;
                 bufferIdx++;
 
                 if ( format != pCamFrame->format )
@@ -1645,4 +1645,3 @@ QCarCamColorFmt_e CameraImpl::GetQcarCamFormat( QCImageFormat_e colorFormat )
 
 }   // namespace Node
 }   // namespace QC
-

@@ -230,6 +230,7 @@ QCStatus_e SampleCamera::Init( std::string name, SampleConfig_t &config )
     {
         for ( uint32_t i = 0; i < numStream; i++ )
         {
+            streamId = m_streamConfigs[i].Get<uint32_t>( "streamId", UINT32_MAX );
             std::string topicName = m_topicNameMap[streamId];
             std::string streamName = name + ".stream" + std::to_string( streamId );
             m_pubMap[streamId] = std::make_shared<DataPublisher<DataFrames_t>>();
