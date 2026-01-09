@@ -5,6 +5,13 @@
     - [1.1.2 The buffer life cycle management for the Video Encoder](#112-the-buffer-life-cycle-management-for-the-video-encoder)
     - [1.1.3 The buffer life cycle management of the SharedBufferPool](#113-the-buffer-life-cycle-management-of-the-sharedbufferpool)
 - [2. QCNode buffer life cycle management between processes](#2-qcnode-buffer-life-cycle-management-between-processes)
+  - [2.1 Shared Ring Mechanism](#21-shared-ring-mechanism)
+  - [2.2 The Life Cycle Flow](#22-the-life-cycle-flow)
+    - [Step 1: Publisher Publish](#step-1-publisher-publish)
+    - [Step 2: Subscriber Receive](#step-2-subscriber-receive)
+    - [Step 3: Subscriber Release](#step-3-subscriber-release)
+    - [Step 4: Publisher Reclaim](#step-4-publisher-reclaim)
+  - [2.3 The Data Pipeline View](#23-the-data-pipeline-view)
 
 # 1. QCNode buffer life cycle management between threads in the same process
 
@@ -193,6 +200,92 @@ And refer the [SampleRemap](../tests/sample/source/SampleRemap.cpp#L206) or [Sam
 
 # 2. QCNode buffer life cycle management between processes
 
-- Refer the [SampleSharedRing](../tests/sample/source/SampleSharedRing.cpp).
-- Refer the [SharedPublisher](../tests/sample/include/QC/sample/shared_ring/SharedPublisher.hpp).
-- Refer the [SharedPublisher](../tests/sample/include/QC/sample/shared_ring/SharedPublisher.hpp).
+
+![Shared Ring](./images/shared-ring.jpg)
+
+When sharing buffers between processes, the C++ `std::shared_ptr` cannot be directly shared because it is a process-local object. However, the lifecycle management concept remains similar: the buffer should not be released until all consumers (local and remote) have finished using it.
+
+To achieve this across process boundaries, the **SharedRing** mechanism is used (demonstrated in [SampleSharedRing](../tests/sample/source/SampleSharedRing.cpp)). This implementation is based on the Linux **virtio** ring buffer concept but extended to support **1-Publisher to Multi-Subscriber** multicast scenarios.
+
+## 2.1 Shared Ring Mechanism
+
+The Shared Ring uses shared memory to maintain the state of buffer descriptors. It consists of three types of rings:
+
+1.  **Avail Ring**: Holds free descriptors that are available for the **Publisher** to use for sending new data.
+2.  **Used Ring(s)**: Holds descriptors that contain valid data waiting to be processed by **Subscribers**. To support multiple subscribers, there is a dedicated **Used Ring for each subscriber** (e.g., `used[0]`, `used[1]`, ...).
+3.  **Free Ring**: Holds descriptors that have been fully consumed by all subscribers and are ready to be recycled by the Publisher.
+
+Each descriptor [(SharedRing_Desc_t)](../tests/sample/include/QC/sample/shared_ring/SharedRing.hpp#L118) in the shared memory contains an **atomic reference counter** (`ref`), which is crucial for the lifecycle management.
+
+## 2.2 The Life Cycle Flow
+
+The lifecycle management across processes involves coordination between the Publisher and Subscribers using the rings and the atomic reference counter.
+
+### Step 1: Publisher Publish
+- Refer `SharedPublisher::Publish` in [SharedPublisher.cpp](../tests/sample/Library/SharedRing/source/SharedPublisher.cpp).
+
+1.  **Get Descriptor**: The Publisher pops a free descriptor index (`idx`) from the **Avail Ring**.
+2.  **Hold Reference**: It stores the `DataFrames_t` (containing the local `std::shared_ptr`) into a local map `m_dataFrames[idx]`. This keeps the buffer alive in the producer process.
+3.  **Init Counter**: It initializes the descriptor's atomic reference counter (`ref`) to the **number of subscribers** (e.g., if there are 2 subscribers, `ref = 2`).
+4.  **Distribute**: It pushes the `idx` to the **Used Ring** of *each* subscriber and signals them.
+
+### Step 2: Subscriber Receive
+- Refer `SharedSubscriber::Receive` in [SharedSubscriber.cpp](../tests/sample/Library/SharedRing/source/SharedSubscriber.cpp).
+
+1.  **Get Data**: The Subscriber pops the `idx` from its dedicated **Used Ring**.
+2.  **Create Local Shared Pointer**: It creates a new local `std::shared_ptr` for the received buffer.
+3.  **Custom Deleter**: This `std::shared_ptr` is configured with a custom deleter [(`ReleaseSharedBuffer`)](../tests/sample/Library/SharedRing/source/SharedSubscriber.cpp#L220) that is responsible for signaling completion.
+
+### Step 3: Subscriber Release
+- Refer [SharedSubscriber::ReleaseSharedBuffer](../tests/sample/Library/SharedRing/source/SharedSubscriber.cpp#L220).
+
+1.  **Usage Done**: When the subscriber application finishes using the buffer, the local `std::shared_ptr` is destroyed, triggering the custom deleter.
+2.  **Decrement Counter**: The deleter atomically decrements the global reference counter (`ref`) in the shared memory descriptor.
+3.  **Recycle**: If the counter reaches **0** (meaning this was the last subscriber to release the buffer), the Subscriber pushes the `idx` to the **Free Ring** and signals the Publisher.
+
+### Step 4: Publisher Reclaim
+- Refer [SharedPublisher::ThreadMain](../tests/sample/Library/SharedRing/source/SharedPublisher.cpp#L205).
+
+1.  **Monitor**: The Publisher's thread waits for signals on the **Free Ring**.
+2.  **Reclaim**: When an `idx` appears in the Free Ring, it means all remote consumers are done.
+3.  **Release Reference**: The Publisher removes the entry from `m_dataFrames[idx]`. This destroys the local `std::shared_ptr`.
+4.  **Final Cleanup**: If this was the last reference (i.e., producer is also done), the original custom deleter (from Section 1) runs, and the buffer is returned to the source (e.g., Camera).
+5.  **Reuse**: The `idx` is pushed back to the **Avail Ring** for future use.
+
+## 2.3 The Data Pipeline View
+
+The [SampleSharedRing](../tests/sample/source/SampleSharedRing.cpp) application functions as a bridge to connect DataBrokers across different processes using the Shared Ring mechanism.
+
+```mermaid
+graph LR
+    subgraph Process A [Process A: Producer Side]
+        SourceNode[Source Node] -- publish --> DataBrokerA[DataBroker A]
+        DataBrokerA -- receive --> SharedRingPub[SampleSharedRing Pub]
+    end
+
+    SharedRingPub -- publish --> SharedMem[Shared Memory Ring]
+
+    subgraph SharedMemory [Shared Memory]
+        SharedMem
+    end
+
+    subgraph Process B [Process B: Consumer Side]
+        SharedMem -- receive --> SharedRingSub[SampleSharedRing Sub]
+        SharedRingSub -- publish --> DataBrokerB[DataBroker B]
+        DataBrokerB -- receive --> DestNode[Destination Node]
+    end
+```
+
+**Process A (Producer Side)**:
+1.  **Source Node** (e.g., Camera) publishes a frame to the local DataBroker.
+2.  **SampleSharedRing (Publisher Mode)**:
+    -   Its **DataBroker Subscriber** (`m_sub`) receives the frame (as a `std::shared_ptr`).
+    -   Its **SharedRing Publisher** (`m_sharedPub`) publishes this frame to the inter-process Shared Ring (as described in Sec 2.2 Step 1).
+
+**Process B (Consumer Side)**:
+1.  **SampleSharedRing (Subscriber Mode)**:
+    -   Its **SharedRing Subscriber** (`m_sharedSub`) receives the frame from the Shared Ring (as described in Sec 2.2 Step 2).
+    -   Its **DataBroker Publisher** (`m_pub`) publishes this frame (wrapped in a new local `std::shared_ptr`) to the local DataBroker.
+2.  **Destination Node** (e.g., Video Encoder) subscribes to the local DataBroker and consumes the frame.
+
+This pipeline ensures that the buffer lifecycle is maintained from the Source Node in Process A, through the Shared Ring, to the Destination Node in Process B, and back, preventing premature release at any stage.

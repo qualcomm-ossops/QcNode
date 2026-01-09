@@ -324,7 +324,7 @@ setup_qnn_sdk() {
     MODEL_FILE=$topdir/tests/unit_test/Node/QNN/Mock/QnnAddModelMock.cpp
     case $target in
     aarch64-qnx)
-        if [[ "${QC_TARGET_SOC}" == "8797" ]] ; then
+        if [[ "${ENABLE_SDP8}" == "ON" ]] ; then
           qnx_target_arch=aarch64-qnx800
         else
           qnx_target_arch=aarch64-qnx
@@ -458,7 +458,7 @@ fi
 
 case $target in
 aarch64-qnx)
-    if [[ "${QC_TARGET_SOC}" == "8797" ]] ; then
+    if [[ "${ENABLE_SDP8}" == "ON" ]] ; then
       QNX_VARIANT=aarch64-qnx800
     else
       QNX_VARIANT=aarch64-qnx
@@ -492,7 +492,7 @@ else
 fi
 fi
 
-if [[ "${QC_TARGET_SOC}" == "8797" ]] && [[ "${target}" == "aarch64-qnx" ]] ; then
+if [[ "${ENABLE_SDP8}" == "ON" ]] && [[ "${target}" == "aarch64-qnx" ]] ; then
     SSL_LIB=/opt/qnx/target/qnx/aarch64le/usr/lib/libssl.so.3
     if [ ! -f $SSL_LIB ]; then
         SSL_LIB=$BSP_ROOT/qnx_bins/prebuilt_SDP800/target/qnx/aarch64le/usr/lib/libssl.so.3
