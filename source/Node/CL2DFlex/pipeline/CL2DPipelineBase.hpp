@@ -69,6 +69,9 @@ public:
 
     ~CL2DPipelineBase();
 
+    CL2DPipelineBase( const CL2DPipelineBase & ) = delete;
+    CL2DPipelineBase &operator=( const CL2DPipelineBase & ) = delete;
+
     void InitLogger( const char *pName, Logger_Level_e level );
 
     void DeinitLogger();

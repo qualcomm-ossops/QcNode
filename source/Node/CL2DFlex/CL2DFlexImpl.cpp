@@ -349,7 +349,7 @@ QCStatus_e CL2DFlexImpl::SetupGlobalBufferIdMap()
     }
     else
     { /* create a default global buffer index map */
-        m_config.globalBufferIdMap.resize( m_inputNum + m_outputNum );
+        m_config.globalBufferIdMap.resize( static_cast<size_t>( m_inputNum + m_outputNum ) );
         uint32_t globalBufferId = 0;
         for ( uint32_t i = 0; i < m_inputNum; i++ )
         {

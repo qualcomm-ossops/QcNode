@@ -5,9 +5,9 @@
 #ifndef QC_CL2DFLEX_CLH
 #define QC_CL2DFLEX_CLH
 
-#define KernelCode( ... ) #__VA_ARGS__
+#define KERNELCODE( ... ) #__VA_ARGS__
 
-inline const char *Kernels()
+inline const char *Kernels() noexcept
 {
     static const char *kernels =
 #include "kernel/CL2DConstant.cl.h"

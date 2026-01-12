@@ -19,6 +19,9 @@ public:
 
     ~CL2DPipelineRemap();
 
+    CL2DPipelineRemap( const CL2DPipelineRemap & ) = delete;
+    CL2DPipelineRemap &operator=( const CL2DPipelineRemap & ) = delete;
+
     QCStatus_e Init( uint32_t inputId, cl_kernel *pKernel, CL2DFlex_Config_t *pConfig,
                      OpenclSrv *pOpenclSrvObj,
                      std::vector<std::reference_wrapper<QCBufferDescriptorBase>> &buffers );

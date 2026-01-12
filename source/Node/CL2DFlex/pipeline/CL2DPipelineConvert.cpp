@@ -90,7 +90,7 @@ QCStatus_e CL2DPipelineConvert::Execute( ImageDescriptor_t &input, ImageDescript
         }
         else
         {
-            uint32_t srcOffset = input.offset;
+            uint32_t srcOffset = (uint32_t) input.offset;
             uint32_t sizeOne = (uint32_t) ( output.size ) / ( output.batchSize );
             uint32_t dstOffset = (uint32_t) ( output.offset ) + m_inputId * sizeOne;
 

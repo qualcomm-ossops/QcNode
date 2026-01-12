@@ -42,8 +42,16 @@ QCStatus_e CL2DPipelineResizeMultiple::Init(
         uint32_t ROIsBufferId = m_config.ROIsBufferId;
         QCBufferDescriptorBase_t &ROIsBufferDesc = buffers[ROIsBufferId];
         TensorDescriptor_t *pROIsBufferDesc = dynamic_cast<TensorDescriptor_t *>( &ROIsBufferDesc );
-        ret = m_pOpenclSrvObj->RegBufferDesc(
-                dynamic_cast<QCBufferDescriptorBase_t &>( *pROIsBufferDesc ), m_bufferROIs );
+        if ( pROIsBufferDesc != nullptr )
+        {
+            ret = m_pOpenclSrvObj->RegBufferDesc(
+                    dynamic_cast<QCBufferDescriptorBase_t &>( *pROIsBufferDesc ), m_bufferROIs );
+        }
+        else
+        {
+            QC_ERROR( "null pROIsBufferDesc pointer!" );
+            ret = QC_STATUS_INVALID_BUF;
+        }
     }
     if ( QC_STATUS_OK != ret )
     {
@@ -85,8 +93,8 @@ QCStatus_e CL2DPipelineResizeMultiple::Execute( ImageDescriptor_t &input,
         }
         else
         {
-            uint32_t srcOffset = input.offset;
-            uint32_t dstOffset = output.offset;
+            uint32_t srcOffset = (uint32_t) input.offset;
+            uint32_t dstOffset = (uint32_t) output.offset;
             if ( CL2DFLEX_PIPELINE_RESIZE_NEAREST_NV12_TO_RGB_MULTIPLE == m_pipeline )
             {
                 ret = ResizeFromNV12ToRGBMultiple( bufferSrc, srcOffset, bufferDst, dstOffset,

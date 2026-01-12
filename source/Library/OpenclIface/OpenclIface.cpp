@@ -56,7 +56,7 @@ QCStatus_e OpenclSrv::Init( const char *pName, Logger_Level_e level, OpenclIfcae
                                         NULL );
                 if ( CL_SUCCESS == retCL )
                 {
-                    for ( int i = 0; i < numDevices; i++ )
+                    for ( uint32_t i = 0; i < numDevices; i++ )
                     {
                         QC_INFO( "device ID[%d] = %d\n", i, pDeviceIDs[i] );
                     }
@@ -103,7 +103,7 @@ QCStatus_e OpenclSrv::Init( const char *pName, Logger_Level_e level, OpenclIfcae
             QC_ERROR( "Invalid performance priority argument setting" );
             ret = QC_STATUS_BAD_ARGUMENTS;
         }
-        m_context = clCreateContext( properties, 1, &m_deviceID, NULL, NULL, &retCL );
+        m_context = clCreateContext( properties, 1, &m_deviceID, nullptr, nullptr, &retCL );
         if ( CL_SUCCESS != retCL )
         {
             QC_ERROR( "Unable to create context, retCL = %d", retCL );
@@ -113,7 +113,8 @@ QCStatus_e OpenclSrv::Init( const char *pName, Logger_Level_e level, OpenclIfcae
 
     if ( CL_SUCCESS == retCL )
     {
-        m_commandQueue = clCreateCommandQueueWithProperties( m_context, m_deviceID, NULL, &retCL );
+        m_commandQueue =
+                clCreateCommandQueueWithProperties( m_context, m_deviceID, nullptr, &retCL );
         if ( CL_SUCCESS != retCL )
         {
             QC_ERROR( "Unable to create command queue, retCL = %d", retCL );
@@ -201,8 +202,8 @@ QCStatus_e OpenclSrv::LoadFromSource( const char *pSourceFile )
     QCStatus_e ret = QC_STATUS_OK;
     cl_int retCL = CL_SUCCESS;
 
-    m_program =
-            clCreateProgramWithSource( m_context, 1, (const char **) &pSourceFile, NULL, &retCL );
+    m_program = clCreateProgramWithSource( m_context, 1, (const char **) &pSourceFile, nullptr,
+                                           &retCL );
     if ( retCL != CL_SUCCESS )
     {
         QC_ERROR( "Unable to create program with source, retCL = %d", retCL );
@@ -210,13 +211,14 @@ QCStatus_e OpenclSrv::LoadFromSource( const char *pSourceFile )
     }
     else
     {
-        retCL = clBuildProgram( m_program, 1, &m_deviceID, "-cl-fast-relaxed-math", NULL, NULL );
+        retCL = clBuildProgram( m_program, 1, &m_deviceID, "-cl-fast-relaxed-math", nullptr,
+                                nullptr );
         if ( CL_SUCCESS != retCL )
         {
             QC_ERROR( "Unable to build program, retCL = %d", retCL );
             ret = QC_STATUS_FAIL;
             size_t len;
-            (void) clGetProgramBuildInfo( m_program, m_deviceID, CL_PROGRAM_BUILD_LOG, 0, NULL,
+            (void) clGetProgramBuildInfo( m_program, m_deviceID, CL_PROGRAM_BUILD_LOG, 0, nullptr,
                                           &len );
             std::vector<char> logs;
             logs.resize( len );
@@ -389,18 +391,20 @@ QCStatus_e OpenclSrv::RegBuf( const QCBuffer_t *pBuffer, cl_mem *pBufferCL )
             clBufHostPtr.ext_host_ptr.allocation_type = CL_MEM_PMEM_HOST_PTR_QCOM;
             clBufHostPtr.ext_host_ptr.host_cache_policy = CL_MEM_HOST_IOCOHERENT_QCOM;
             clBufHostPtr.pmem_hostptr = pBuffer->pData;
+            cl_mem_flags flags = static_cast<cl_mem_flags>( CL_MEM_USE_HOST_PTR ) |
+                                 static_cast<cl_mem_flags>( CL_MEM_EXT_HOST_PTR_QCOM );
             cl_mem bufferCL =
-                    clCreateBuffer( m_context, CL_MEM_USE_HOST_PTR | CL_MEM_EXT_HOST_PTR_QCOM,
-                                    pBuffer->size, &clBufHostPtr, &retCL );
+                    clCreateBuffer( m_context, flags, pBuffer->size, &clBufHostPtr, &retCL );
 #else
             cl_mem_dmabuf_host_ptr clBufHostPtr = { 0 };
             clBufHostPtr.dmabuf_filedesc = static_cast<int>( pBuffer->dmaHandle );
             clBufHostPtr.ext_host_ptr.allocation_type = CL_MEM_DMABUF_HOST_PTR_QCOM;
             clBufHostPtr.ext_host_ptr.host_cache_policy = CL_MEM_HOST_UNCACHED_QCOM;
             clBufHostPtr.dmabuf_hostptr = pBuffer->pData;
+            cl_mem_flags flags = static_cast<cl_mem_flags>( CL_MEM_USE_HOST_PTR ) |
+                                 static_cast<cl_mem_flags>( CL_MEM_EXT_HOST_PTR_QCOM );
             cl_mem bufferCL =
-                    clCreateBuffer( m_context, CL_MEM_USE_HOST_PTR | CL_MEM_EXT_HOST_PTR_QCOM,
-                                    pBuffer->size, &clBufHostPtr, &retCL );
+                    clCreateBuffer( m_context, flags, pBuffer->size, &clBufHostPtr, &retCL );
 #endif
 
             if ( CL_SUCCESS != retCL )
@@ -437,16 +441,18 @@ QCStatus_e OpenclSrv::RegBufferDesc( QCBufferDescriptorBase_t &buffer, cl_mem &b
         clBufHostPtr.ext_host_ptr.allocation_type = CL_MEM_PMEM_HOST_PTR_QCOM;
         clBufHostPtr.ext_host_ptr.host_cache_policy = CL_MEM_HOST_IOCOHERENT_QCOM;
         clBufHostPtr.pmem_hostptr = buffer.pBuf;
-        bufferCL = clCreateBuffer( m_context, CL_MEM_USE_HOST_PTR | CL_MEM_EXT_HOST_PTR_QCOM,
-                                   buffer.size, &clBufHostPtr, &retCL );
+        cl_mem_flags flags = static_cast<cl_mem_flags>( CL_MEM_USE_HOST_PTR ) |
+                             static_cast<cl_mem_flags>( CL_MEM_EXT_HOST_PTR_QCOM );
+        bufferCL = clCreateBuffer( m_context, flags, buffer.size, &clBufHostPtr, &retCL );
 #else
         cl_mem_dmabuf_host_ptr clBufHostPtr = { 0 };
         clBufHostPtr.dmabuf_filedesc = static_cast<int>( buffer.dmaHandle );
         clBufHostPtr.ext_host_ptr.allocation_type = CL_MEM_DMABUF_HOST_PTR_QCOM;
         clBufHostPtr.ext_host_ptr.host_cache_policy = CL_MEM_HOST_UNCACHED_QCOM;
         clBufHostPtr.dmabuf_hostptr = buffer.pBuf;
-        bufferCL = clCreateBuffer( m_context, CL_MEM_USE_HOST_PTR | CL_MEM_EXT_HOST_PTR_QCOM,
-                                   buffer.size, &clBufHostPtr, &retCL );
+        cl_mem_flags flags = static_cast<cl_mem_flags>( CL_MEM_USE_HOST_PTR ) |
+                             static_cast<cl_mem_flags>( CL_MEM_EXT_HOST_PTR_QCOM );
+        bufferCL = clCreateBuffer( m_context, flags, buffer.size, &clBufHostPtr, &retCL );
 #endif
 
         if ( CL_SUCCESS != retCL )
@@ -489,18 +495,22 @@ QCStatus_e OpenclSrv::RegImage( void *pData, uint64_t dmaHandle, cl_mem *pBuffer
             clBufHostPtr.ext_host_ptr.allocation_type = CL_MEM_PMEM_HOST_PTR_QCOM;
             clBufHostPtr.ext_host_ptr.host_cache_policy = CL_MEM_HOST_IOCOHERENT_QCOM;
             clBufHostPtr.pmem_hostptr = pData;
-            cl_mem bufferCL = clCreateImage(
-                    m_context, CL_MEM_READ_ONLY | CL_MEM_USE_HOST_PTR | CL_MEM_EXT_HOST_PTR_QCOM,
-                    pFormat, pDesc, &clBufHostPtr, &retCL );
+            cl_mem_flags flags = static_cast<cl_mem_flags>( CL_MEM_READ_ONLY ) |
+                                 static_cast<cl_mem_flags>( CL_MEM_USE_HOST_PTR ) |
+                                 static_cast<cl_mem_flags>( CL_MEM_EXT_HOST_PTR_QCOM );
+            cl_mem bufferCL =
+                    clCreateImage( m_context, flags, pFormat, pDesc, &clBufHostPtr, &retCL );
 #else
             cl_mem_dmabuf_host_ptr clBufHostPtr = { { 0 } };
             clBufHostPtr.dmabuf_filedesc = static_cast<int>( dmaHandle );
             clBufHostPtr.ext_host_ptr.allocation_type = CL_MEM_DMABUF_HOST_PTR_QCOM;
             clBufHostPtr.ext_host_ptr.host_cache_policy = CL_MEM_HOST_IOCOHERENT_QCOM;
             clBufHostPtr.dmabuf_hostptr = pData;
-            cl_mem bufferCL = clCreateImage(
-                    m_context, CL_MEM_READ_ONLY | CL_MEM_USE_HOST_PTR | CL_MEM_EXT_HOST_PTR_QCOM,
-                    pFormat, pDesc, &clBufHostPtr, &retCL );
+            cl_mem_flags flags = static_cast<cl_mem_flags>( CL_MEM_READ_ONLY ) |
+                                 static_cast<cl_mem_flags>( CL_MEM_USE_HOST_PTR ) |
+                                 static_cast<cl_mem_flags>( CL_MEM_EXT_HOST_PTR_QCOM );
+            cl_mem bufferCL =
+                    clCreateImage( m_context, flags, pFormat, pDesc, &clBufHostPtr, &retCL );
 #endif
 
             if ( CL_SUCCESS != retCL )
@@ -674,7 +684,7 @@ QCStatus_e OpenclSrv::Execute( const cl_kernel *pKernel, const OpenclIfcae_Arg_t
     QCStatus_e ret = QC_STATUS_OK;
     cl_int retCL = CL_SUCCESS;
 
-    for ( int i = 0; i < numOfArgs; i++ )
+    for ( uint32_t i = 0; i < numOfArgs; i++ )
     {
         retCL = clSetKernelArg( *pKernel, i, pArgs[i].argSize, pArgs[i].pArg );
         if ( CL_SUCCESS != retCL )
@@ -686,9 +696,10 @@ QCStatus_e OpenclSrv::Execute( const cl_kernel *pKernel, const OpenclIfcae_Arg_t
 
     if ( QC_STATUS_OK == ret )
     {
-        retCL = clEnqueueNDRangeKernel( m_commandQueue, *pKernel, pWorkParam->workDim,
+        retCL = clEnqueueNDRangeKernel( m_commandQueue, *pKernel,
+                                        static_cast<cl_uint>( pWorkParam->workDim ),
                                         pWorkParam->pGlobalWorkOffset, pWorkParam->pGlobalWorkSize,
-                                        pWorkParam->pLocalWorkSize, 0, NULL, NULL );
+                                        pWorkParam->pLocalWorkSize, 0, nullptr, nullptr );
         if ( CL_SUCCESS != retCL )
         {
             QC_ERROR( "Unable to enqueue range kernel, retCL = %d", retCL );

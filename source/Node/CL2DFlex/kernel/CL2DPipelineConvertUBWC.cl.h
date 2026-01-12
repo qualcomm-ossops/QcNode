@@ -5,7 +5,7 @@
 #ifndef QC_CL2D_PIPELINE_CONVERTUBWC_CLH
 #define QC_CL2D_PIPELINE_CONVERTUBWC_CLH
 
-KernelCode(
+KERNELCODE(
 
         __kernel void ConvertUBWC( __read_only image2d_t srcYPlane,
                                    __read_only image2d_t srcUVPlane, sampler_t sampler,

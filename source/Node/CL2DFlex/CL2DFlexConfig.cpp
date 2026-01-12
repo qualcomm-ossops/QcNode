@@ -140,8 +140,7 @@ QCStatus_e CL2DFlexConfig::ParseStaticConfig( DataTree &dt, std::string &errors 
     if ( QC_STATUS_OK == status )
     {
         config.nodeId.name = dt.Get<std::string>( "name", "" );
-        config.nodeId.id = dt.Get<uint32_t>( "id", UINT32_MAX );
-
+        config.nodeId.id = dt.Get<uint8_t>( "id", 255 );
         config.params.outputWidth = dt.Get<uint32_t>( "outputWidth", 1024 );
         config.params.outputHeight = dt.Get<uint32_t>( "outputHeight", 1024 );
         config.params.outputFormat = dt.GetImageFormat( "outputFormat", QC_IMAGE_FORMAT_RGB888 );

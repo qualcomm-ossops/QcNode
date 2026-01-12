@@ -233,6 +233,8 @@ public:
     {}
     ~CL2DFlexMonitoring() {}
 
+    CL2DFlexMonitoring( const CL2DFlexMonitoring &other ) = delete;
+
     virtual QCStatus_e VerifyAndSet( const std::string config, std::string &errors )
     {
         return QC_STATUS_UNSUPPORTED;
