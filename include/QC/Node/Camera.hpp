@@ -4,6 +4,7 @@
 #ifndef QC_NODE_CAMERA_HPP
 #define QC_NODE_CAMERA_HPP
 
+#include "QC/Infras/Memory/CameraBufferDescriptor.hpp"
 #include "QC/Node/NodeBase.hpp"
 #include "qcarcam.h"
 
@@ -14,15 +15,12 @@ namespace Node
 
 /** @brief The QCNode Camera Version */
 #define QCNODE_CAMERA_VERSION_MAJOR 2U
-#define QCNODE_CAMERA_VERSION_MINOR 0U
-#define QCNODE_CAMERA_VERSION_PATCH 3U
+#define QCNODE_CAMERA_VERSION_MINOR 1U
+#define QCNODE_CAMERA_VERSION_PATCH 0U
 
 #define QCNODE_CAMERA_VERSION                                                                      \
     ( ( QCNODE_CAMERA_VERSION_MAJOR << 16U ) | ( QCNODE_CAMERA_VERSION_MINOR << 8U ) |             \
       QCNODE_CAMERA_VERSION_PATCH )
-
-/** @brief The maximum stream number of QCNode Camera */
-#define QCNODE_CAMERA_MAX_STREAM_NUM 32
 
 /**
  * @brief Represents the Camera implementation used by NodeCamera
@@ -88,18 +86,31 @@ public:
      *         "opMode": "Operation mode defined by qcarcam, type: uint32_t",
      *         "streamConfigs": "Configuration for each camera stream, type: data tree array",
      *         [
-     *             {"streamId": "Camera stream id, type: uint32_t",
-     *              "bufCnt": "Buffer count set to camera, type: uint32_t",
-     *              "width": "Camera frame width, type: uint32_t",
-     *              "height": "Camera frame height, type: uint32_t",
-     *              "format": "Camera frame format, type: string, options: ["nv12", "nv12_ubwc",
-     *                        "uyvy", "rgb", "bgr", "p010", "tp10_ubwc"]",
-     *              "submitRequestPattern": "Buffer submit request pattern, type: uint32_t"}
+     *             {
+     *                  "streamId": "Camera stream id, type: uint32_t",
+     *                  "bufferIds": [ "The indices of camera frame buffers in QCNodeInit::buffers,
+     *                                 type: uint32_t" ],
+     *                  "width": "Camera frame width, type: uint32_t",
+     *                  "height": "Camera frame height, type: uint32_t",
+     *                  "format": "Camera frame format, type: string, options: ["nv12", "nv12_ubwc",
+     *                            "uyvy", "rgb", "bgr", "p010", "tp10_ubwc"]",
+     *                  "submitRequestPattern": "Buffer submit request pattern, type: uint32_t"
+     *             }
      *         ],
+     *         "metaDataConfigs": "Configuration for camera metadata, only used when enableMetaData
+     *                             is true, type: data tree array",
+     *         [
+     *             {
+     *                 "bufferListId": "The index of metadata buffer group, type: uint32_t",
+     *                 "bufferIds": [ "The indices of camera frame buffers in QCNodeInit::buffers,
+     *                                type: uint32_t" ]
+     *             }
+     *         ],
      *         "requestMode": "Flag to set request buffer mode, type: bool",
+     *         "enableMetaData": "Flag to enable metadata, type: bool",
      *         "primary": "Flag to indicate if the session is primary or not when configured with
      *                    the clientId, type: bool",
-     *         "recovery": "Flag to enable self-recovery for the session, type: bool",
+     *         "recovery": "Flag to enable self-recovery for the session, type: bool"
      *     }
      * }
      * @endcode

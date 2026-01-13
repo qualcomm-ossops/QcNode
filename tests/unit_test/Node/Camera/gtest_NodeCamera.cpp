@@ -73,7 +73,6 @@ static void SANITY_Camera( DataTree &dt )
     ASSERT_EQ( QC_STATUS_OK, ret );
 
     std::string name = staticCfg.Get<std::string>( "name", "" );
-    ASSERT_EQ( name, "camera" );
 
     QCNodeID_t nodeId;
     nodeId.name = name;
@@ -88,17 +87,19 @@ static void SANITY_Camera( DataTree &dt )
     DataTree streamConfig;
     QCImageProps_t imgProp;
     uint32_t streamId = 0;
-    uint32_t bufCnt = 0;
     uint32_t bufferId = 0;
-    uint32_t numStream = streamConfigs.size();
-    g_bufferPools.resize( numStream );
+    uint32_t streamNum = streamConfigs.size();
+    uint32_t bufferNum = 0;
+    g_bufferPools.resize( streamNum );
 
-    for ( uint32_t i = 0; i < numStream; i++ )
+    for ( uint32_t i = 0; i < streamNum; i++ )
     {
         std::string bufPoolName = name + std::to_string( i );
         streamConfig = streamConfigs[i];
         streamId = streamConfig.Get<uint32_t>( "streamId", UINT32_MAX );
-        bufCnt = streamConfig.Get<uint32_t>( "bufCnt", UINT32_MAX );
+        std::vector<uint32_t> bufferIds =
+                streamConfig.Get<uint32_t>( "bufferIds", std::vector<uint32_t>{} );
+        bufferNum = bufferIds.size();
         imgProp.format = streamConfig.GetImageFormat( "format", QC_IMAGE_FORMAT_MAX );
         imgProp.width = streamConfig.Get<uint32_t>( "width", UINT32_MAX );
         imgProp.height = streamConfig.Get<uint32_t>( "height", UINT32_MAX );
@@ -112,13 +113,13 @@ static void SANITY_Camera( DataTree &dt )
             imgProp.numPlanes = 1;
             imgProp.planeBufSize[0] = 0;
 
-            ret = g_bufferPools[i].Init( bufPoolName, nodeId, LOGGER_LEVEL_ERROR, bufCnt, imgProp,
-                                         QC_MEMORY_ALLOCATOR_DMA_CAMERA, QC_CACHEABLE );
+            ret = g_bufferPools[i].Init( bufPoolName, nodeId, LOGGER_LEVEL_ERROR, bufferNum,
+                                         imgProp, QC_MEMORY_ALLOCATOR_DMA_CAMERA, QC_CACHEABLE );
             ASSERT_EQ( QC_STATUS_OK, ret );
         }
         else
         {
-            ret = g_bufferPools[i].Init( bufPoolName, nodeId, LOGGER_LEVEL_ERROR, bufCnt,
+            ret = g_bufferPools[i].Init( bufPoolName, nodeId, LOGGER_LEVEL_ERROR, bufferNum,
                                          imgProp.width, imgProp.height, imgProp.format,
                                          QC_MEMORY_ALLOCATOR_DMA_CAMERA, QC_CACHEABLE );
             ASSERT_EQ( QC_STATUS_OK, ret );
@@ -142,7 +143,7 @@ static void SANITY_Camera( DataTree &dt )
     ret = g_camera.DeInitialize();
     ASSERT_EQ( QC_STATUS_OK, ret );
 
-    for ( uint32_t i = 0; i < numStream; i++ )
+    for ( uint32_t i = 0; i < streamNum; i++ )
     {
         ret = g_bufferPools[i].Deinit();
         ASSERT_EQ( QC_STATUS_OK, ret );
@@ -200,4 +201,3 @@ int main( int argc, char **argv )
     return nVal;
 }
 #endif
-

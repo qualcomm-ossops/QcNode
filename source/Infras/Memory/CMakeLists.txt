@@ -5,7 +5,7 @@ set( MEMORY_HEADERS
         ${HEADERS_DIR}/QC/Infras/Memory/BufferDescriptor.hpp
         ${HEADERS_DIR}/QC/Infras/Memory/ImageDescriptor.hpp
         ${HEADERS_DIR}/QC/Infras/Memory/TensorDescriptor.hpp
-        ${HEADERS_DIR}/QC/Infras/Memory/CameraFrameDescriptor.hpp
+        ${HEADERS_DIR}/QC/Infras/Memory/CameraBufferDescriptor.hpp
         ${HEADERS_DIR}/QC/Infras/Memory/Ifs/QCMemoryAllocatorIfs.hpp
         ${HEADERS_DIR}/QC/Infras/Memory/Ifs/QCMemoryDefs.hpp
         ${HEADERS_DIR}/QC/Infras/Memory/Ifs/QCMemoryManagerIfs.hpp
@@ -21,7 +21,7 @@ set( MEMORY_SOURCES
     BufferDescriptor.cpp
     ImageDescriptor.cpp
     TensorDescriptor.cpp
-    CameraFrameDescriptor.cpp
+    CameraBufferDescriptor.cpp
     ManagerLocal.cpp
     HeapAllocator.cpp
     UtilsBase.cpp

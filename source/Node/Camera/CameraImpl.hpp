@@ -6,6 +6,8 @@
 
 #include <mutex>
 #include <queue>
+#include <unordered_map>
+#include <unordered_set>
 
 #include "QC/Infras/NodeTrace/NodeTrace.hpp"
 #include "QC/Node/Camera.hpp"
@@ -49,25 +51,60 @@ typedef struct
  * 
  * @param height                  Camera Frame height
  *
- * @param bufCnt                  Buffer count set to camera
+ * @param bufferNum               Buffer count set to camera
  *
  * @param submitRequestPattern    Buffer submit request pattern
  *
  * @param format                  Camera frame format
  *
- * @note This field is optional. If empty, buffers will be
- * registered automatically when the ProcessFrameDescriptor
- * API is called.
+ * @param bufferIds               The indices of buffers for each camera frame
+ *
  */
 typedef struct
 {
     uint32_t streamId;
     uint32_t width;
     uint32_t height;
-    uint32_t bufCnt;
     uint32_t submitRequestPattern;
     QCImageFormat_e format;
+    std::vector<uint32_t> bufferIds;
 } CameraStreamConfig_t;
+
+typedef struct
+{
+    uint32_t bufferListId;
+    std::vector<uint32_t> bufferIds;
+} CameraMetaDataConfig_t;
+
+/**
+ * @brief Camera frame buffer structure
+ *
+ * @param pCamFrameDescs         The pointer to a list of camera frame buffer descriptors
+ * @param pQcarCamFrameBuffers   The pointer to a list of QCarCamBuffer_t
+ * @param bufferList             Buffer list of camera frame
+ *
+ */
+typedef struct
+{
+    CameraFrameDescriptor_t *pCamFrameDescs = nullptr;
+    QCarCamBuffer_t *pQcarCamFrameBuffers = nullptr;
+    QCarCamBufferList_t bufferList = { 0 };
+} CameraFrameBuffers_t;
+
+/**
+ * @brief Camera metadata buffer structure
+ *
+ * @param pCamMetaDataDescs         The pointer to a list of camera metadata buffer descriptors
+ * @param pQcarCamMetaDataBuffers   The pointer to a list of QCarCamBuffer_t
+ * @param bufferList                Buffer list of camera metadata
+ *
+ */
+typedef struct
+{
+    BufferDescriptor_t *pCamMetaDataDescs = nullptr;
+    QCarCamBuffer_t *pQcarCamMetaDataBuffers = nullptr;
+    QCarCamBufferList_t bufferList = { 0 };
+} CameraMetaDataBuffers_t;
 
 /**
  * @brief Configuration structure for Camera Node
@@ -103,12 +140,15 @@ typedef struct
  *
  * @param bRecovery             Flag to enable the self-recovery for the session
  *
- * @param streamConfigs         Configuration array for each stream. Only works
- *                              in multi-stream mode
+ * @param bEnalbleMetaData      Flag to enable metadata feature
+ *
+ * @param streamConfigs         Configuration array for each stream.
+ *
+ * @param metaDataConfigs       Configuration array for each metadata.
+ *
  */
 typedef struct Camera_Config : public QCNodeConfigBase_t
 {
-    uint32_t numStream;
     uint32_t inputId;
     uint32_t srcId;
     uint32_t clientId;
@@ -120,7 +160,9 @@ typedef struct Camera_Config : public QCNodeConfigBase_t
     bool bRequestMode;
     bool bPrimary;
     bool bRecovery;
-    CameraStreamConfig_t streamConfigs[QCNODE_CAMERA_MAX_STREAM_NUM];
+    bool bEnalbleMetaData;
+    std::vector<CameraStreamConfig_t> streamConfigs;
+    std::vector<CameraMetaDataConfig_t> metaDataConfigs;
 } CameraImplConfig_t;
 
 // TODO
@@ -218,12 +260,20 @@ public:
 
 private:
     QCStatus_e ReleaseFrame( const CameraFrameDescriptor_t *pFrame );
-    QCStatus_e RequestFrame( const CameraFrameDescriptor_t *pFrame );
+    QCStatus_e SubmitRequest( const CameraFrameDescriptor_t *pFrame );
+    QCStatus_e SubmitRequest( const CameraMetaDataDescriptor_t *pMetaData );
 
-    QCStatus_e SetBuffers( std::vector<std::reference_wrapper<QCBufferDescriptorBase_t>> &buffers );
+    QCStatus_e
+    RegisterFrameBuffers( std::vector<std::reference_wrapper<QCBufferDescriptorBase_t>> &buffers );
+    QCStatus_e RegisterMetaDataBuffers(
+            std::vector<std::reference_wrapper<QCBufferDescriptorBase_t>> &buffers );
     QCStatus_e SubmitAllBuffers();
     QCStatus_e ImportBuffers();
     QCStatus_e UnImportBuffers();
+    void ClearFrameBufferMap();
+    void ClearMetaDataMap();
+    void ClearFrameBuffers();
+    void ClearMetaDataBuffers();
 
     QCStatus_e QueryInputs();
     QCStatus_e GetInputsInfo( CameraInputs_t *pCamInputs );
@@ -251,12 +301,14 @@ private:
 
     bool m_bRequestMode;
     bool m_bIsPrimary;
+    bool m_enableMetaData;
     bool m_bRecovery;
     bool m_bReservedOK = false;
     bool m_bQCarCamInitialized = false;
     bool m_bRequestPatternMode = false;
 
-    uint32_t m_numStream;
+    uint32_t m_streamNum;
+    uint32_t m_metaDataNum;
     uint32_t m_inputId;
     uint32_t m_requestId;
     uint32_t m_clientId;
@@ -267,12 +319,13 @@ private:
 
     std::mutex m_mutex;
     std::queue<uint32_t> m_freeBufIdxQueue[QCNODE_CAMERA_MAX_STREAM_NUM];
-
     CameraStreamConfig_t m_streamConfigs[QCNODE_CAMERA_MAX_STREAM_NUM];
-    CameraFrameDescriptor_t *m_pCameraFrames[QCNODE_CAMERA_MAX_STREAM_NUM];
 
-    QCarCamBuffer_t *m_pQcarcamBuffers[QCNODE_CAMERA_MAX_STREAM_NUM];
-    QCarCamBufferList_t m_qcarcamBuffers[QCNODE_CAMERA_MAX_STREAM_NUM];
+    std::vector<CameraFrameBuffers_t> m_frameBuffers;
+    std::vector<CameraMetaDataBuffers_t> m_metaDataBuffers;
+
+    std::unordered_map<uint64_t, CameraFrameBuffers_t> m_frameBufferMap;
+    std::unordered_map<uint64_t, CameraMetaDataBuffers_t> m_metaDataBufferMap;
 
     QCarCamHndl_t m_QcarCamHndl;
     QCNodeEventCallBack_t m_callback = nullptr;

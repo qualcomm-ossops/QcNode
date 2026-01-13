@@ -1,7 +1,7 @@
 // Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
 // SPDX-License-Identifier: BSD-3-Clause-Clear
 
-#include "QC/Infras/Memory/CameraFrameDescriptor.hpp"
+#include "QC/Infras/Memory/CameraBufferDescriptor.hpp"
 #include "QC/Infras/Log/Logger.hpp"
 
 namespace QC
@@ -42,6 +42,6 @@ CameraFrameDescriptor &CameraFrameDescriptor::operator=( const QCBufferDescripto
     }
     return *this;
 }
+
 }   // namespace Memory
 }   // namespace QC
-

@@ -11,8 +11,12 @@ namespace Node
 QCStatus_e CameraConfig::VerifyStaticConfig( DataTree &dt, std::string &errors )
 {
     QCStatus_e status = QC_STATUS_OK;
+
+    bool enableMetaData = false;
     std::vector<DataTree> streamConfigs;
+    std::vector<DataTree> metaDataConfigs;
     std::vector<uint32_t> bufferIds;
+    std::unordered_set<uint32_t> usedBufferIds;
 
     std::string name = dt.Get<std::string>( "name", "" );
     if ( "" == name )
@@ -122,10 +126,15 @@ QCStatus_e CameraConfig::VerifyStaticConfig( DataTree &dt, std::string &errors )
 
     if ( QC_STATUS_OK == status )
     {
-        uint32_t numStream = streamConfigs.size();
-        if ( numStream > QCNODE_CAMERA_MAX_STREAM_NUM )
+        size_t streamNum = streamConfigs.size();
+        if ( streamNum > QCNODE_CAMERA_MAX_STREAM_NUM )
         {
-            errors += "the numStream is larger than maximum, ";
+            errors += "the streamNum is larger than maximum, ";
+            status = QC_STATUS_BAD_ARGUMENTS;
+        }
+        else if ( 0 == streamNum )
+        {
+            errors += "the streamNum is 0, ";
             status = QC_STATUS_BAD_ARGUMENTS;
         }
     }
@@ -142,26 +151,42 @@ QCStatus_e CameraConfig::VerifyStaticConfig( DataTree &dt, std::string &errors )
                 errors += "the streamId for stream " + std::to_string( i ) + " is empty, ";
                 status = QC_STATUS_BAD_ARGUMENTS;
             }
-
-            uint32_t bufCnt = streamConfig.Get<uint32_t>( "bufCnt", UINT32_MAX );
-            if ( UINT32_MAX == bufCnt )
+            else if ( streamId >= QCNODE_CAMERA_MAX_STREAM_NUM )
             {
-                errors += "the bufCnt for stream " + std::to_string( i ) + " is empty, ";
+                errors += "the streamId for stream " + std::to_string( i ) +
+                          " is larger than maximum, ";
                 status = QC_STATUS_BAD_ARGUMENTS;
             }
 
-            uint32_t width = streamConfig.Get<uint32_t>( "width", UINT32_MAX );
-            if ( UINT32_MAX == width )
+            if ( QC_STATUS_OK == status )
             {
-                errors += "the width for stream " + std::to_string( i ) + " is empty, ";
-                status = QC_STATUS_BAD_ARGUMENTS;
+                uint32_t width = streamConfig.Get<uint32_t>( "width", UINT32_MAX );
+                if ( UINT32_MAX == width )
+                {
+                    errors += "the width for stream " + std::to_string( i ) + " is empty, ";
+                    status = QC_STATUS_BAD_ARGUMENTS;
+                }
             }
 
-            uint32_t height = streamConfig.Get<uint32_t>( "height", UINT32_MAX );
-            if ( UINT32_MAX == height )
+            if ( QC_STATUS_OK == status )
             {
-                errors += "the height for stream " + std::to_string( i ) + " is empty, ";
-                status = QC_STATUS_BAD_ARGUMENTS;
+                uint32_t height = streamConfig.Get<uint32_t>( "height", UINT32_MAX );
+                if ( UINT32_MAX == height )
+                {
+                    errors += "the height for stream " + std::to_string( i ) + " is empty, ";
+                    status = QC_STATUS_BAD_ARGUMENTS;
+                }
+            }
+
+            if ( QC_STATUS_OK == status )
+            {
+                QCImageFormat_e format =
+                        streamConfig.GetImageFormat( "format", QC_IMAGE_FORMAT_MAX );
+                if ( QC_IMAGE_FORMAT_MAX == format )
+                {
+                    errors += "the format for stream " + std::to_string( i ) + " is empty, ";
+                    status = QC_STATUS_BAD_ARGUMENTS;
+                }
             }
 
             uint32_t submitRequestPattern =
@@ -173,22 +198,114 @@ QCStatus_e CameraConfig::VerifyStaticConfig( DataTree &dt, std::string &errors )
                 status = QC_STATUS_BAD_ARGUMENTS;
             }
 
-            QCImageFormat_e format = streamConfig.GetImageFormat( "format", QC_IMAGE_FORMAT_MAX );
-            if ( QC_IMAGE_FORMAT_MAX == format )
+            if ( QC_STATUS_OK == status )
             {
-                errors += "the format for stream " + std::to_string( i ) + " is empty, ";
-                status = QC_STATUS_BAD_ARGUMENTS;
+                std::vector<uint32_t> streamBufferIds =
+                        streamConfig.Get<uint32_t>( "bufferIds", std::vector<uint32_t>{} );
+                if ( 0 == streamBufferIds.size() )
+                {
+                    errors += "the bufferIds size for stream " + std::to_string( i ) + " is 0, ";
+                    status = QC_STATUS_BAD_ARGUMENTS;
+                }
+                else if ( QCNODE_CAMERA_MAX_BUFFER_NUM < streamBufferIds.size() )
+                {
+                    errors += "the bufferIds size for stream " + std::to_string( i ) +
+                              " is larger than maximum, ";
+                    status = QC_STATUS_BAD_ARGUMENTS;
+                }
+                else
+                {
+                    // Check for duplicate buffer id
+                    for ( uint32_t bufferId : streamBufferIds )
+                    {
+                        if ( usedBufferIds.find( bufferId ) != usedBufferIds.end() )
+                        {
+                            errors += "duplicate buffer ID " + std::to_string( bufferId ) +
+                                      " found in stream " + std::to_string( i ) + ", ";
+                            status = QC_STATUS_BAD_ARGUMENTS;
+                            break;
+                        }
+                        usedBufferIds.insert( bufferId );
+                    }
+                }
             }
 
             if ( QC_STATUS_OK != status )
             {
-                QC_ERROR( "Config verification failed for stream %u, error: %s", i,
-                          errors.c_str() );
+                QC_ERROR( "Config verification failed for stream %u, ", i );
                 break;
             }
         }
     }
-    else
+
+    if ( QC_STATUS_OK == status )
+    {
+        enableMetaData = dt.Get<bool>( "enableMetaData", false );
+        if ( true == enableMetaData )
+        {
+            status = dt.Get( "metaDataConfigs", metaDataConfigs );
+            if ( QC_STATUS_OK != status )
+            {
+                errors += "the metaDataConfigs is invalid";
+            }
+        }
+    }
+
+    if ( ( QC_STATUS_OK == status ) && ( true == enableMetaData ) )
+    {
+        size_t metadataNum = metaDataConfigs.size();
+        if ( 0 == metadataNum )
+        {
+            errors += "the number of metadata configs is 0, ";
+            status = QC_STATUS_BAD_ARGUMENTS;
+        }
+
+        if ( QC_STATUS_OK == status )
+        {
+            for ( size_t i = 0; i < metadataNum; i++ )
+            {
+                DataTree metadataConfig = metaDataConfigs[i];
+
+                if ( QC_STATUS_OK == status )
+                {
+                    uint32_t bufferListId =
+                            metadataConfig.Get<uint32_t>( "bufferListId", UINT32_MAX );
+                    if ( UINT32_MAX == bufferListId )
+                    {
+                        errors += "the bufferListId for metadata " + std::to_string( i ) +
+                                  " is empty, ";
+                        status = QC_STATUS_BAD_ARGUMENTS;
+                    }
+                }
+
+                if ( QC_STATUS_OK == status )
+                {
+                    std::vector<uint32_t> metadataBufferIds =
+                            metadataConfig.Get<uint32_t>( "bufferIds", std::vector<uint32_t>{} );
+                    if ( 0 == metadataBufferIds.size() )
+                    {
+                        errors += "the bufferIds size for metadata " + std::to_string( i ) +
+                                  " is 0, ";
+                        status = QC_STATUS_BAD_ARGUMENTS;
+                    }
+                    else if ( QCNODE_CAMERA_MAX_BUFFER_NUM < metadataBufferIds.size() )
+                    {
+                        errors += "the bufferIds size for metadata " + std::to_string( i ) +
+                                  " is larger than maximum, ";
+                        status = QC_STATUS_BAD_ARGUMENTS;
+                    }
+                }
+
+                if ( QC_STATUS_OK != status )
+                {
+                    QC_ERROR( "Config verification failed for metadata %u, ", i );
+                    break;
+                }
+            }
+        }
+    }
+
+    if ( QC_STATUS_OK != status )
     {
         QC_ERROR( "Config verification failed for CameraConfigIfs, error: %s", errors.c_str() );
     }
@@ -199,7 +316,9 @@ QCStatus_e CameraConfig::VerifyStaticConfig( DataTree &dt, std::string &errors )
 QCStatus_e CameraConfig::ParseStaticConfig( DataTree &dt, std::string &errors )
 {
     QCStatus_e status = QC_STATUS_OK;
+
     std::vector<DataTree> streamConfigs;
+    std::vector<DataTree> metaDataConfigs;
     CameraImplConfig_t &config = m_pCamImpl->GetConifg();
 
     status = VerifyStaticConfig( dt, errors );
@@ -220,19 +339,20 @@ QCStatus_e CameraConfig::ParseStaticConfig( DataTree &dt, std::string &errors )
 
     if ( QC_STATUS_OK == status )
     {
-        config.numStream = streamConfigs.size();
         for ( uint32_t i = 0; i < streamConfigs.size(); i++ )
         {
-            DataTree streamConfig = streamConfigs[i];
+            CameraStreamConfig_t streamConfig;
+            DataTree streamConfigDt = streamConfigs[i];
 
-            config.streamConfigs[i].streamId = streamConfig.Get<uint32_t>( "streamId", UINT32_MAX );
-            config.streamConfigs[i].bufCnt = streamConfig.Get<uint32_t>( "bufCnt", UINT32_MAX );
-            config.streamConfigs[i].width = streamConfig.Get<uint32_t>( "width", UINT32_MAX );
-            config.streamConfigs[i].height = streamConfig.Get<uint32_t>( "height", UINT32_MAX );
-            config.streamConfigs[i].submitRequestPattern =
-                    streamConfig.Get<uint32_t>( "submitRequestPattern", UINT32_MAX );
-            config.streamConfigs[i].format =
-                    streamConfig.GetImageFormat( "format", QC_IMAGE_FORMAT_MAX );
+            streamConfig.streamId = streamConfigDt.Get<uint32_t>( "streamId", UINT32_MAX );
+            streamConfig.width = streamConfigDt.Get<uint32_t>( "width", UINT32_MAX );
+            streamConfig.height = streamConfigDt.Get<uint32_t>( "height", UINT32_MAX );
+            streamConfig.format = streamConfigDt.GetImageFormat( "format", QC_IMAGE_FORMAT_MAX );
+            streamConfig.submitRequestPattern =
+                    streamConfigDt.Get<uint32_t>( "submitRequestPattern", UINT32_MAX );
+            streamConfig.bufferIds =
+                    streamConfigDt.Get<uint32_t>( "bufferIds", std::vector<uint32_t>{} );
+            config.streamConfigs.push_back( streamConfig );
         }
     }
 
@@ -240,7 +360,28 @@ QCStatus_e CameraConfig::ParseStaticConfig( DataTree &dt, std::string &errors )
     {
         config.bRequestMode = dt.Get<bool>( "requestMode", true );
         config.bPrimary = dt.Get<bool>( "primary", true );
-        config.bRecovery = dt.Get<bool>( "recovery", true );
+        config.bEnalbleMetaData = dt.Get<bool>( "enableMetaData", false );
+        config.bRecovery = dt.Get<bool>( "recovery", false );
+    }
+
+    if ( ( QC_STATUS_OK == status ) && ( true == config.bEnalbleMetaData ) )
+    {
+        status = dt.Get( "metaDataConfigs", metaDataConfigs );
+
+        if ( QC_STATUS_OK == status )
+        {
+            for ( size_t i = 0; i < metaDataConfigs.size(); i++ )
+            {
+                CameraMetaDataConfig_t metaDataConfig;
+                DataTree metaDataConfigDt = metaDataConfigs[i];
+
+                metaDataConfig.bufferListId =
+                        metaDataConfigDt.Get<uint32_t>( "bufferListId", UINT32_MAX );
+                metaDataConfig.bufferIds =
+                        metaDataConfigDt.Get<uint32_t>( "bufferIds", std::vector<uint32_t>{} );
+                config.metaDataConfigs.push_back( metaDataConfig );
+            }
+        }
     }
 
     return status;
@@ -267,7 +408,6 @@ QCStatus_e CameraConfig::VerifyAndSet( const std::string config, std::string &er
 
 const std::string &CameraConfig::GetOptions()
 {
-    QCStatus_e status = QC_STATUS_OK;
     return m_options;
 }
 
