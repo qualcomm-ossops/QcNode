@@ -497,7 +497,9 @@ if [[ "${QC_TARGET_SOC}" == "8797" ]] && [[ "${target}" == "aarch64-qnx" ]] ; th
     if [ ! -f $SSL_LIB ]; then
         SSL_LIB=$BSP_ROOT/qnx_bins/prebuilt_SDP800/target/qnx/aarch64le/usr/lib/libssl.so.3
     fi
-    cp -v $SSL_LIB $destdir/opt/qcnode/lib/runtime
+    if [ -f $SSL_LIB ]; then
+        cp -v $SSL_LIB $destdir/opt/qcnode/lib/runtime
+    fi
 fi
 
 if [ -d $QNN_SDK_ROOT/model ]; then
