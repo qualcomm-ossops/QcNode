@@ -349,7 +349,7 @@ QCStatus_e SampleVideoEncoder::ParseConfig( SampleConfig_t &config )
         m_config.Set<uint32_t>( "numOutputBufferReq", m_numOutputBufferReq );
     }
 
-    m_bitRate = Get( config, "bitrate", 64000 );
+    m_bitRate = Get( config, "bitrate", 8000000 );
     if ( 0 == m_bitRate )
     {
         QC_ERROR( "invalid bitrate = %u", m_bitRate );
