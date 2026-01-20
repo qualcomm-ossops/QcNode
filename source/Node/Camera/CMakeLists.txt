@@ -11,7 +11,7 @@ set( QC_NODE_CAMERA_SOURCES
     CameraMonitor.cpp
 )
 
-set( TARGET_LIBRARIES QCNodeBase qcxclient qcxosal )
+set( TARGET_LIBRARIES QCNodeBase qcxclient qcxosal memorylogger )
 
 if( "${CMAKE_SYSTEM_NAME}" STREQUAL "Linux" )
     list( APPEND TARGET_LIBRARIES qcxplatform cutils )
