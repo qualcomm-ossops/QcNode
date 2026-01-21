@@ -22,9 +22,7 @@ Below is a summary information of the current implemented nodes.
 
 # How to build
 
-For how to build the QCNode package manually, check this:
-- HGY Linux: [How to build for HGY Linux](./docs/build-hgy-linux.md)
-- HGY Ubuntu: [How to build for HGY Ubuntu](./docs/build-hgy-ubuntu.md)
+For how to build the QCNode package, check this [README](./scripts/build/README.md)
 
 # How to run
 

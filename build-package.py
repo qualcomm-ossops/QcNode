@@ -77,7 +77,8 @@ if TOOLCHAIN.startswith("/prj"):
 else:
     MOUNT_TOOLCHAIN = f"-v {TOOLCHAIN}:/opt/{VARIANT}"
 if ENV_SCRIPT != "":
-    OPT_ENV_SETUP = f"cd {TOOLCHAIN}; source {ENV_SCRIPT} || true;"
+    MOUNT_TOOLCHAIN += f" -v {os.path.realpath(ENV_SCRIPT)}:/opt/env/{os.path.basename(ENV_SCRIPT)}"
+    OPT_ENV_SETUP = f"source /opt/env/{os.path.basename(ENV_SCRIPT)} || true;"
 elif VARIANT == "linux" and TOOLCHAIN.startswith("/prj"):
     OPT_ENV_SETUP = f"export LINUX_SDK_ROOT={TOOLCHAIN};"
 else:
@@ -109,6 +110,7 @@ mkdir -p {THIRD_PARTY}
         mv -v qcnode-aarch64-{VARIANT}.tar.gz /opt/build;"
 echo ======================  build output under {BUILD_DIR} ======================
 ls -l {BUILD_DIR}
+rm -fr {HOMEDIR}/bld-aarch64-{VARIANT} {HOMEDIR}/run-aarch64-{VARIANT}
 """
     )
 
