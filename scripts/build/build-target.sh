@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 # Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
 # SPDX-License-Identifier: BSD-3-Clause-Clear
 
@@ -125,7 +125,7 @@ fi
 
 # Get dependent packages
 export THIRD_PARTY_DIR=$topdir/third_party
-sh $topdir/scripts/build/toolchain/get-3rd-party.sh
+$topdir/scripts/build/toolchain/get-3rd-party.sh
 
 # Get QC Toolchain path
 export QC_TOOLCHAIN_PATH=/opt/toolchain
@@ -170,7 +170,7 @@ setup_env_qnx() {
     fi
 
     setup_qnn_sdk
-    sh $homedir/toolchain/build-3rd-party-aarch64-qnx.sh $workdir $destdir
+    $homedir/toolchain/build-3rd-party-aarch64-qnx.sh $workdir $destdir
 }
 
 setup_env_linux() {
@@ -242,7 +242,7 @@ setup_env_linux() {
     fi
 
     setup_qnn_sdk
-    sh $homedir/toolchain/build-3rd-party-aarch64-linux.sh $workdir $destdir
+    $homedir/toolchain/build-3rd-party-aarch64-linux.sh $workdir $destdir
 }
 
 setup_env_ubuntu() {
@@ -304,7 +304,7 @@ setup_env_ubuntu() {
     fi
 
     setup_qnn_sdk
-    sh $homedir/toolchain/build-3rd-party-aarch64-ubuntu.sh $workdir $destdir
+    $homedir/toolchain/build-3rd-party-aarch64-ubuntu.sh $workdir $destdir
 }
 
 setup_qnn_sdk() {
