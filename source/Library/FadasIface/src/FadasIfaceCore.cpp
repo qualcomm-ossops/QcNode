@@ -26,6 +26,7 @@
 #define PLRPOST_OUT_LABELS 7
 #define PLRPOST_OUT_SCORES 8
 #define PLRPOST_OUT_METADATA 9
+#define MAX_INPUTS 64
 
 typedef struct
 {
@@ -304,114 +305,123 @@ AEEResult FadasIface_FadasRemap_RunMT( remote_handle64 handle, const uint64 *wor
 {
     AEEResult ret = AEE_SUCCESS;
     dspContext_t *dspContext = (dspContext_t *) handle;
-    const uint8_t *src[srcFdsLen];
-    uint8_t *dst = (uint8_t *) FadasIface_GetBufPtr( dstFd );
-    if ( nullptr == dst )
+    if ( srcFdsLen > MAX_INPUTS )
     {
-        FARF( ERROR, "Null dst pointer!" );
-        ret = AEE_EFAILED;
-    }
-    else if ( ( srcFdsLen != offsetsLen ) || ( srcFdsLen != srcPropsLen ) )
-    {
-        FARF( ERROR, "Fd length not equal to props length" );
+        FARF( ERROR, "Inputs number out of limitation !" );
         ret = AEE_EFAILED;
     }
     else
     {
-        for ( int i = 0; i < srcFdsLen; i++ )
+        const uint8_t *src[MAX_INPUTS];
+        uint8_t *dst = (uint8_t *) FadasIface_GetBufPtr( dstFd );
+        if ( nullptr == dst )
         {
-            src[i] = (uint8_t *) FadasIface_GetBufPtr( srcFds[i] );
-            if ( nullptr == src[i] )
+            FARF( ERROR, "Null dst pointer!" );
+            ret = AEE_EFAILED;
+        }
+        else if ( ( srcFdsLen != offsetsLen ) || ( srcFdsLen != srcPropsLen ) )
+        {
+            FARF( ERROR, "Fd length not equal to props length" );
+            ret = AEE_EFAILED;
+        }
+        else
+        {
+            for ( int i = 0; i < srcFdsLen; i++ )
             {
-                FARF( ERROR, "Null src pointer!" );
-                ret = AEE_EFAILED;
-                break;
-            }
-            else
-            {
-                src[i] += offsets[i];
+                src[i] = (uint8_t *) FadasIface_GetBufPtr( srcFds[i] );
+                if ( nullptr == src[i] )
+                {
+                    FARF( ERROR, "Null src pointer!" );
+                    ret = AEE_EFAILED;
+                    break;
+                }
+                else
+                {
+                    src[i] += offsets[i];
+                }
             }
         }
-    }
 
-    if ( AEE_SUCCESS == ret )
-    {
-        FadasError_e retVal;
-        FadasImage_t srcImg = {};
-        FadasImage_t dstImg = {};
-        dstImg.bAllocated = false;
-        dstImg.props.width = static_cast<uint32_t>( dstProps->width );
-        dstImg.props.height = static_cast<uint32_t>( dstProps->height );
-        dstImg.props.format = g_MapImageFormat[dstProps->format];
-        memcpy( dstImg.props.stride, dstProps->stride, dstProps->numPlanes * sizeof( uint32_t ) );
-        dstImg.props.numPlanes = dstProps->numPlanes;
-
-        for ( int i = 0; i < srcFdsLen; i++ )
+        if ( AEE_SUCCESS == ret )
         {
-            srcImg.bAllocated = false;
-            srcImg.props.width = static_cast<uint32_t>( srcProps[i].width );
-            srcImg.props.height = static_cast<uint32_t>( srcProps[i].height );
-            srcImg.props.format = g_MapImageFormat[srcProps[i].format];
-            memcpy( srcImg.props.stride, srcProps[i].stride,
-                    srcProps[i].numPlanes * sizeof( uint32_t ) );
-            srcImg.props.numPlanes = srcProps[i].numPlanes;
-            void *worker = reinterpret_cast<void *>( workerPtrs[0] );
-            if ( i < workerPtrsLen )
-            {
-                worker = reinterpret_cast<void *>( workerPtrs[i] );
-            }
-            FadasRemapMap *map = reinterpret_cast<FadasRemapMap *>( mapPtrs[0] );
-            if ( i < mapPtrsLen )
-            {
-                map = reinterpret_cast<FadasRemapMap *>( mapPtrs[i] );
-            }
-            FadasROI_t roiStruct = {};
-            roiStruct.x = dstROIs[i].x;
-            roiStruct.y = dstROIs[i].y;
-            roiStruct.width = dstROIs[i].width;
-            roiStruct.height = dstROIs[i].height;
-            srcImg.plane[0] = const_cast<uint8_t *>( src[i] );
-            if ( FADAS_IMAGE_FORMAT_Y8UV8 == srcImg.props.format )
-            {
-                srcImg.plane[1] = const_cast<uint8_t *>(
-                        src[i] + srcImg.props.stride[0] * srcProps[i].actualHeight[0] );
-            }
-            dstImg.plane[0] = dst + i * dstLen;
-            uint32_t srcLen = srcImg.props.height * srcImg.props.stride[0];
-            qurt_mem_cache_clean( (qurt_addr_t) src[i], srcLen, QURT_MEM_CACHE_FLUSH_INVALIDATE_ALL,
-                                  QURT_MEM_DCACHE );
-            qurt_mutex_lock( &dspContext->mutex );
-            if ( 3 == normlzLen )
-            {
-                FadasNormlzParams_t normlzParams[3];
-                normlzParams[0].sub = normlz[0].sub;
-                normlzParams[0].mul = normlz[0].mul;
-                normlzParams[0].add = normlz[0].add;
-                normlzParams[1].sub = normlz[1].sub;
-                normlzParams[1].mul = normlz[1].mul;
-                normlzParams[1].add = normlz[1].add;
-                normlzParams[2].sub = normlz[2].sub;
-                normlzParams[2].mul = normlz[2].mul;
-                normlzParams[2].add = normlz[2].add;
-                retVal = FadasRemap_RunMT( worker, map, &srcImg, &dstImg, &roiStruct, 1.0,
-                                           normlzParams );
-            }
-            else
-            {
-                retVal = FadasRemap_RunMT( worker, map, &srcImg, &dstImg, &roiStruct );
-            }
-            qurt_mutex_unlock( &dspContext->mutex );
+            FadasError_e retVal;
+            FadasImage_t srcImg = {};
+            FadasImage_t dstImg = {};
+            dstImg.bAllocated = false;
+            dstImg.props.width = static_cast<uint32_t>( dstProps->width );
+            dstImg.props.height = static_cast<uint32_t>( dstProps->height );
+            dstImg.props.format = g_MapImageFormat[dstProps->format];
+            memcpy( dstImg.props.stride, dstProps->stride,
+                    dstProps->numPlanes * sizeof( uint32_t ) );
+            dstImg.props.numPlanes = dstProps->numPlanes;
 
-            if ( FADAS_ERROR_NONE != retVal )
+            for ( int i = 0; i < srcFdsLen; i++ )
             {
-                FARF( ERROR, "Failed to do FadasRemap_RunMT" );
-                ret = AEE_EOFFSET + retVal;
-                break;
+                srcImg.bAllocated = false;
+                srcImg.props.width = static_cast<uint32_t>( srcProps[i].width );
+                srcImg.props.height = static_cast<uint32_t>( srcProps[i].height );
+                srcImg.props.format = g_MapImageFormat[srcProps[i].format];
+                memcpy( srcImg.props.stride, srcProps[i].stride,
+                        srcProps[i].numPlanes * sizeof( uint32_t ) );
+                srcImg.props.numPlanes = srcProps[i].numPlanes;
+                void *worker = reinterpret_cast<void *>( workerPtrs[0] );
+                if ( i < workerPtrsLen )
+                {
+                    worker = reinterpret_cast<void *>( workerPtrs[i] );
+                }
+                FadasRemapMap *map = reinterpret_cast<FadasRemapMap *>( mapPtrs[0] );
+                if ( i < mapPtrsLen )
+                {
+                    map = reinterpret_cast<FadasRemapMap *>( mapPtrs[i] );
+                }
+                FadasROI_t roiStruct = {};
+                roiStruct.x = dstROIs[i].x;
+                roiStruct.y = dstROIs[i].y;
+                roiStruct.width = dstROIs[i].width;
+                roiStruct.height = dstROIs[i].height;
+                srcImg.plane[0] = const_cast<uint8_t *>( src[i] );
+                if ( FADAS_IMAGE_FORMAT_Y8UV8 == srcImg.props.format )
+                {
+                    srcImg.plane[1] = const_cast<uint8_t *>(
+                            src[i] + srcImg.props.stride[0] * srcProps[i].actualHeight[0] );
+                }
+                dstImg.plane[0] = dst + i * dstLen;
+                uint32_t srcLen = srcImg.props.height * srcImg.props.stride[0];
+                qurt_mem_cache_clean( (qurt_addr_t) src[i], srcLen,
+                                      QURT_MEM_CACHE_FLUSH_INVALIDATE_ALL, QURT_MEM_DCACHE );
+                qurt_mutex_lock( &dspContext->mutex );
+                if ( 3 == normlzLen )
+                {
+                    FadasNormlzParams_t normlzParams[3];
+                    normlzParams[0].sub = normlz[0].sub;
+                    normlzParams[0].mul = normlz[0].mul;
+                    normlzParams[0].add = normlz[0].add;
+                    normlzParams[1].sub = normlz[1].sub;
+                    normlzParams[1].mul = normlz[1].mul;
+                    normlzParams[1].add = normlz[1].add;
+                    normlzParams[2].sub = normlz[2].sub;
+                    normlzParams[2].mul = normlz[2].mul;
+                    normlzParams[2].add = normlz[2].add;
+                    retVal = FadasRemap_RunMT( worker, map, &srcImg, &dstImg, &roiStruct, 1.0,
+                                               normlzParams );
+                }
+                else
+                {
+                    retVal = FadasRemap_RunMT( worker, map, &srcImg, &dstImg, &roiStruct );
+                }
+                qurt_mutex_unlock( &dspContext->mutex );
+
+                if ( FADAS_ERROR_NONE != retVal )
+                {
+                    FARF( ERROR, "Failed to do FadasRemap_RunMT" );
+                    ret = AEE_EOFFSET + retVal;
+                    break;
+                }
             }
         }
+        qurt_mem_cache_clean( (qurt_addr_t) dst, dstLen * srcFdsLen, QURT_MEM_CACHE_FLUSH_ALL,
+                              QURT_MEM_DCACHE );
     }
-    qurt_mem_cache_clean( (qurt_addr_t) dst, dstLen * srcFdsLen, QURT_MEM_CACHE_FLUSH_ALL,
-                          QURT_MEM_DCACHE );
 
     return ret;
 }
