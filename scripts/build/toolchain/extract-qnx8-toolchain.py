@@ -265,8 +265,8 @@ libListDemux = [ "libFileDemux_Common.so",
 ]
 libListPmem  = [ "libpmem_client.so", "libpmemext.so" , "libsmmu_client.so"]
 libListFastADAS = [ "libfadas.so", "libfastrpc.so", "libfastrpc_pmem.so", "libfastrpc_pmem.so.1" ]
-libListQcx = [ "libqcxclient.so", "libqcxosal.so" ]
-libListSv = [ "libsvplatform.so", "libsvcl.so", "libdevioClient.so" ]
+libListQcx = [ "libqcxclient.so", "libqcxosal.so", "libmemorylogger.so" ]
+libListSv = [ "libsvplatform.so", "libsvcl.so", "libdevioClient.so", "libsoftsku.so.1", "libpm_client.so" ]
 libList = libListVidc + libListPmem + libListFastADAS + libListQcx + [
         "libplanedef.so", "libcdsprpc.so", "libapdf.so", "libaosal.so", "libfastrpc_pmem.so",
         "liblibstd.so", "libmmap_peer.so", "libOSAbstraction.so"

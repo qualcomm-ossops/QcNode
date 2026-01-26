@@ -8,7 +8,6 @@
 #include "QC/Common/Types.hpp"
 #include "QC/Infras/Memory/Ifs/QCBufferDescriptorBase.hpp"
 #include "QC/Infras/Memory/Ifs/QCMemoryDefs.hpp"
-#include "QC/Infras/Memory/SharedBuffer.hpp"
 
 #include <string>
 #include <vector>

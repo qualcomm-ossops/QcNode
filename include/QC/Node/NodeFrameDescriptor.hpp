@@ -139,9 +139,6 @@ private:
     static QCDummyBufferDescriptor_t s_dummy;
 };
 
-// @deprecated QCSharedFrameDescriptorNode will be removed after phase 2
-using QCSharedFrameDescriptorNode = NodeFrameDescriptor;
-
 }   // namespace Node
 }   // namespace QC
 

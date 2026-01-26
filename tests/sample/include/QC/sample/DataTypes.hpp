@@ -35,44 +35,11 @@ public:
      * @brief Returns the buffer descriptor associated with the data frame.
      * @return A reference to the buffer descriptor.
      * @note The SharedBuffer_t structure now includes a member that references a
-     * QCBufferDescriptorBase_t. As a result, DataFrame_t holds both the legacy QCSharedBuffer_t
-     * descriptor and the new QCBufferDescriptorBase_t. Both descriptors point to the same buffer
-     * data. This design allows for a smoother transition in phase 2 when updating QCNode, as it
-     * maintains compatibility between the old and new buffer descriptor formats.
+     * QCBufferDescriptorBase_t.
      */
     QCBufferDescriptorBase_t &GetBuffer() { return buffer->buffer; }
-    void Workaound()
-    {
-        /* workaround to update the RideHal buffer tensor descriptor dims[0] */
-        QCBufferDescriptorBase_t &bufDesc = GetBuffer();
-        const TensorDescriptor_t *pTensor = dynamic_cast<const TensorDescriptor_t *>( &bufDesc );
-        if ( nullptr != pTensor )
-        {
-            buffer->sharedBuffer.tensorProps.dims[0] = pTensor->dims[0];
-        }
-
-        /* workaround for case that buffer not allocated by sample app */
-        if ( &bufDesc == &buffer->dummy )
-        {
-            if ( QC_BUFFER_TYPE_IMAGE == buffer->sharedBuffer.type )
-            {
-                buffer->imgDesc = buffer->sharedBuffer;
-                buffer->buffer = buffer->imgDesc;
-            }
-            else
-            {
-                buffer->tensorDesc = buffer->sharedBuffer;
-                buffer->buffer = buffer->tensorDesc;
-            }
-        }
-        if ( nullptr == buffer->sharedBuffer.data() )
-        {
-            buffer->sharedBuffer = bufDesc;
-        }
-    }
 
     QCBufferType_e GetBufferType() { return buffer->GetBufferType(); }
-    QCSharedBuffer_t &SharedBuffer() { return buffer->sharedBuffer; }
     void *GetDataPtr() { return buffer->GetDataPtr(); }
     uint32_t GetDataSize() { return buffer->GetDataSize(); }
     QCImageProps_t GetImageProps() { return buffer->GetImageProps(); };
@@ -95,9 +62,7 @@ typedef struct
 
 public:
     QCBufferDescriptorBase_t &GetBuffer( int index ) { return frames[index].GetBuffer(); }
-
     QCBufferType_e GetBufferType( int index ) { return frames[index].GetBufferType(); }
-    QCSharedBuffer_t &SharedBuffer( int index ) { return frames[index].SharedBuffer(); }
     void *GetDataPtr( int index ) { return frames[index].GetDataPtr(); }
     uint32_t GetDataSize( int index ) { return frames[index].GetDataSize(); }
 
@@ -113,7 +78,6 @@ public:
 
     void Add( DataFrame_t &frame )
     {
-        frame.Workaound();
         frame.SetFrameId();
         frames.push_back( frame );
     }

@@ -187,7 +187,6 @@ QCStatus_e SharedRing_BufferDesc::Import( SharedBuffer_t &sharedBuffer )
                        sharedBuffer.imgDesc.planeBufSize );
             sharedBuffer.imgDesc.numPlanes = this->numPlanes;
             sharedBuffer.buffer = sharedBuffer.imgDesc;
-            sharedBuffer.sharedBuffer = sharedBuffer.imgDesc;
         }
         else if ( QC_BUFFER_TYPE_TENSOR == this->type )
         {
@@ -206,7 +205,6 @@ QCStatus_e SharedRing_BufferDesc::Import( SharedBuffer_t &sharedBuffer )
             std::copy( this->dims, this->dims + this->numDims, sharedBuffer.tensorDesc.dims );
             sharedBuffer.tensorDesc.numDims = this->numDims;
             sharedBuffer.buffer = sharedBuffer.tensorDesc;
-            sharedBuffer.sharedBuffer = sharedBuffer.tensorDesc;
         }
         else
         {
