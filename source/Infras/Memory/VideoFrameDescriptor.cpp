@@ -10,7 +10,7 @@ VideoFrameDescriptor &VideoFrameDescriptor::operator=( const QCBufferDescriptorB
 {
     if ( this != &other )
     {
-        const ImageDescriptor_t *pImg = static_cast<const ImageDescriptor_t*>(&other);
+        const ImageDescriptor_t *pImg = dynamic_cast<const ImageDescriptor_t*>(&other);
         if ( nullptr != pImg )
         {
             ImageDescriptor::operator=(*pImg);
@@ -26,9 +26,5 @@ VideoFrameDescriptor &VideoFrameDescriptor::operator=( const QCBufferDescriptorB
     }
     return *this;
 }
-VideoFrameDescriptor &VideoFrameDescriptor::operator=( const QCSharedBuffer_t &other )
-{
-    ImageDescriptor::operator=(static_cast<const QCSharedBuffer_t&>(other));
-    return *this;
-}
+
 }   // namespace QC::Memory

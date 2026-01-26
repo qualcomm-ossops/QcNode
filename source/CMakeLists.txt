@@ -1,7 +1,6 @@
 
 add_subdirectory(Common)
 add_subdirectory(Infras)
-add_subdirectory(components)
 add_subdirectory(Library)
 add_subdirectory(Node)
 

@@ -1014,9 +1014,7 @@ TEST( QNN, CreateModelFromSo )
 #if defined( __QNXNTO__ )
     std::string modelPath = "data/centernet/aarch64-qnx/libqride_centernet.so";
 #else
-    std::string modelPath = "data/centernet/aarch64-oe-linux-gcc9.3/libqride_centernet.so";
-    return;
-    /* Note: the build lib complains version `GLIBCXX_3.4.29' not found */
+    std::string modelPath = "data/centernet/aarch64-linux/libqride_centernet.so";
 #endif
     dt.Set<std::string>( "static.modelPath", modelPath );
     config.config = dt.Dump();

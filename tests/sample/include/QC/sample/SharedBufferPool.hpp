@@ -15,7 +15,6 @@
 #include "QC/Infras/Log/Logger.hpp"
 #include "QC/Infras/Memory/BufferDescriptor.hpp"
 #include "QC/Infras/Memory/ImageDescriptor.hpp"
-#include "QC/Infras/Memory/SharedBuffer.hpp"
 #include "QC/Infras/Memory/TensorDescriptor.hpp"
 #include "QC/sample/BufferManager.hpp"
 
@@ -47,13 +46,11 @@ public:
             {
                 this->imgDesc = other.imgDesc;
                 this->buffer = this->imgDesc;
-                this->sharedBuffer = other.imgDesc;
             }
             else if ( &bufDesc == &other.tensorDesc )
             {
                 this->tensorDesc = other.tensorDesc;
                 this->buffer = this->tensorDesc;
-                this->sharedBuffer = other.tensorDesc;
             }
             else
             {
@@ -71,13 +68,11 @@ public:
             {
                 this->imgDesc = other.imgDesc;
                 this->buffer = this->imgDesc;
-                this->sharedBuffer = other.imgDesc;
             }
             else if ( &bufDesc == &other.tensorDesc )
             {
                 this->tensorDesc = other.tensorDesc;
                 this->buffer = this->tensorDesc;
-                this->sharedBuffer = other.tensorDesc;
             }
             else
             {
@@ -89,7 +84,6 @@ public:
     }
 
     std::reference_wrapper<QCBufferDescriptorBase_t> buffer;
-    QCSharedBuffer_t sharedBuffer; /**< The QC shared buffer */
     uint64_t pubHandle; /**< The publish handle associated with shared buffer that to be used to
                            release the shared buffer */
 
@@ -117,8 +111,6 @@ public:
             tensorDesc = bufDesc;
             buffer = tensorDesc;
         }
-
-        sharedBuffer = bufDesc;
     }
 
     void *GetDataPtr()

@@ -64,16 +64,6 @@ public:
      * @return The updated video frame descriptor object.
      */
     VideoFrameDescriptor &operator=( const QCBufferDescriptorBase &other );
-
-    /**
-     * @brief Initializes the image descriptor using another shared buffer object.
-     * @param[in] other The shared buffer object from which buffer data is copied.
-     * @return The updated image descriptor.
-     * @note This is a temporary workaround API introduced to facilitate development during phase 2.
-     *       It will be removed once phase 2 development is complete.
-     */
-    VideoFrameDescriptor &operator=( const QCSharedBuffer_t &other );
-
 } VideoFrameDescriptor_t;
 
 }   // namespace Memory

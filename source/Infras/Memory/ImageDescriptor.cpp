@@ -278,39 +278,5 @@ ImageDescriptor &ImageDescriptor::operator=( const QCBufferDescriptorBase_t &oth
     return *this;
 }
 
-ImageDescriptor &ImageDescriptor::operator=( const QCSharedBuffer_t &other )
-{
-    static const QCMemoryAllocator_e s_Usage2Allocator[] = {
-            QC_MEMORY_ALLOCATOR_DMA,        /* QC_BUFFER_USAGE_DEFAULT */
-            QC_MEMORY_ALLOCATOR_DMA_CAMERA, /* QC_BUFFER_USAGE_CAMERA */
-            QC_MEMORY_ALLOCATOR_DMA_GPU,    /* QC_BUFFER_USAGE_GPU */
-            QC_MEMORY_ALLOCATOR_DMA_VPU,    /* QC_BUFFER_USAGE_VPU */
-            QC_MEMORY_ALLOCATOR_DMA_EVA,    /* QC_BUFFER_USAGE_EVA */
-            QC_MEMORY_ALLOCATOR_DMA_HTP,    /* QC_BUFFER_USAGE_HTP */
-    };
-    this->pBuf = other.buffer.pData;
-    this->validSize = other.size;
-    this->type = QC_BUFFER_TYPE_IMAGE;
-    this->dmaHandle = other.buffer.dmaHandle;
-    this->size = other.buffer.size;
-    this->offset = other.offset;
-    this->id = other.buffer.id;
-    this->pid = other.buffer.pid;
-    this->allocatorType = s_Usage2Allocator[other.buffer.usage];
-    this->cache = QC_CACHEABLE;
-    this->format = other.imgProps.format;
-    this->batchSize = other.imgProps.batchSize;
-    this->width = other.imgProps.width;
-    this->height = other.imgProps.height;
-    std::copy( other.imgProps.stride, other.imgProps.stride + other.imgProps.numPlanes,
-               this->stride );
-    std::copy( other.imgProps.actualHeight, other.imgProps.actualHeight + other.imgProps.numPlanes,
-               this->actualHeight );
-    std::copy( other.imgProps.planeBufSize, other.imgProps.planeBufSize + other.imgProps.numPlanes,
-               this->planeBufSize );
-    this->numPlanes = other.imgProps.numPlanes;
-    return *this;
-}
-
 }   // namespace Memory
 }   // namespace QC

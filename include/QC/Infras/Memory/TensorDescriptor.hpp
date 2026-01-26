@@ -104,15 +104,6 @@ public:
     TensorDescriptor &operator=( const TensorDescriptor &other );
     TensorDescriptor &operator=( const QCBufferDescriptorBase_t &other );
 
-    /**
-     * @brief Sets up the tensor descriptor using another shared buffer object.
-     * @param[in] other The shared buffer object from which buffer members are copied.
-     * @return The updated tensor descriptor.
-     * @note This is a temporary workaround API to support smoother development during phase 2.
-     *       It will be removed once phase 2 is complete.
-     */
-    TensorDescriptor &operator=( const QCSharedBuffer_t &other );
-
     QCTensorType_e tensorType;
     uint32_t dims[QC_NUM_TENSOR_DIMS];
     uint32_t numDims;
