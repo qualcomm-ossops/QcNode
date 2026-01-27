@@ -579,7 +579,7 @@ QCStatus_e VidcDrvClient::SetBuffer( VideoCodec_BufType_e bufferType,
 QCStatus_e VidcDrvClient::FreeBuffers( VideoCodec_BufType_e bufferType,
                                        const std::vector<std::reference_wrapper<VideoFrameDescriptor_t>> &buffers )
 {
-    int32_t i, rc = 0;
+    int32_t i = 0, rc = 0;
     QCStatus_e ret = QC_STATUS_OK;
     vidc_buffer_type vidcBufType;
 
