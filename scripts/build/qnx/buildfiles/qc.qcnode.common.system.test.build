@@ -11,5 +11,5 @@ PERM_BIN test/qcnode/bin/qcrun=aarch64le/bin/qcnode/bin/qcrun
 [uid=QCNODE_UID gid=QCNODE_GID perms=PERM_APP_LIB] test/qcnode/lib/libQCNodeVideoCodec.so=aarch64le/bin/qcnode/lib/libQCNodeVideoCodec.so
 [uid=QCNODE_UID gid=QCNODE_GID perms=PERM_APP_LIB] test/qcnode/lib/libFadasIface.so=aarch64le/bin/qcnode/lib/libFadasIface.so
 [uid=QCNODE_UID gid=QCNODE_GID perms=PERM_APP_LIB] test/qcnode/lib/libFadasIfaceStub.so=aarch64le/bin/qcnode/lib/libFadasIfaceStub.so
-[uid=QCNODE_UID gid=QCNODE_GID perms=PERM_APP_LIB] test/qcnode/lib/dsp/libFadasIface_skel.so=aarch64le/bin/qcnode/lib/dsp/v73/libFadasIface_skel.so
+[uid=QCNODE_UID gid=QCNODE_GID perms=PERM_APP_LIB] test/qcnode/lib/dsp/libFadasIface_skel.so=aarch64le/bin/qcnode/lib/dsp/libFadasIface_skel.so
 
