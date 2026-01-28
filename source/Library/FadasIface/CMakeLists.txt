@@ -16,14 +16,18 @@ target_sources(FadasIfaceStub PRIVATE FadasIface.c FadasIface.h)
 target_include_directories(FadasIfaceStub PUBLIC ${HEADERS_DIR})
 target_compile_definitions(FadasIfaceStub PUBLIC VARIANT_le_ BUILDENV_qss)
 target_link_libraries(FadasIfaceStub PUBLIC cdsprpc)
-add_library(Ride::Hal::Libs::FadasIfaceStub ALIAS FadasIfaceStub)
 install(TARGETS FadasIfaceStub DESTINATION lib)
 
 add_library(FadasIface SHARED FadasSrv.cpp FadasRemap.cpp FadasPlr.cpp)
 target_include_directories(FadasIface PUBLIC ${HEADERS_DIR})
 target_compile_definitions(FadasIface PUBLIC USE_FADAS_DSP)
-target_link_libraries(FadasIface PUBLIC FadasIfaceStub fadas)
-add_library(Ride::Hal::Libs::FadasIface ALIAS FadasIface)
+
+set(TARGET_LIBRARIES FadasIfaceStub fadas)
+if( DEFINED QC_FADAS_EXTRA_LIBS )
+    list( APPEND TARGET_LIBRARIES ${QC_FADAS_EXTRA_LIBS} )
+endif()
+
+target_link_libraries(FadasIface PUBLIC ${TARGET_LIBRARIES})
 install(TARGETS FadasIface DESTINATION lib)
 
 if(QC_TARGET_SOC STREQUAL "8797")

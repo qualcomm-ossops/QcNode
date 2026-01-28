@@ -203,14 +203,52 @@ incList = [ inputDir  + "/qnx_ap/AMSS/inc/AEEStdDef.h",
             inputDir  + "/qnx_ap/AMSS/inc/rpcmem.h",
             inputDir  + "/qnx_ap/AMSS/inc/remote.h",
             inputDir  + "/qnx_ap/AMSS/inc/AEEStdErr.h",
-            inputDir  + "/qnx_ap/AMSS/pcie_c2c/vendor/qcom/proprietary/pcie-c2c/c2clib/public/c2c.h",
             inputDir  + "/qnx_ap/AMSS/inc/graphics-fusa/include/private/C2D/c2d2.h",
             srcIncDir + "/amss/multimedia/apdf/apdf.h",
             srcIncDir + "/amss/multimedia/camera_qcx/qcarcam.h",
             srcIncDir + "/amss/multimedia/camera_qcx/qcarcam_types.h",
-            srcIncDir + "/amss/multimedia/video/vidc_ioctl.h",
-            srcIncDir + "/amss/multimedia/video/vidc_types.h"
           ]
+
+mm_video_path = inputDir + "/qnx_ap/AMSS/multimedia/video/vendor/qcom/proprietary/video-driver/test/"
+OneOfIncList = [
+    [
+        inputDir  + "/qnx_ap/AMSS/pcie_c2c/vendor/qcom/proprietary/pcie-c2c/c2clib/public/c2c.h",
+        inputDir  + "/qnx_ap/AMSS/pcie_c2c/c2clib/protected/c2c.h",
+        inputDir  + "/qnx_ap/AMSS/inc/c2c.h"
+    ],
+    [
+        srcIncDir + "/amss/multimedia/video/vidc_ioctl.h",
+        inputDir  + "/qnx_ap/AMSS/multimedia/video/source/common/drivers/inc/vidc_ioctl.h"
+    ],
+    [
+        srcIncDir + "/amss/multimedia/video/vidc_types.h",
+        inputDir  + "/qnx_ap/AMSS/multimedia/video/source/common/drivers/inc/vidc_types.h"
+    ],
+    [
+        mm_video_path + "source/filedemux/Api/inc/filesource.h",
+        inputDir  + "/qnx_ap/test/multimedia/experimental/video/source/filedemux/FileSource/inc/filesource.h"
+    ],
+    [
+        mm_video_path + "source/filedemux/Api/inc/filesourcetypes.h",
+        inputDir  + "/qnx_ap/test/multimedia/experimental/video/source/filedemux/FileSource/inc/filesourcetypes.h"
+    ],
+    [
+        mm_video_path + "source/filedemux/FileBaseLib/inc/parserinternaldefs.h",
+        inputDir  + "/qnx_ap/test/multimedia/experimental/video/source/filedemux/FileBaseLib/inc/parserinternaldefs.h"
+    ]
+
+]
+for L in OneOfIncList:
+    h = None
+    for x in L:
+        if os.path.isfile(x):
+            h = x
+            break
+    if h is None:
+        raise Exception(f"header {os.path.basename(L[0])} not found")
+    else:
+        incList.append(h)
+
 
 for inc in incList:
     print( "Copying header file: " + inc + " to: " + tcIncDir )
@@ -222,13 +260,18 @@ for inc in glob.glob(f"{svIncDir}/*.h"):
     copy_file( inc, tcIncDir)
 
 # copy qcom OpenCL extension
-copy_file(inputDir + '/qnx_ap/AMSS/multimedia/graphics-fusa-binaries/include/public/CL/cl_ext_qcom.h', tcIncDir + '/CL')
-
-# multimedia header files
-mm_video_path = inputDir + "/qnx_ap/AMSS/multimedia/video/vendor/qcom/proprietary/video-driver/test/"
-copy_file( mm_video_path + "source/filedemux/Api/inc/filesource.h", tcIncDir )
-copy_file( mm_video_path + "source/filedemux/Api/inc/filesourcetypes.h", tcIncDir )
-copy_file( mm_video_path + "source/filedemux/FileBaseLib/inc/parserinternaldefs.h", tcIncDir )
+CL_EXT_H_LIST = [
+    inputDir + '/qnx_ap/AMSS/multimedia/graphics-fusa-binaries/include/public/CL/cl_ext_qcom.h',
+    inputDir + '/qnx_ap/AMSS/inc/graphics-fusa/include/public/CL/cl_ext_qcom.h'
+]
+CL_EXT_H = None
+for x in CL_EXT_H_LIST:
+    if os.path.isfile(x):
+        CL_EXT_H = x
+        break
+if CL_EXT_H is None:
+    raise Exception("header cl_ext_qcom.h not found")
+copy_file(CL_EXT_H, tcIncDir + '/CL')
 
 merge_directories( inputDir + "/qnx_ap/install/aarch64le/usr/lib/graphics-fusa/qc", tcLibDir )
 
@@ -263,6 +306,8 @@ libListDemux = [ "libFileDemux_Common.so",
             "libMKAVParserLib.so",
             "libAIFFParserLib.so",
 ]
+libListC2C = [ "libc2c.so", "libep_client.so", "librc_client.so", "libmhi_client.so" ]
+libListXml = [ "libsafe_xml.so", "libxml2_no_sock.so", "libsafe_xml_c.so" ]
 libListPmem  = [ "libpmem_client.so", "libpmemext.so" , "libsmmu_client.so"]
 libListFastADAS = [ "libfadas.so", "libfastrpc.so", "libfastrpc_pmem.so", "libfastrpc_pmem.so.1" ]
 libListQcx = [ "libqcxclient.so", "libqcxosal.so", "libmemorylogger.so" ]
@@ -270,12 +315,12 @@ libListSv = [ "libsvplatform.so", "libsvcl.so", "libdevioClient.so", "libsoftsku
 libList = libListVidc + libListPmem + libListFastADAS + libListQcx + [
         "libplanedef.so", "libcdsprpc.so", "libapdf.so", "libaosal.so", "libfastrpc_pmem.so",
         "liblibstd.so", "libmmap_peer.so", "libOSAbstraction.so"
-    ] + libListDemux + libListSv
+    ] + libListDemux + libListSv + libListXml + libListC2C
 targetLibDirs = [
-        inputDir + '/qnx_ap/install/aarch64le/lib',
         inputDir + '/qnx_ap/install/aarch64le/lib',
     ]
 
+AllowMissingLibs = libListSv + libListXml + libListC2C
 
 for lib in libList:
     print( "Copying library/symbol file: " + lib + " to: " + tcLibDir )
@@ -287,7 +332,10 @@ for lib in libList:
             copied = True
             break
     if not copied:
-        sys.exit("Failed to copy: " + lib )
+        if lib not in AllowMissingLibs:
+            sys.exit("Failed to copy: " + lib )
+        else:
+            print(f"\nWARNING: {lib} missing\n")
 
 print( "\nFinished copying additional libraries and headers!\n" )
 

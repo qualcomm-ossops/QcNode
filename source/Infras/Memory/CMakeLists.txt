@@ -52,12 +52,14 @@ else()
     )
 endif()
 
-set( TARGET_LIBRARIES QCNodeCommon )
+set( TARGET_LIBRARIES QCNodeCommon apdf aosal )
 
 if( "${CMAKE_SYSTEM_NAME}" STREQUAL "Linux" AND "${CMAKE_SYSTEM_PROCESSOR}" STREQUAL "aarch64" )
-    list( APPEND TARGET_LIBRARIES kiumd apdf aosal )
+    list( APPEND TARGET_LIBRARIES kiumd )
     list( APPEND HEADERS_DIR ${CMAKE_SYSROOT}/usr/include/WF )
     list( APPEND HEADERS_DIR ${CMAKE_SYSROOT}/usr/include/linux-ark )
+else()
+    list( APPEND TARGET_LIBRARIES pmem_client pmemext fastrpc_pmem mmap_peer OSAbstraction )
 endif()
 
 add_library( QCNodeMemory OBJECT ${MEMORY_SOURCES} )

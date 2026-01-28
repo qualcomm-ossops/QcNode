@@ -31,6 +31,10 @@ export QCNODE_INSTALL_DIR=$destdir
 # Package name
 pkgname=$topdir/qcnode-$target.tar.gz
 
+if [ -f ${QCNODR_DIR}/.build_option ] ; then
+  source ${QCNODR_DIR}/.build_option
+fi
+
 if ! [[ -v QC_TARGET_SOC ]] ; then
   export QC_TARGET_SOC=8797
 fi
