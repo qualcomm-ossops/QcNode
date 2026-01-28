@@ -30,19 +30,19 @@ namespace QC
 #define QC_TRACE_BEGIN( name, ... )                                                                \
     do                                                                                             \
     {                                                                                              \
-        m_trace.Trace( name, QCNODE_TRACE_TYPE_BEGIN, __VA_ARGS__ );                               \
+        m_trace.Trace( (name), QCNODE_TRACE_TYPE_BEGIN, __VA_ARGS__ );                               \
     } while ( false )
 
 #define QC_TRACE_END( name, ... )                                                                  \
     do                                                                                             \
     {                                                                                              \
-        m_trace.Trace( name, QCNODE_TRACE_TYPE_END, __VA_ARGS__ );                                 \
+        m_trace.Trace( (name), QCNODE_TRACE_TYPE_END, __VA_ARGS__ );                                 \
     } while ( false )
 
 #define QC_TRACE_EVENT( name, ... )                                                                \
     do                                                                                             \
     {                                                                                              \
-        m_trace.Trace( name, QCNODE_TRACE_TYPE_EVENT, __VA_ARGS__ );                               \
+        m_trace.Trace( (name), QCNODE_TRACE_TYPE_EVENT, __VA_ARGS__ );                               \
     } while ( false )
 
 #define QC_TRACE_COUNTER( name, ... )                                                              \

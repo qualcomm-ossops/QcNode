@@ -90,7 +90,7 @@ QCStatus_e VidcNodeBaseConfigIfs::ParseStaticConfig( DataTree &dt, std::string &
     QCStatus_e status = QC_STATUS_OK;
 
     config.nodeId.name = dt.Get<std::string>( "name", "unnamed" );
-    config.nodeId.id = dt.Get<uint32_t>( "id", 0 );
+    config.nodeId.id = dt.Get<uint8_t>( "id", 0 );
     config.width = dt.Get<uint32_t>( "width", 0 );
     config.height = dt.Get<uint32_t>( "height", 0 );
     config.frameRate = dt.Get<uint32_t>( "frameRate", 0 );
