@@ -109,7 +109,7 @@ QCStatus_e SampleQnn::ParseConfig( SampleConfig_t &config )
                 break;
             }
             QC_INFO( "opPackage params %d, udoLibPath: %s, interfaceProvider: %s\n", i,
-                     opPackage[0], opPackage[1] );
+                     opPackage[0].c_str(), opPackage[1].c_str() );
             dt.Set<std::string>( "udoLibPath", opPackage[0].c_str() );
             dt.Set<std::string>( "interfaceProvider", opPackage[1].c_str() );
             udoPkgs.push_back( dt );
@@ -363,7 +363,7 @@ void SampleQnn::ThreadMain()
                                         QC_ERROR( "QNN FrameDesc SetBuffer failed: ret=%d", ret );
                                     }
                                 }
-                                if ( SAMPLE_QNN_IMAGE_CONVERT_GRAY == m_imageConvertType )
+                                else if ( SAMPLE_QNN_IMAGE_CONVERT_GRAY == m_imageConvertType )
                                 {
                                     ret = frameDesc.SetBuffer( globalIdx, sbuf->luma );
                                     globalIdx++;
