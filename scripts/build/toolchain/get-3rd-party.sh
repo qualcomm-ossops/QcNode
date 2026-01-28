@@ -46,12 +46,6 @@ if [ "$ENABLE_TINYVIZ" == "ON" ] ; then
 fi # ENABLE_TINYVIZ
 
 JSON_VERSION=3.11.3
-if [[ -v BSP_ROOT ]]; then
 qcdownload https://git.codelinaro.org/clo/yocto-mirrors/github/nlohmann/json/-/archive/v${JSON_VERSION}/json-v${JSON_VERSION}.tar.gz json-${JSON_VERSION}.tar.gz ccf92ffbb235caed3c5ab3f35ecf4405
 ln -fs json-${JSON_VERSION}.tar.gz json.tar.gz
 qcdownload https://git.codelinaro.org/clo/yocto-mirrors/github/google/googletest/-/archive/release-1.10.0/googletest-release-1.10.0.tar.gz googletest-1.10.0.tar.gz ecd1fa65e7de707cd5c00bdac56022cd
-else
-qcdownload https://github.com/nlohmann/json/archive/refs/tags/v${JSON_VERSION}.tar.gz json-${JSON_VERSION}.tar.gz d603041cbc6051edbaa02ebb82cf0aa9
-ln -fs json-${JSON_VERSION}.tar.gz json.tar.gz
-qcdownload https://github.com/google/googletest/archive/refs/tags/release-1.10.0.tar.gz googletest-1.10.0.tar.gz ecd1fa65e7de707cd5c00bdac56022cd
-fi
