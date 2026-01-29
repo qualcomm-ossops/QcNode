@@ -157,21 +157,19 @@ public:
         QCNodeConfigIfs &cfgIfs = m_qnn.GetConfigurationIfs();
         const std::string &options = cfgIfs.GetOptions();
         DataTree optionsDt;
-        std::vector<DataTree> inputDts;
-        std::vector<DataTree> outputDts;
         std::string errors;
         ret = optionsDt.Load( options, errors );
         if ( QC_STATUS_OK == ret )
         {
-            ret = optionsDt.Get( "model.inputs", inputDts );
+            ret = optionsDt.Get( "model.inputs", m_inputDts );
         }
         if ( QC_STATUS_OK == ret )
         {
-            ret = optionsDt.Get( "model.outputs", outputDts );
+            ret = optionsDt.Get( "model.outputs", m_outputDts );
         }
         if ( QC_STATUS_OK == ret )
         {
-            for ( auto &inDt : inputDts )
+            for ( auto &inDt : m_inputDts )
             {
                 QnnTest_TensorInfo_t info;
                 ret = ConvertDtToInfo( inDt, info );
@@ -186,7 +184,7 @@ public:
             }
         }
 
-        for ( auto &outDt : outputDts )
+        for ( auto &outDt : m_outputDts )
         {
             QnnTest_TensorInfo_t info;
             ret = ConvertDtToInfo( outDt, info );
@@ -202,12 +200,13 @@ public:
         return ret;
     }
 
-    std::string GetTensorInfoStr( const QnnTest_TensorInfo_t &info )
+    std::string GetTensorInfoStr( const QnnTest_TensorInfo_t &info, DataTree &dt )
     {
         std::string str = "";
         std::stringstream ss;
+        std::string typeStr = dt.Get<std::string>( "type", "unknwon" );
 
-        ss << "type=" << info.properties.tensorType << " dims=[";
+        ss << "type=" << info.properties.tensorType << "(" << typeStr << ")" << " dims=[";
         for ( uint32_t i = 0; i < info.properties.numDims; i++ )
         {
             ss << info.properties.dims[i] << ", ";
@@ -284,7 +283,7 @@ public:
         {
             auto &info = m_inputsInfo[i];
             printf( "[%s] input %" PRIu64 " name=%s %s\n", name.c_str(), i, info.name.c_str(),
-                    GetTensorInfoStr( info ).c_str() );
+                    GetTensorInfoStr( info, m_inputDts[i] ).c_str() );
             TensorProps_t tensorProperties = info.properties;
             tensorProperties.dims[0] = tensorProperties.dims[0] * batchMultiplier;
             ret = m_bufMgr.Allocate( tensorProperties, m_inputBuffers[i] );
@@ -337,7 +336,7 @@ public:
         {
             auto &info = m_outputsInfo[i];
             printf( "[%s] output %" PRIu64 " name=%s %s\n", name.c_str(), i, info.name.c_str(),
-                    GetTensorInfoStr( info ).c_str() );
+                    GetTensorInfoStr( info, m_outputDts[i] ).c_str() );
             TensorProps_t tensorProperties = info.properties;
             tensorProperties.dims[0] = tensorProperties.dims[0] * batchMultiplier;
             ret = m_bufMgr.Allocate( tensorProperties, m_outputBuffers[i] );
@@ -492,6 +491,8 @@ private:
     QnnTest_Parameters_t m_params;
     DataTree m_config;
     Qnn m_qnn;
+    std::vector<DataTree> m_inputDts;
+    std::vector<DataTree> m_outputDts;
     std::vector<QnnTest_TensorInfo_t> m_inputsInfo;
     std::vector<QnnTest_TensorInfo_t> m_outputsInfo;
 
@@ -585,6 +586,7 @@ int Usage( char *prog, int error )
             "[true, false]\n"
             "      attribute extended_udma: enable the extended udma feature or not, options: "
             "[true, false]\n"
+            "      attribute load_type: The QNN model load type, options: [binary, library]\n"
             "  Repeat above options to create multiple testers\n"
             "  Other miscellaneous options:\n"
             "    -d: disable dumping outputs even if the input raw files specified\n",
@@ -780,6 +782,12 @@ int main( int argc, char *argv[] )
                         bEnable = true;
                     }
                     params.dt.Set<bool>( "extendedUdma", bEnable );
+                }
+                else if ( ( "load_type" == key ) &&
+                          ( ( "binary" == value ) || ( "library" == value ) ) )
+                {
+                    QnnTest_Parameters_t &params = paramsList.back();
+                    params.dt.Set<std::string>( "loadType", value );
                 }
                 else
                 {
