@@ -4,6 +4,9 @@ set( QC_NODE_DEPTH_FROM_STEREO_HEADERS ${HEADERS_DIR}/QC/Node/DepthFromStereo.hp
 set( QC_NODE_DEPTH_FROM_STEREO_SOURCES DepthFromStereo.cpp)
 
 set( TARGET_LIBRARIES QCNodeBase svplatform svcl devioClient)
+if( DEFINED QC_SV_EXTRA_LIBS )
+    list( APPEND TARGET_LIBRARIES ${QC_SV_EXTRA_LIBS} )
+endif()
 
 add_library( QCNodeDepthFromStereo OBJECT ${QC_NODE_DEPTH_FROM_STEREO_SOURCES} )
 

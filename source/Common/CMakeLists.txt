@@ -14,6 +14,7 @@ if( "${CMAKE_SYSTEM_NAME}" STREQUAL "Linux" AND "${CMAKE_SYSTEM_PROCESSOR}" STRE
     list( APPEND TARGET_LIBRARIES pthread dl systemd )
 else()
     list( APPEND COMMON_SOURCES Logger_QNX.cpp )
+    list( APPEND TARGET_LIBRARIES libstd slog2 )
 endif()
 
 add_library( QCNodeCommon OBJECT ${COMMON_SOURCES} )

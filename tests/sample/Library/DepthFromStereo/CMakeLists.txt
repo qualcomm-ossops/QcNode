@@ -4,6 +4,9 @@ set( HEADERS_DIR ${PROJECT_SOURCE_DIR}/include )
 set( DFS_SOURCES DepthFromStereo.cpp )
 
 list( APPEND TARGET_LIBRARIES QCNode evaEpl evaPlatform devioClient )
+if( DEFINED QC_EVA_EXTRA_LIBS )
+    list( APPEND TARGET_LIBRARIES ${QC_EVA_EXTRA_LIBS} )
+endif()
 
 add_library( SampleDepthFromStereo OBJECT ${DFS_SOURCES} )
 

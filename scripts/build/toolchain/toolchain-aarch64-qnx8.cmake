@@ -10,6 +10,10 @@ set( CMAKE_CXX_COMPILER_TARGET ${arch} )
 
 set( CMAKE_SYSROOT $ENV{QNX_TARGET}/aarch64le/ )
 
+
+set( CMAKE_FIND_LIBRARY_PREFIXES lib )
+set( CMAKE_FIND_LIBRARY_SUFFIXES .so )
+
 # Usage:
 #   find_header_dir(
 #       OUT_VAR          <output variable name>
@@ -62,6 +66,56 @@ function(find_header_dir)
     endif()
 endfunction()
 
+# Usage:
+#   find_and_append_library(
+#       OUT_LIST         <output list variable>
+#       NAMES            <library name> [library name ...]
+#       PATHS            <paths to search>
+#   )
+function(find_and_append_library)
+    set(options)
+    set(oneValueArgs OUT_LIST)
+    set(multiValueArgs NAMES PATHS)
+    cmake_parse_arguments(FAL "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
+
+    if(NOT FAL_OUT_LIST)
+        message(FATAL_ERROR "find_and_append_library: OUT_LIST is required")
+    endif()
+    if(NOT FAL_NAMES)
+        message(FATAL_ERROR "find_and_append_library: NAMES is required")
+    endif()
+
+    foreach(_lib_name ${FAL_NAMES})
+        string(TOUPPER "${_lib_name}" _VAR_NAME)
+        set(_VAR_NAME "${_VAR_NAME}_LIB")
+
+        find_library(${_VAR_NAME}
+            NAMES ${_lib_name}
+            PATHS ${FAL_PATHS}
+        )
+
+        if(${_VAR_NAME})
+            list(APPEND ${FAL_OUT_LIST} "${${_VAR_NAME}}")
+        else()
+            message(INFO "${_lib_name} is not found, build without it")
+        endif()
+    endforeach()
+    set(${FAL_OUT_LIST} "${${FAL_OUT_LIST}}" PARENT_SCOPE)
+endfunction()
+
+
+set( QC_LIB_PATHS
+    ${CMAKE_SYSROOT}/lib
+    ${CMAKE_SYSROOT}/usr/lib
+)
+if( DEFINED ENV{BSP_ROOT} )
+list( APPEND QC_LIB_PATHS
+    $ENV{BSP_ROOT}/install/aarch64le/lib
+    $ENV{BSP_ROOT}/install/aarch64le/usr/lib
+    $ENV{BSP_ROOT}/install/aarch64le/lib/camera_qcx
+)
+endif()
+
 # common header files and libraries
 if( DEFINED ENV{BSP_ROOT} )
 include_directories( $ENV{BSP_ROOT}/install/usr/include )
@@ -69,13 +123,11 @@ include_directories( $ENV{BSP_ROOT}/install/aarch64le/usr/include )
 add_link_options( "-L$ENV{BSP_ROOT}/install/aarch64le/lib" )
 add_link_options( "-L$ENV{BSP_ROOT}/install/aarch64le/usr/lib" )
 endif()
-link_libraries( libstd slog2 socket )
 
 # pmem
 if( DEFINED ENV{BSP_ROOT} )
 include_directories( $ENV{BSP_ROOT}/AMSS/inc )
 endif()
-link_libraries( pmem_client pmemext fastrpc_pmem mmap_peer OSAbstraction )
 
 # apdf
 if( DEFINED ENV{BSP_ROOT} )
@@ -83,7 +135,6 @@ include_directories( $ENV{BSP_ROOT}/install/usr/include/amss/multimedia/apdf/ )
 include_directories( $ENV{QSDP_FIXME_ROOT}/target/qnx/usr/include )
 include_directories( $ENV{QSDP_FIXME_ROOT}/target/qnx/usr/include/WF )
 endif()
-link_libraries( apdf aosal )
 
 # c2d
 if( DEFINED ENV{BSP_ROOT} )
@@ -108,6 +159,13 @@ include_directories( ${VIDC_INCLUDE_DIR} )
 find_header_dir(
     OUT_VAR VIDC_FILE_DEMUX_INCLUDE_DIR
     BASE_DIR $ENV{BSP_ROOT}/AMSS/multimedia/video
+    NAMES filesource.h parserinternaldefs.h
+)
+include_directories( ${VIDC_FILE_DEMUX_INCLUDE_DIR} )
+
+find_header_dir(
+    OUT_VAR VIDC_FILE_DEMUX_INCLUDE_DIR
+    BASE_DIR $ENV{BSP_ROOT}/test/multimedia/experimental/video
     NAMES filesource.h parserinternaldefs.h
 )
 include_directories( ${VIDC_FILE_DEMUX_INCLUDE_DIR} )
@@ -150,23 +208,34 @@ if( DEFINED ENV{BSP_ROOT} )
 include_directories( $ENV{BSP_ROOT}/AMSS/multimedia/qcamera/camera_qcx/cdk_qcx/api/qcarcam/ )
 add_link_options( "-L$ENV{BSP_ROOT}/install/aarch64le/lib/camera_qcx/" )
 endif()
-link_libraries( xml2 )
+
+set( QC_CAMERA_EXTRA_LIBS )
+find_and_append_library(
+    OUT_LIST QC_CAMERA_EXTRA_LIBS
+    NAMES xml2 memorylogger
+    PATHS ${QC_LIB_PATHS}
+)
 
 # fadas
 if( DEFINED ENV{BSP_ROOT} )
 include_directories( $ENV{BSP_ROOT}/install/usr/include/amss/multimedia/fadas/ )
 include_directories( $ENV{BSP_ROOT}/prebuilt/usr/include/amss/multimedia/fadas/ )
 endif()
+set( QC_FADAS_EXTRA_LIBS )
+find_and_append_library(
+    OUT_LIST QC_FADAS_EXTRA_LIBS
+    NAMES safe_xml
+    PATHS ${QC_LIB_PATHS}
+)
 
 # OpenCL
 if( DEFINED ENV{BSP_ROOT} )
 include_directories( $ENV{BSP_ROOT}/AMSS/inc/graphics-fusa/include/public )
 include_directories( $ENV{BSP_ROOT}/AMSS/multimedia/graphics-fusa-binaries/include/public )
 endif()
-add_compile_definitions( CL_TARGET_OPENCL_VERSION=300 )
 
 # sv
-if( DEFINED ENV{BSP_ROOT} )
+if( DEFINED ENV{BSP_ROOT} AND ENABLE_EVA )
 find_header_dir(
     OUT_VAR SV_AUTO_INCLUDE_DIR
     BASE_DIR $ENV{BSP_ROOT}/AMSS/multimedia/compute/sv
@@ -175,8 +244,16 @@ find_header_dir(
 include_directories( ${SV_AUTO_INCLUDE_DIR} )
 
 include_directories( $ENV{BSP_ROOT}/install/usr/include/amss/multimedia/sv )
-link_libraries( softsku smmu_client pm_client )
+set( QC_SV_EXTRA_LIBS softsku smmu_client pm_client )
 endif()
+
+# c2c
+set( QC_C2C_EXTRA_LIBS )
+find_and_append_library(
+    OUT_LIST QC_C2C_EXTRA_LIBS
+    NAMES rc_client ep_client mhi_client
+    PATHS ${QC_LIB_PATHS}
+)
 
 # gtest
 include_directories( $ENV{QCNODE_INSTALL_DIR}/opt/qcnode/include )
