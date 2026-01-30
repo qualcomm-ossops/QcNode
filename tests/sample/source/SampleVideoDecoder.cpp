@@ -133,7 +133,8 @@ QCStatus_e SampleVideoDecoder::Init( std::string name, SampleConfig_t &samplecfg
 
     if ( QC_STATUS_OK == ret )
     {
-        ret = m_sub.Init( name, m_inputTopicName );
+        /* queueDepth = 8 and first in first out mode */
+        ret = m_sub.Init( name, m_inputTopicName, 8, false );
     }
 
     if ( QC_STATUS_OK == ret )
