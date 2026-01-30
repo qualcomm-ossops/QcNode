@@ -531,6 +531,7 @@ QCStatus_e VidcDrvClient::SetBuffer( VideoCodec_BufType_e bufferType,
         buf_info.buf_handle = (pmem_handle_t) buf.dmaHandle;
 #else
         buf_info.buf_handle = (int)( buf.dmaHandle );
+        buf_info.pid = buf.pid;
 #endif
         buf_info.buf_type = vidcBufType;
         buf_info.contiguous = true;
@@ -639,12 +640,14 @@ QCStatus_e VidcDrvClient::EmptyBuffer( VideoFrameDescriptor &frameDesc )
     frameData.buf_type = VIDC_BUFFER_INPUT;
     frameData.frame_addr = static_cast<uint8_t *>( frameDesc.pBuf );
     frameData.alloc_len = frameDesc.size;
+    frameData.offset = frameDesc.offset;
 #if defined( __QNXNTO__ )
     frameData.frame_handle = (pmem_handle_t) handle;
 #else
     frameData.frame_handle = (int) reinterpret_cast<uint64_t>( handle );
+    frameData.pid = frameDesc.pid;
 #endif
-    frameData.data_len = frameDesc.size;
+    frameData.data_len = frameDesc.validSize;
     frameData.timestamp = timestampUs;
     frameData.mark_data = (unsigned long) appMarkData;
 
@@ -789,12 +792,15 @@ QCStatus_e VidcDrvClient::FillBuffer( VideoFrameDescriptor &frameDesc )
         frameData.buf_type = VIDC_BUFFER_OUTPUT;
         frameData.frame_addr = (uint8_t *) frameDesc.pBuf;
         frameData.alloc_len = frameDesc.size;
+        frameData.offset = frameDesc.offset;
 #if defined( __QNXNTO__ )
         frameData.frame_handle = (pmem_handle_t) handle;
 #else
         frameData.frame_handle = (int) reinterpret_cast<uint64_t>( handle );
+        frameData.pid = frameDesc.pid;
 #endif
         frameData.frm_clnt_data = handle;
+        frameData.data_len = frameDesc.size;
 
         QC_DEBUG( "FillBuffer: frame_handle=0x%x , frameData.frame_addr=0x%x "
                   "frameData.alloc_len %" PRIu32 " frameData.data_len=%" PRIu32,
