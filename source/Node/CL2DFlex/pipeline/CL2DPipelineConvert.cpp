@@ -50,6 +50,7 @@ CL2DPipelineConvert::Init( uint32_t inputId, cl_kernel *pKernel, CL2DFlex_Config
     }
     else
     {
+        m_pipeline = CL2DFLEX_PIPELINE_MAX;
         QC_ERROR( "Invalid CL2DFlex convert pipeline for inputId=%d!", m_inputId );
         ret = QC_STATUS_BAD_ARGUMENTS;
     }

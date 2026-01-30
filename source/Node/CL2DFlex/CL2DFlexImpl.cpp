@@ -61,7 +61,6 @@ CL2DFlexImpl::Initialize( std::vector<std::reference_wrapper<QCBufferDescriptorB
 {
     QCStatus_e status = QC_STATUS_OK;
 
-
     QC_TRACE_INIT( [&]() {
         std::ostringstream oss;
         oss << "{";
@@ -328,6 +327,7 @@ QCStatus_e CL2DFlexImpl::ProcessFrameDescriptor( QCFrameDescriptorNodeIfs &frame
 
 QCObjectState_e CL2DFlexImpl::GetState()
 {
+
     return m_state;
 }
 

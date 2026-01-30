@@ -13,6 +13,26 @@
 #include "QC/sample/BufferManager.hpp"
 #include "md5_utils.hpp"
 
+#include "CL2DFlexImpl.hpp"
+#include "kernel/CL2DFlex.cl.h"
+#include "pipeline/CL2DPipelineBase.hpp"
+#include "pipeline/CL2DPipelineConvert.hpp"
+#include "pipeline/CL2DPipelineConvertUBWC.hpp"
+#include "pipeline/CL2DPipelineLetterbox.hpp"
+#include "pipeline/CL2DPipelineLetterboxMultiple.hpp"
+#include "pipeline/CL2DPipelineRemap.hpp"
+#include "pipeline/CL2DPipelineResize.hpp"
+#include "pipeline/CL2DPipelineResizeMultiple.hpp"
+
+inline const char *InvalidKernels() noexcept
+{
+    static const char *invalidkernels = KERNELCODE(
+
+            __kernel void Invalid(){ xyz } );
+    return invalidkernels;
+}
+static const char *s_pSourceInvalid = InvalidKernels();
+
 using namespace QC::Node;
 using namespace QC::test::utils;
 using namespace QC::sample;
@@ -147,6 +167,10 @@ void SetConfigCL2D( CL2DFlex_Config_t *pCL2DFlexConfig, DataTree *pdt )
             inputDt.Set<std::string>( "workMode", "remap_nearest" );
             inputDt.Set<uint32_t>( "mapXBufferId", pCL2DFlexConfig->numOfInputs + 1 );
             inputDt.Set<uint32_t>( "mapYBufferId", pCL2DFlexConfig->numOfInputs + 2 );
+        }
+        else
+        {
+            inputDt.Set<std::string>( "workMode", "unknown" );
         }
 
         inputDts.push_back( inputDt );
@@ -569,10 +593,1132 @@ void Accuracy( uint32_t inputNumberTest, CL2DFlex_Work_Mode_e modeTest,
     reinterpret_cast<QC::Node::CL2DFlex *>( pCL2DFlex )->~CL2DFlex();
 }
 
+void MultipleROI( CL2DFlex_Work_Mode_e modeTest, QCImageFormat_e inputFormatTest,
+                  QCImageFormat_e outputFormatTest, uint32_t inputWidthTest,
+                  uint32_t inputHeightTest, uint32_t outputWidthTest, uint32_t outputHeightTest,
+                  std::string pathTest )
+{
+    QCStatus_e ret;
+    std::string errors;
+    QCNodeIfs *pCL2DFlex = new QC::Node::CL2DFlex();
+    BufferManager bufMgr( { "MANAGER", QC_NODE_TYPE_CL_2D_FLEX, 0 } );
+    uint32_t globalIdx = 0;
+    std::vector<uint32_t> bufferIds;
+    QCNodeInit_t config;
+    config.buffers.clear();
+
+    CL2DFlex_Config_t CL2DFlexConfig;
+    CL2DFlexConfig.numOfInputs = 1;
+    for ( int i = 0; i < CL2DFlexConfig.numOfInputs; i++ )
+    {
+        CL2DFlexConfig.workModes[i] = modeTest;
+        CL2DFlexConfig.inputWidths[i] = inputWidthTest;
+        CL2DFlexConfig.inputHeights[i] = inputHeightTest;
+        CL2DFlexConfig.inputFormats[i] = inputFormatTest;
+        CL2DFlexConfig.ROIs[i].x = 0;
+        CL2DFlexConfig.ROIs[i].y = 0;
+        CL2DFlexConfig.ROIs[i].width = inputWidthTest;
+        CL2DFlexConfig.ROIs[i].height = inputHeightTest;
+    }
+    CL2DFlexConfig.outputWidth = outputWidthTest;
+    CL2DFlexConfig.outputHeight = outputHeightTest;
+    CL2DFlexConfig.outputFormat = outputFormatTest;
+
+    DataTree dt;
+    dt.Set<std::string>( "static.name", "CL2D" );
+    dt.Set<uint32_t>( "static.id", 0 );
+    SetConfigCL2D( &CL2DFlexConfig, &dt );
+
+    ImageProps_t imgPropInputs[CL2DFlexConfig.numOfInputs];
+    for ( int i = 0; i < CL2DFlexConfig.numOfInputs; i++ )
+    {
+        imgPropInputs[i].batchSize = 1;
+        imgPropInputs[i].width = CL2DFlexConfig.inputWidths[i];
+        imgPropInputs[i].height = CL2DFlexConfig.inputHeights[i];
+        imgPropInputs[i].format = CL2DFlexConfig.inputFormats[i];
+        if ( QC_IMAGE_FORMAT_NV12 == CL2DFlexConfig.inputFormats[i] )
+        {
+            imgPropInputs[i].stride[0] = CL2DFlexConfig.inputWidths[i];
+            imgPropInputs[i].stride[1] = CL2DFlexConfig.inputWidths[i];
+            imgPropInputs[i].actualHeight[0] = CL2DFlexConfig.inputHeights[i];
+            imgPropInputs[i].actualHeight[1] = CL2DFlexConfig.inputHeights[i] / 2;
+            imgPropInputs[i].planeBufSize[0] = 0;
+            imgPropInputs[i].planeBufSize[1] = 0;
+            imgPropInputs[i].numPlanes = 2;
+        }
+        else if ( QC_IMAGE_FORMAT_UYVY == CL2DFlexConfig.inputFormats[i] )
+        {
+            imgPropInputs[i].stride[0] = CL2DFlexConfig.inputWidths[i] * 2;
+            imgPropInputs[i].actualHeight[0] = CL2DFlexConfig.inputHeights[i];
+            imgPropInputs[i].planeBufSize[0] = 0;
+            imgPropInputs[i].numPlanes = 1;
+        }
+        else if ( QC_IMAGE_FORMAT_RGB888 == CL2DFlexConfig.inputFormats[i] )
+        {
+            imgPropInputs[i].stride[0] = CL2DFlexConfig.inputWidths[i] * 3;
+            imgPropInputs[i].actualHeight[0] = CL2DFlexConfig.inputHeights[i];
+            imgPropInputs[i].planeBufSize[0] = 0;
+            imgPropInputs[i].numPlanes = 1;
+        }
+    }
+
+    ImageProps_t imgPropOutput;
+    imgPropOutput.batchSize = CL2DFlexConfig.numOfInputs;
+    imgPropOutput.width = CL2DFlexConfig.outputWidth;
+    imgPropOutput.height = CL2DFlexConfig.outputHeight;
+    imgPropOutput.format = CL2DFlexConfig.outputFormat;
+    if ( ( QC_IMAGE_FORMAT_RGB888 == CL2DFlexConfig.outputFormat ) ||
+         ( QC_IMAGE_FORMAT_BGR888 == CL2DFlexConfig.outputFormat ) )
+    {
+        imgPropOutput.stride[0] = CL2DFlexConfig.outputWidth * 3;
+        imgPropOutput.actualHeight[0] = CL2DFlexConfig.outputHeight;
+        imgPropOutput.planeBufSize[0] = 0;
+        imgPropOutput.numPlanes = 1;
+    }
+    else if ( QC_IMAGE_FORMAT_NV12 == CL2DFlexConfig.outputFormat )
+    {
+        imgPropOutput.stride[0] = CL2DFlexConfig.outputWidth;
+        imgPropOutput.stride[1] = CL2DFlexConfig.outputWidth;
+        imgPropOutput.actualHeight[0] = CL2DFlexConfig.outputHeight;
+        imgPropOutput.actualHeight[1] = CL2DFlexConfig.outputHeight / 2;
+        imgPropOutput.planeBufSize[0] = 0;
+        imgPropOutput.planeBufSize[1] = 0;
+        imgPropOutput.numPlanes = 2;
+    }
+
+    uint32_t frameIdx = 0;
+    NodeFrameDescriptor frameDesc( CL2DFlexConfig.numOfInputs + 1 );
+
+    std::vector<ImageDescriptor_t> inputs;
+    inputs.reserve( CL2DFlexConfig.numOfInputs );
+    for ( int i = 0; i < CL2DFlexConfig.numOfInputs; i++ )
+    {
+        ImageDescriptor_t imageDesc;
+        if ( QC_IMAGE_FORMAT_NV12_UBWC == CL2DFlexConfig.inputFormats[i] )
+        {
+            ret = bufMgr.Allocate( ImageBasicProps_t( CL2DFlexConfig.inputWidths[i],
+                                                      CL2DFlexConfig.inputHeights[i],
+                                                      CL2DFlexConfig.inputFormats[i] ),
+                                   imageDesc );
+        }
+        else
+        {
+            ret = bufMgr.Allocate( imgPropInputs[i], imageDesc );
+        }
+        ASSERT_EQ( QC_STATUS_OK, ret );
+        inputs.push_back( imageDesc );
+        ret = frameDesc.SetBuffer( frameIdx, inputs.back() );
+        ASSERT_EQ( QC_STATUS_OK, ret );
+        frameIdx++;
+        config.buffers.push_back( inputs.back() );
+        bufferIds.push_back( globalIdx );
+        globalIdx++;
+    }
+
+    std::vector<ImageDescriptor_t> outputs;
+    outputs.reserve( 1 );
+    ImageDescriptor_t imageDesc;
+    ret = bufMgr.Allocate( imgPropOutput, imageDesc );
+    outputs.push_back( imageDesc );
+    ret = frameDesc.SetBuffer( frameIdx, outputs.back() );
+    ASSERT_EQ( QC_STATUS_OK, ret );
+    frameIdx++;
+    config.buffers.push_back( outputs.back() );
+    bufferIds.push_back( globalIdx );
+    globalIdx++;
+
+    uint32_t roiNumber = 100;
+    dt.Set<uint32_t>( "static.numOfROIs", roiNumber );
+    dt.Set<uint32_t>( "static.ROIsBufferId", CL2DFlexConfig.numOfInputs + 1 );
+    TensorDescriptor_t ROIsBufferDesc;
+    TensorProps_t ROIProp;
+    ROIProp = { QC_TENSOR_TYPE_UINT_32, { roiNumber, 4 } };
+    ret = bufMgr.Allocate( ROIProp, ROIsBufferDesc );
+    if ( nullptr != ROIsBufferDesc.pBuf )
+    {
+        config.buffers.push_back( ROIsBufferDesc );
+        bufferIds.push_back( globalIdx );
+        globalIdx++;
+    }
+    else
+    {
+        printf( "ROIsBufferDesc is nullptr\n" );
+    }
+
+    for ( uint32_t i = 0; i < roiNumber; i++ )
+    {
+        uint32_t *pROIsBufferDesc = reinterpret_cast<uint32_t *>( ROIsBufferDesc.pBuf );
+        pROIsBufferDesc[i * 4 + 0] = 0;
+        pROIsBufferDesc[i * 4 + 1] = 0;
+        pROIsBufferDesc[i * 4 + 2] = CL2DFlexConfig.inputWidths[0] / 2;
+        pROIsBufferDesc[i * 4 + 3] = CL2DFlexConfig.inputHeights[0] / 2;
+    }
+
+    dt.Set<uint32_t>( "static.bufferIds", bufferIds );
+    config.config = dt.Dump();
+    printf( "config: %s\n", config.config.c_str() );
+
+    ret = pCL2DFlex->Initialize( config );
+    ASSERT_EQ( QC_STATUS_OK, ret );
+
+    ret = pCL2DFlex->Start();
+    ASSERT_EQ( QC_STATUS_OK, ret );
+
+    for ( int i = 0; i < CL2DFlexConfig.numOfInputs; i++ )
+    {
+        memset( inputs[i].pBuf, 0, inputs[i].size );
+        ret = LoadImage( inputs[i], pathTest );
+        ASSERT_EQ( QC_STATUS_OK, ret );
+    }
+    memset( outputs[0].pBuf, 0, outputs[0].size );
+
+    ret = pCL2DFlex->ProcessFrameDescriptor( frameDesc );
+    ASSERT_EQ( QC_STATUS_OK, ret );
+
+    ret = pCL2DFlex->Stop();
+    ASSERT_EQ( QC_STATUS_OK, ret );
+
+    ret = pCL2DFlex->DeInitialize();
+    ASSERT_EQ( QC_STATUS_OK, ret );
+
+    for ( auto imageDesc : inputs )
+    {
+        ret = bufMgr.Free( imageDesc );
+    }
+
+    for ( auto imageDesc : outputs )
+    {
+        ret = bufMgr.Free( imageDesc );
+    }
+
+    (void) bufMgr.Free( ROIsBufferDesc );
+
+    reinterpret_cast<QC::Node::CL2DFlex *>( pCL2DFlex )->~CL2DFlex();
+}
+
+void Coverage1()
+{
+    QCStatus_e ret;
+    std::string errors;
+
+    // dynamic config
+    QCNodeIfs *pCL2DFlex1 = new QC::Node::CL2DFlex();
+    DataTree dt1;
+    dt1.Set<std::string>( "dynamic.name", "CL2D" );
+    QCNodeInit_t config1 = { dt1.Dump() };
+    ret = pCL2DFlex1->Initialize( config1 );
+    EXPECT_EQ( QC_STATUS_BAD_ARGUMENTS, ret );
+    QCNodeConfigIfs &configIfs = pCL2DFlex1->GetConfigurationIfs();
+    const std::string &options = configIfs.GetOptions();
+    reinterpret_cast<QC::Node::CL2DFlex *>( pCL2DFlex1 )->~CL2DFlex();
+
+    // empty name
+    QCNodeIfs *pCL2DFlex2 = new QC::Node::CL2DFlex();
+    DataTree dt2;
+    dt2.Set<std::string>( "static.name", "" );
+    dt2.Set<uint32_t>( "static.id", 0 );
+    QCNodeInit_t config2 = { dt2.Dump() };
+    ret = pCL2DFlex2->Initialize( config2 );
+    EXPECT_EQ( QC_STATUS_BAD_ARGUMENTS, ret );
+    reinterpret_cast<QC::Node::CL2DFlex *>( pCL2DFlex2 )->~CL2DFlex();
+
+    // empty id
+    QCNodeIfs *pCL2DFlex3 = new QC::Node::CL2DFlex();
+    DataTree dt3;
+    dt3.Set<std::string>( "static.name", "CL2D" );
+    QCNodeInit_t config3 = { dt3.Dump() };
+    ret = pCL2DFlex3->Initialize( config3 );
+    EXPECT_EQ( QC_STATUS_BAD_ARGUMENTS, ret );
+    reinterpret_cast<QC::Node::CL2DFlex *>( pCL2DFlex3 )->~CL2DFlex();
+
+    // empty bufferIds
+    QCNodeIfs *pCL2DFlex4 = new QC::Node::CL2DFlex();
+    DataTree dt4;
+    dt4.Set<std::string>( "static.name", "CL2D" );
+    dt4.Set<uint32_t>( "static.id", 0 );
+    std::vector<uint32_t> bufferIds;
+    dt4.Set<uint32_t>( "static.bufferIds", bufferIds );
+    QCNodeInit_t config4 = { dt4.Dump() };
+    ret = pCL2DFlex4->Initialize( config4 );
+    EXPECT_EQ( QC_STATUS_BAD_ARGUMENTS, ret );
+    reinterpret_cast<QC::Node::CL2DFlex *>( pCL2DFlex4 )->~CL2DFlex();
+
+    CL2DFlex_Config_t CL2DFlexConfig;
+    CL2DFlexConfig.numOfInputs = 2;
+    for ( int i = 0; i < CL2DFlexConfig.numOfInputs; i++ )
+    {
+        CL2DFlexConfig.workModes[i] = CL2DFLEX_WORK_MODE_RESIZE_NEAREST;
+        CL2DFlexConfig.inputWidths[i] = 128;
+        CL2DFlexConfig.inputHeights[i] = 128;
+        CL2DFlexConfig.inputFormats[i] = QC_IMAGE_FORMAT_NV12;
+        CL2DFlexConfig.ROIs[i].x = 64;
+        CL2DFlexConfig.ROIs[i].y = 64;
+        CL2DFlexConfig.ROIs[i].width = 64;
+        CL2DFlexConfig.ROIs[i].height = 64;
+    }
+    CL2DFlexConfig.outputWidth = 64;
+    CL2DFlexConfig.outputHeight = 64;
+    CL2DFlexConfig.outputFormat = QC_IMAGE_FORMAT_RGB888;
+
+    // invalid status and dynamic config
+    QCNodeIfs *pCL2DFlex5 = new QC::Node::CL2DFlex();
+    DataTree dt5;
+    dt5.Set<std::string>( "static.name", "CL2D" );
+    dt5.Set<uint32_t>( "static.id", 0 );
+    SetConfigCL2D( &CL2DFlexConfig, &dt5 );
+    QCObjectState_e status = pCL2DFlex5->GetState();
+    QCNodeInit_t config5 = { dt5.Dump() };
+    ret = pCL2DFlex5->DeInitialize();
+    EXPECT_EQ( QC_STATUS_BAD_STATE, ret );
+    ret = pCL2DFlex5->Stop();
+    EXPECT_EQ( QC_STATUS_BAD_STATE, ret );
+    ret = pCL2DFlex5->Start();
+    EXPECT_EQ( QC_STATUS_BAD_STATE, ret );
+    NodeFrameDescriptor frameDesc( 1 );
+    ret = pCL2DFlex5->ProcessFrameDescriptor( frameDesc );
+    ASSERT_EQ( QC_STATUS_BAD_STATE, ret );
+    ret = pCL2DFlex5->Initialize( config5 );
+    EXPECT_EQ( QC_STATUS_OK, ret );
+    ret = pCL2DFlex5->Initialize( config5 );
+    EXPECT_EQ( QC_STATUS_BAD_STATE, ret );
+    reinterpret_cast<QC::Node::CL2DFlex *>( pCL2DFlex5 )->~CL2DFlex();
+
+    // invalid workmode
+    CL2DFlexConfig.workModes[0] = CL2DFLEX_WORK_MODE_MAX;
+    QCNodeIfs *pCL2DFlex6 = new QC::Node::CL2DFlex();
+    DataTree dt6;
+    dt6.Set<std::string>( "static.name", "CL2D" );
+    dt6.Set<uint32_t>( "static.id", 0 );
+    SetConfigCL2D( &CL2DFlexConfig, &dt6 );
+    QCNodeInit_t config6 = { dt6.Dump() };
+    ret = pCL2DFlex6->Initialize( config6 );
+    EXPECT_EQ( QC_STATUS_BAD_ARGUMENTS, ret );
+    reinterpret_cast<QC::Node::CL2DFlex *>( pCL2DFlex6 )->~CL2DFlex();
+    CL2DFlexConfig.workModes[0] = CL2DFLEX_WORK_MODE_RESIZE_NEAREST;
+
+    // multiple rois with invalid numOfROIs
+    CL2DFlexConfig.workModes[0] = CL2DFLEX_WORK_MODE_LETTERBOX_NEAREST_MULTIPLE;
+    QCNodeIfs *pCL2DFlex7 = new QC::Node::CL2DFlex();
+    DataTree dt7;
+    dt7.Set<std::string>( "static.name", "CL2D" );
+    dt7.Set<uint32_t>( "static.id", 0 );
+    dt7.Set<uint32_t>( "static.numOfROIs", 1000 );
+    SetConfigCL2D( &CL2DFlexConfig, &dt7 );
+    QCNodeInit_t config7 = { dt7.Dump() };
+    ret = pCL2DFlex7->Initialize( config7 );
+    EXPECT_EQ( QC_STATUS_BAD_ARGUMENTS, ret );
+    reinterpret_cast<QC::Node::CL2DFlex *>( pCL2DFlex7 )->~CL2DFlex();
+    CL2DFlexConfig.workModes[0] = CL2DFLEX_WORK_MODE_RESIZE_NEAREST;
+
+    // multiple rois without numOfROIs and ROIsBufferId
+    CL2DFlexConfig.workModes[0] = CL2DFLEX_WORK_MODE_LETTERBOX_NEAREST_MULTIPLE;
+    QCNodeIfs *pCL2DFlex8 = new QC::Node::CL2DFlex();
+    DataTree dt8;
+    dt8.Set<std::string>( "static.name", "CL2D" );
+    dt8.Set<uint32_t>( "static.id", 0 );
+    SetConfigCL2D( &CL2DFlexConfig, &dt8 );
+    QCNodeInit_t config8 = { dt8.Dump() };
+    ret = pCL2DFlex8->Initialize( config8 );
+    EXPECT_EQ( QC_STATUS_BAD_ARGUMENTS, ret );
+    reinterpret_cast<QC::Node::CL2DFlex *>( pCL2DFlex8 )->~CL2DFlex();
+    CL2DFlexConfig.workModes[0] = CL2DFLEX_WORK_MODE_RESIZE_NEAREST;
+
+    // remap without mapXBufferId
+    std::vector<DataTree> inputDts;
+    DataTree inputDt;
+    inputDt.Set<std::string>( "workMode", "remap_nearest" );
+    inputDts.push_back( inputDt );
+    QCNodeIfs *pCL2DFlex9 = new QC::Node::CL2DFlex();
+    DataTree dt9;
+    dt9.Set<std::string>( "static.name", "CL2D" );
+    dt9.Set<uint32_t>( "static.id", 0 );
+    dt9.Set( "static.inputs", inputDts );
+    QCNodeInit_t config9 = { dt9.Dump() };
+    ret = pCL2DFlex9->Initialize( config9 );
+    EXPECT_EQ( QC_STATUS_BAD_ARGUMENTS, ret );
+    reinterpret_cast<QC::Node::CL2DFlex *>( pCL2DFlex9 )->~CL2DFlex();
+
+    // invalid numOfInputs
+    CL2DFlexConfig.numOfInputs = QC_MAX_INPUTS + 1;
+    QCNodeIfs *pCL2DFlex10 = new QC::Node::CL2DFlex();
+    DataTree dt10;
+    dt10.Set<std::string>( "static.name", "CL2D" );
+    dt10.Set<uint32_t>( "static.id", 0 );
+    SetConfigCL2D( &CL2DFlexConfig, &dt10 );
+    QCNodeInit_t config10 = { dt10.Dump() };
+    ret = pCL2DFlex10->Initialize( config10 );
+    EXPECT_EQ( QC_STATUS_BAD_ARGUMENTS, ret );
+    reinterpret_cast<QC::Node::CL2DFlex *>( pCL2DFlex10 )->~CL2DFlex();
+    CL2DFlexConfig.numOfInputs = 2;
+
+    // invalid globalBufferIdMap with empty name and id
+    QCNodeIfs *pCL2DFlex11 = new QC::Node::CL2DFlex();
+    DataTree dt11;
+    dt11.Set<std::string>( "static.name", "CL2D" );
+    dt11.Set<uint32_t>( "static.id", 0 );
+    std::vector<DataTree> globalBufferIdMap1;
+    DataTree globalBufferId1;
+    globalBufferId1.Set<std::string>( "name", "" );
+    globalBufferId1.Set<uint32_t>( "id", UINT32_MAX );
+    globalBufferIdMap1.push_back( globalBufferId1 );
+    dt11.Set( "static.globalBufferIdMap", globalBufferIdMap1 );
+    SetConfigCL2D( &CL2DFlexConfig, &dt11 );
+    QCNodeInit_t config11 = { dt11.Dump() };
+    ret = pCL2DFlex11->Initialize( config11 );
+    EXPECT_EQ( QC_STATUS_BAD_ARGUMENTS, ret );
+    reinterpret_cast<QC::Node::CL2DFlex *>( pCL2DFlex11 )->~CL2DFlex();
+
+    // invalid globalBufferIdMap with incorrect size
+    QCNodeIfs *pCL2DFlex12 = new QC::Node::CL2DFlex();
+    DataTree dt12;
+    dt12.Set<std::string>( "static.name", "CL2D" );
+    dt12.Set<uint32_t>( "static.id", 0 );
+    std::vector<DataTree> globalBufferIdMap2;
+    DataTree globalBufferId2;
+    globalBufferId2.Set<std::string>( "name", "CL2D" );
+    globalBufferId2.Set<uint32_t>( "id", 0 );
+    globalBufferIdMap2.push_back( globalBufferId2 );
+    dt12.Set( "static.globalBufferIdMap", globalBufferIdMap2 );
+    SetConfigCL2D( &CL2DFlexConfig, &dt12 );
+    QCNodeInit_t config12 = { dt12.Dump() };
+    ret = pCL2DFlex12->Initialize( config12 );
+    EXPECT_EQ( QC_STATUS_BAD_ARGUMENTS, ret );
+    reinterpret_cast<QC::Node::CL2DFlex *>( pCL2DFlex12 )->~CL2DFlex();
+
+    // high priority
+    QCNodeIfs *pCL2DFlex13 = new QC::Node::CL2DFlex();
+    DataTree dt13;
+    dt13.Set<std::string>( "static.name", "CL2D" );
+    dt13.Set<uint32_t>( "static.id", 0 );
+    dt13.Set<std::string>( "static.priority", "high" );
+    SetConfigCL2D( &CL2DFlexConfig, &dt13 );
+    QCNodeInit_t config13 = { dt13.Dump() };
+    ret = pCL2DFlex13->Initialize( config13 );
+    EXPECT_EQ( QC_STATUS_OK, ret );
+    reinterpret_cast<QC::Node::CL2DFlex *>( pCL2DFlex13 )->~CL2DFlex();
+
+    // low priority
+    QCNodeIfs *pCL2DFlex14 = new QC::Node::CL2DFlex();
+    DataTree dt14;
+    dt14.Set<std::string>( "static.name", "CL2D" );
+    dt14.Set<uint32_t>( "static.id", 0 );
+    dt14.Set<std::string>( "static.priority", "low" );
+    SetConfigCL2D( &CL2DFlexConfig, &dt14 );
+    QCNodeInit_t config14 = { dt14.Dump() };
+    ret = pCL2DFlex14->Initialize( config14 );
+    EXPECT_EQ( QC_STATUS_OK, ret );
+    reinterpret_cast<QC::Node::CL2DFlex *>( pCL2DFlex14 )->~CL2DFlex();
+
+    // invalid priority
+    QCNodeIfs *pCL2DFlex15 = new QC::Node::CL2DFlex();
+    DataTree dt15;
+    dt15.Set<std::string>( "static.name", "CL2D" );
+    dt15.Set<uint32_t>( "static.id", 0 );
+    dt15.Set<std::string>( "static.priority", "unknown" );
+    SetConfigCL2D( &CL2DFlexConfig, &dt15 );
+    QCNodeInit_t config15 = { dt15.Dump() };
+    ret = pCL2DFlex15->Initialize( config15 );
+    EXPECT_EQ( QC_STATUS_BAD_ARGUMENTS, ret );
+    reinterpret_cast<QC::Node::CL2DFlex *>( pCL2DFlex15 )->~CL2DFlex();
+
+    // invalid device id
+    QCNodeIfs *pCL2DFlex16 = new QC::Node::CL2DFlex();
+    DataTree dt16;
+    dt16.Set<std::string>( "static.name", "CL2D" );
+    dt16.Set<uint32_t>( "static.id", 0 );
+    dt16.Set<uint32_t>( "static.deviceId", 100 );
+    SetConfigCL2D( &CL2DFlexConfig, &dt16 );
+    QCNodeInit_t config16 = { dt16.Dump() };
+    ret = pCL2DFlex16->Initialize( config16 );
+    EXPECT_EQ( QC_STATUS_FAIL, ret );
+    reinterpret_cast<QC::Node::CL2DFlex *>( pCL2DFlex16 )->~CL2DFlex();
+}
+
+void Coverage2()
+{
+    QCStatus_e ret;
+    std::string errors;
+    BufferManager bufMgr( { "MANAGER", QC_NODE_TYPE_CL_2D_FLEX, 0 } );
+
+    CL2DFlex_Config_t CL2DFlexConfig;
+    CL2DFlexConfig.numOfInputs = 2;
+    for ( int i = 0; i < CL2DFlexConfig.numOfInputs; i++ )
+    {
+        CL2DFlexConfig.workModes[i] = CL2DFLEX_WORK_MODE_RESIZE_NEAREST;
+        CL2DFlexConfig.inputWidths[i] = 128;
+        CL2DFlexConfig.inputHeights[i] = 128;
+        CL2DFlexConfig.inputFormats[i] = QC_IMAGE_FORMAT_NV12;
+        CL2DFlexConfig.ROIs[i].x = 64;
+        CL2DFlexConfig.ROIs[i].y = 64;
+        CL2DFlexConfig.ROIs[i].width = 64;
+        CL2DFlexConfig.ROIs[i].height = 64;
+    }
+    CL2DFlexConfig.outputWidth = 64;
+    CL2DFlexConfig.outputHeight = 64;
+    CL2DFlexConfig.outputFormat = QC_IMAGE_FORMAT_RGB888;
+
+    ImageProps_t imgPropInputs[CL2DFlexConfig.numOfInputs];
+    for ( int i = 0; i < CL2DFlexConfig.numOfInputs; i++ )
+    {
+        imgPropInputs[i].batchSize = 1;
+        imgPropInputs[i].width = CL2DFlexConfig.inputWidths[i];
+        imgPropInputs[i].height = CL2DFlexConfig.inputHeights[i];
+        imgPropInputs[i].format = CL2DFlexConfig.inputFormats[i];
+        imgPropInputs[i].stride[0] = CL2DFlexConfig.inputWidths[i];
+        imgPropInputs[i].stride[1] = CL2DFlexConfig.inputWidths[i];
+        imgPropInputs[i].actualHeight[0] = CL2DFlexConfig.inputHeights[i];
+        imgPropInputs[i].actualHeight[1] = CL2DFlexConfig.inputHeights[i] / 2;
+        imgPropInputs[i].planeBufSize[0] = 0;
+        imgPropInputs[i].planeBufSize[1] = 0;
+        imgPropInputs[i].numPlanes = 2;
+    }
+
+    ImageProps_t imgPropOutput;
+    imgPropOutput.batchSize = CL2DFlexConfig.numOfInputs;
+    imgPropOutput.width = CL2DFlexConfig.outputWidth;
+    imgPropOutput.height = CL2DFlexConfig.outputHeight;
+    imgPropOutput.format = CL2DFlexConfig.outputFormat;
+    imgPropOutput.stride[0] = CL2DFlexConfig.outputWidth * 3;
+    imgPropOutput.actualHeight[0] = CL2DFlexConfig.outputHeight;
+    imgPropOutput.planeBufSize[0] = 0;
+    imgPropOutput.numPlanes = 1;
+
+    uint32_t globalIdx = 0;
+    NodeFrameDescriptor frameDesc( CL2DFlexConfig.numOfInputs + 1 );
+    std::vector<ImageDescriptor_t> inputs;
+    inputs.reserve( CL2DFlexConfig.numOfInputs );
+    for ( int i = 0; i < CL2DFlexConfig.numOfInputs; i++ )
+    {
+        ImageDescriptor_t imageDesc;
+        ret = bufMgr.Allocate( imgPropInputs[i], imageDesc );
+        EXPECT_EQ( QC_STATUS_OK, ret );
+        inputs.push_back( imageDesc );
+        ret = frameDesc.SetBuffer( globalIdx, inputs.back() );
+        EXPECT_EQ( QC_STATUS_OK, ret );
+        globalIdx++;
+    }
+    std::vector<ImageDescriptor_t> outputs;
+    outputs.reserve( 1 );
+    ImageDescriptor_t imageDesc;
+    ret = bufMgr.Allocate( imgPropOutput, imageDesc );
+    outputs.push_back( imageDesc );
+    ret = frameDesc.SetBuffer( globalIdx, outputs.back() );
+    EXPECT_EQ( QC_STATUS_OK, ret );
+    globalIdx++;
+
+    // output format not match
+    CL2DFlexConfig.outputFormat = QC_IMAGE_FORMAT_NV12;
+    QCNodeIfs *pCL2DFlex1 = new QC::Node::CL2DFlex();
+    DataTree dt1;
+    dt1.Set<std::string>( "static.name", "CL2D" );
+    dt1.Set<uint32_t>( "static.id", 0 );
+    SetConfigCL2D( &CL2DFlexConfig, &dt1 );
+    QCNodeInit_t config1 = { dt1.Dump() };
+    ret = pCL2DFlex1->Initialize( config1 );
+    ret = pCL2DFlex1->Start();
+    ret = pCL2DFlex1->ProcessFrameDescriptor( frameDesc );
+    ASSERT_EQ( QC_STATUS_BAD_ARGUMENTS, ret );
+    reinterpret_cast<QC::Node::CL2DFlex *>( pCL2DFlex1 )->~CL2DFlex();
+    CL2DFlexConfig.outputFormat = QC_IMAGE_FORMAT_RGB888;
+
+    // output height not match
+    CL2DFlexConfig.outputHeight = 32;
+    QCNodeIfs *pCL2DFlex2 = new QC::Node::CL2DFlex();
+    DataTree dt2;
+    dt2.Set<std::string>( "static.name", "CL2D" );
+    dt2.Set<uint32_t>( "static.id", 0 );
+    SetConfigCL2D( &CL2DFlexConfig, &dt2 );
+    QCNodeInit_t config2 = { dt2.Dump() };
+    ret = pCL2DFlex2->Initialize( config2 );
+    ret = pCL2DFlex2->Start();
+    ret = pCL2DFlex2->ProcessFrameDescriptor( frameDesc );
+    ASSERT_EQ( QC_STATUS_BAD_ARGUMENTS, ret );
+    reinterpret_cast<QC::Node::CL2DFlex *>( pCL2DFlex2 )->~CL2DFlex();
+    CL2DFlexConfig.outputHeight = 64;
+
+    // output width not match
+    CL2DFlexConfig.outputWidth = 32;
+    QCNodeIfs *pCL2DFlex3 = new QC::Node::CL2DFlex();
+    DataTree dt3;
+    dt3.Set<std::string>( "static.name", "CL2D" );
+    dt3.Set<uint32_t>( "static.id", 0 );
+    SetConfigCL2D( &CL2DFlexConfig, &dt3 );
+    QCNodeInit_t config3 = { dt3.Dump() };
+    ret = pCL2DFlex3->Initialize( config3 );
+    ret = pCL2DFlex3->Start();
+    ret = pCL2DFlex3->ProcessFrameDescriptor( frameDesc );
+    ASSERT_EQ( QC_STATUS_BAD_ARGUMENTS, ret );
+    reinterpret_cast<QC::Node::CL2DFlex *>( pCL2DFlex3 )->~CL2DFlex();
+    CL2DFlexConfig.outputWidth = 64;
+
+    // input format not match
+    CL2DFlexConfig.inputFormats[0] = QC_IMAGE_FORMAT_RGB888;
+    QCNodeIfs *pCL2DFlex4 = new QC::Node::CL2DFlex();
+    DataTree dt4;
+    dt4.Set<std::string>( "static.name", "CL2D" );
+    dt4.Set<uint32_t>( "static.id", 0 );
+    SetConfigCL2D( &CL2DFlexConfig, &dt4 );
+    QCNodeInit_t config4 = { dt4.Dump() };
+    ret = pCL2DFlex4->Initialize( config4 );
+    ret = pCL2DFlex4->Start();
+    ret = pCL2DFlex4->ProcessFrameDescriptor( frameDesc );
+    ASSERT_EQ( QC_STATUS_BAD_ARGUMENTS, ret );
+    reinterpret_cast<QC::Node::CL2DFlex *>( pCL2DFlex4 )->~CL2DFlex();
+    CL2DFlexConfig.inputFormats[0] = QC_IMAGE_FORMAT_NV12;
+
+    // input height not match
+    CL2DFlexConfig.inputHeights[0] = 64;
+    QCNodeIfs *pCL2DFlex5 = new QC::Node::CL2DFlex();
+    DataTree dt5;
+    dt5.Set<std::string>( "static.name", "CL2D" );
+    dt5.Set<uint32_t>( "static.id", 0 );
+    SetConfigCL2D( &CL2DFlexConfig, &dt5 );
+    QCNodeInit_t config5 = { dt5.Dump() };
+    ret = pCL2DFlex5->Initialize( config5 );
+    ret = pCL2DFlex5->Start();
+    ret = pCL2DFlex5->ProcessFrameDescriptor( frameDesc );
+    ASSERT_EQ( QC_STATUS_BAD_ARGUMENTS, ret );
+    reinterpret_cast<QC::Node::CL2DFlex *>( pCL2DFlex5 )->~CL2DFlex();
+    CL2DFlexConfig.inputHeights[0] = 128;
+
+    // input width not match
+    CL2DFlexConfig.inputWidths[0] = 64;
+    QCNodeIfs *pCL2DFlex6 = new QC::Node::CL2DFlex();
+    DataTree dt6;
+    dt6.Set<std::string>( "static.name", "CL2D" );
+    dt6.Set<uint32_t>( "static.id", 0 );
+    SetConfigCL2D( &CL2DFlexConfig, &dt6 );
+    QCNodeInit_t config6 = { dt6.Dump() };
+    ret = pCL2DFlex6->Initialize( config6 );
+    ret = pCL2DFlex6->Start();
+    ret = pCL2DFlex6->ProcessFrameDescriptor( frameDesc );
+    ASSERT_EQ( QC_STATUS_BAD_ARGUMENTS, ret );
+    reinterpret_cast<QC::Node::CL2DFlex *>( pCL2DFlex6 )->~CL2DFlex();
+    CL2DFlexConfig.inputWidths[0] = 128;
+
+    for ( auto imageDesc : inputs )
+    {
+        ret = bufMgr.Free( imageDesc );
+        EXPECT_EQ( QC_STATUS_OK, ret );
+    }
+
+    for ( auto imageDesc : outputs )
+    {
+        ret = bufMgr.Free( imageDesc );
+        EXPECT_EQ( QC_STATUS_OK, ret );
+    }
+}
+
+void Coverage3()
+{
+    QCStatus_e ret;
+    BufferManager bufMgr( { "MANAGER", QC_NODE_TYPE_CL_2D_FLEX, 0 } );
+
+    OpenclSrv OpenclSrvObj;
+    char pName[20] = "CL2DFlex";
+
+    ret = OpenclSrvObj.Init( pName, LOGGER_LEVEL_ERROR, OPENCLIFACE_PERF_NORMAL,
+                             100 );   // init without invalid device id
+    EXPECT_EQ( QC_STATUS_BAD_ARGUMENTS, ret );
+
+    ret = OpenclSrvObj.Init( pName, LOGGER_LEVEL_ERROR, (OpenclIfcae_Perf_e) 100,
+                             0 );   // init without invalid performance level
+    EXPECT_EQ( QC_STATUS_BAD_ARGUMENTS, ret );
+
+    ret = OpenclSrvObj.Init( pName, LOGGER_LEVEL_MAX,
+                             OPENCLIFACE_PERF_LOW );   // success init OpenclSrv with low priority
+    EXPECT_EQ( QC_STATUS_OK, ret );
+
+    ret = OpenclSrvObj.LoadFromSource( nullptr );   // create program with null source
+    EXPECT_EQ( QC_STATUS_FAIL, ret );
+
+    cl_kernel kernel;
+    ret = OpenclSrvObj.CreateKernel( &kernel,
+                                     "" );   // create kernel with null name
+    EXPECT_EQ( QC_STATUS_FAIL, ret );
+
+    ret = OpenclSrvObj.LoadFromBinary(
+            (const unsigned char *) "" );   // create program with null binary
+    EXPECT_EQ( QC_STATUS_FAIL, ret );
+
+    ret = OpenclSrvObj.LoadFromSource( s_pSourceInvalid );   // create program with null source
+    EXPECT_EQ( QC_STATUS_FAIL, ret );
+
+    ret = OpenclSrvObj.RegImage(
+            nullptr, 0, (cl_mem *) nullptr, (cl_image_format *) nullptr,
+            (cl_image_desc *) nullptr );   // register image with null host buffer
+    EXPECT_EQ( QC_STATUS_NULL_PTR, ret );
+
+    ret = OpenclSrvObj.RegPlane(
+            nullptr, (cl_mem *) nullptr, (cl_image_format *) nullptr,
+            (cl_image_desc *) nullptr );   // register plane with null host buffer
+    EXPECT_EQ( QC_STATUS_NULL_PTR, ret );
+
+    QCBufferDescriptorBase_t buffer;
+    cl_mem clMem;
+    ret = OpenclSrvObj.RegBufferDesc( buffer,
+                                      clMem );   // register buffer descriptor with null host buffer
+    EXPECT_EQ( QC_STATUS_NULL_PTR, ret );
+
+    ret = OpenclSrvObj.DeregImage( nullptr );   // deregister image with null host buffer
+    EXPECT_EQ( QC_STATUS_NULL_PTR, ret );
+
+    ret = OpenclSrvObj.DeregPlane(
+            nullptr, (cl_image_format *) nullptr );   // deregister plane with null host buffer
+    EXPECT_EQ( QC_STATUS_NULL_PTR, ret );
+
+    ret = OpenclSrvObj.DeregBufferDesc(
+            buffer );   // deregister buffer descriptor with null host buffer
+    EXPECT_EQ( QC_STATUS_NULL_PTR, ret );
+
+    ImageProps_t imgProp;
+    imgProp.batchSize = 2;
+    imgProp.width = 64;
+    imgProp.height = 64;
+    imgProp.format = QC_IMAGE_FORMAT_RGB888;
+    imgProp.stride[0] = imgProp.width * 3;
+    imgProp.actualHeight[0] = imgProp.height;
+    imgProp.planeBufSize[0] = 0;
+    imgProp.numPlanes = 1;
+    ImageDescriptor_t imageDesc;
+    ret = bufMgr.Allocate( imgProp, imageDesc );
+    EXPECT_EQ( QC_STATUS_OK, ret );
+
+    cl_mem bufferCL;
+    ret = OpenclSrvObj.RegBufferDesc( imageDesc, bufferCL );
+    EXPECT_EQ( QC_STATUS_OK, ret );
+    ret = OpenclSrvObj.RegBufferDesc( imageDesc, bufferCL );   // register bufferdesc twice
+    EXPECT_EQ( QC_STATUS_OK, ret );
+
+    ret = OpenclSrvObj.DeregBufferDesc( imageDesc );
+    EXPECT_EQ( QC_STATUS_OK, ret );
+    ret = OpenclSrvObj.DeregBufferDesc( imageDesc );   // dereg bufferdesc twice
+    EXPECT_EQ( QC_STATUS_OK, ret );
+
+    ret = OpenclSrvObj.RegBufferDesc( imageDesc, bufferCL );
+    EXPECT_EQ( QC_STATUS_OK, ret );
+
+    cl_mem bufferCLImage;
+    cl_image_format inputImageFormat = { 0 };
+    cl_image_desc inputImageDesc = { 0 };
+    inputImageDesc.image_type = CL_MEM_OBJECT_IMAGE2D;
+    inputImageDesc.image_width = 64;
+    inputImageDesc.image_height = 64;
+    ret = OpenclSrvObj.RegImage( imageDesc.pBuf, 0, &bufferCLImage, &inputImageFormat,
+                                 &inputImageDesc );
+    EXPECT_EQ( QC_STATUS_FAIL, ret );   // register bufferimage with null format
+
+    inputImageFormat.image_channel_order = CL_QCOM_COMPRESSED_NV12;
+    inputImageFormat.image_channel_data_type = CL_UNORM_INT8;
+    ret = OpenclSrvObj.RegImage( imageDesc.pBuf, imageDesc.dmaHandle, &bufferCLImage,
+                                 &inputImageFormat, &inputImageDesc );
+    EXPECT_EQ( QC_STATUS_OK, ret );
+    ret = OpenclSrvObj.RegImage( imageDesc.pBuf, imageDesc.dmaHandle, &bufferCLImage,
+                                 &inputImageFormat,
+                                 &inputImageDesc );   // register bufferimage twice
+    EXPECT_EQ( QC_STATUS_OK, ret );
+
+    cl_mem bufferCLPlane;
+    cl_image_format inputYFormat = { 0 };
+    cl_image_desc inputYDesc = { 0 };
+    inputYDesc.image_type = CL_MEM_OBJECT_IMAGE2D;
+    inputYDesc.image_width = 64;
+    inputYDesc.image_height = 64;
+    inputYDesc.mem_object = bufferCLImage;
+    ret = OpenclSrvObj.RegPlane( imageDesc.pBuf, &bufferCLPlane, &inputYFormat, &inputYDesc );
+    EXPECT_EQ( QC_STATUS_FAIL, ret );   // register bufferplane with null format
+
+    inputYFormat.image_channel_order = CL_QCOM_COMPRESSED_NV12_Y;
+    inputYFormat.image_channel_data_type = CL_UNORM_INT8;
+    ret = OpenclSrvObj.RegPlane( imageDesc.pBuf, &bufferCLPlane, &inputYFormat, &inputYDesc );
+    EXPECT_EQ( QC_STATUS_OK, ret );
+    ret = OpenclSrvObj.RegPlane( imageDesc.pBuf, &bufferCLPlane, &inputYFormat,
+                                 &inputYDesc );   // register bufferplane twice
+    EXPECT_EQ( QC_STATUS_OK, ret );
+
+    ret = OpenclSrvObj.DeregImage( imageDesc.pBuf );
+    EXPECT_EQ( QC_STATUS_OK, ret );
+    ret = OpenclSrvObj.DeregImage( imageDesc.pBuf );   // dereg image twice
+    EXPECT_EQ( QC_STATUS_OK, ret );
+
+    ret = OpenclSrvObj.DeregPlane( imageDesc.pBuf, &inputYFormat );
+    EXPECT_EQ( QC_STATUS_OK, ret );
+    ret = OpenclSrvObj.DeregPlane( imageDesc.pBuf, &inputYFormat );   // dereg plane twice
+    EXPECT_EQ( QC_STATUS_OK, ret );
+
+    OpenclIfcae_Arg_t OpenclArg;
+    OpenclArg.pArg = nullptr;
+    OpenclArg.argSize = 0;
+    OpenclIface_WorkParams_t OpenclWorkParams;
+    ret = OpenclSrvObj.Execute( &kernel, &OpenclArg, 1,
+                                &OpenclWorkParams );   // execute with null args
+    EXPECT_EQ( QC_STATUS_FAIL, ret );
+
+    OpenclArg.pArg = (void *) &bufferCL;
+    OpenclArg.argSize = sizeof( bufferCL );
+    OpenclWorkParams.workDim = 0;
+    OpenclWorkParams.pGlobalWorkSize = nullptr;
+    OpenclWorkParams.pGlobalWorkOffset = nullptr;
+    OpenclWorkParams.pLocalWorkSize = nullptr;
+    ret = OpenclSrvObj.Execute( &kernel, &OpenclArg, 1,
+                                &OpenclWorkParams );   // execute with null work params
+    EXPECT_EQ( QC_STATUS_FAIL, ret );
+
+    OpenclArg.pArg = (void *) &bufferCL;
+    OpenclArg.argSize = sizeof( bufferCL );
+    OpenclWorkParams.workDim = 2;
+    size_t globalWorkSize[2] = { 64, 64 };
+    OpenclWorkParams.pGlobalWorkSize = globalWorkSize;
+    size_t globalWorkOffset[2] = { 0, 0 };
+    OpenclWorkParams.pGlobalWorkOffset = globalWorkOffset;
+    OpenclWorkParams.pLocalWorkSize = NULL;
+    ret = OpenclSrvObj.Execute( &kernel, &OpenclArg, 0,
+                                &OpenclWorkParams );   // execute with invalid kernel
+    EXPECT_EQ( QC_STATUS_FAIL, ret );
+
+    ret = OpenclSrvObj.LoadFromSource( s_pSourceCL2DFlex );
+    EXPECT_EQ( QC_STATUS_OK, ret );
+    ret = OpenclSrvObj.CreateKernel( &kernel, "RemapNV12ToRGB" );
+    EXPECT_EQ( QC_STATUS_OK, ret );
+    ret = OpenclSrvObj.CreateKernel( &kernel, "RemapNV12ToRGB" );   // create kernel twice
+    EXPECT_EQ( QC_STATUS_OK, ret );
+
+    ret = OpenclSrvObj.Deinit();   // success to deinit
+    EXPECT_EQ( QC_STATUS_OK, ret );
+
+    ret = OpenclSrvObj.Deinit();   // deinit without init
+    EXPECT_EQ( QC_STATUS_BAD_STATE, ret );
+
+    ret = OpenclSrvObj.LoadFromSource( nullptr );   // create program without init
+    EXPECT_EQ( QC_STATUS_BAD_STATE, ret );
+
+    ret = OpenclSrvObj.CreateKernel( &kernel,
+                                     "" );   // create kernel without init
+    EXPECT_EQ( QC_STATUS_BAD_STATE, ret );
+
+    ret = OpenclSrvObj.LoadFromBinary(
+            (const unsigned char *) "" );   // create program without init
+    EXPECT_EQ( QC_STATUS_BAD_STATE, ret );
+
+    ret = OpenclSrvObj.RegImage( nullptr, 0, (cl_mem *) nullptr, (cl_image_format *) nullptr,
+                                 (cl_image_desc *) nullptr );   // register image without init
+    EXPECT_EQ( QC_STATUS_BAD_STATE, ret );
+
+    ret = OpenclSrvObj.RegPlane( nullptr, (cl_mem *) nullptr, (cl_image_format *) nullptr,
+                                 (cl_image_desc *) nullptr );   // register plane without init
+    EXPECT_EQ( QC_STATUS_BAD_STATE, ret );
+
+    ret = OpenclSrvObj.RegBufferDesc( buffer,
+                                      clMem );   // register buffer descriptor without init
+    EXPECT_EQ( QC_STATUS_BAD_STATE, ret );
+
+    ret = OpenclSrvObj.DeregImage( nullptr );   // deregister image without init
+    EXPECT_EQ( QC_STATUS_BAD_STATE, ret );
+
+    ret = OpenclSrvObj.DeregPlane( nullptr,
+                                   (cl_image_format *) nullptr );   // deregister plane without init
+    EXPECT_EQ( QC_STATUS_BAD_STATE, ret );
+
+    ret = OpenclSrvObj.DeregBufferDesc( buffer );   // deregister buffer descriptor without init
+    EXPECT_EQ( QC_STATUS_BAD_STATE, ret );
+
+    ret = OpenclSrvObj.Execute( &kernel, &OpenclArg, 1,
+                                &OpenclWorkParams );   // execute without init
+    EXPECT_EQ( QC_STATUS_BAD_STATE, ret );
+
+    ret = OpenclSrvObj.Init( pName, LOGGER_LEVEL_MAX,
+                             OPENCLIFACE_PERF_LOW );   // success init OpenclSrv
+    EXPECT_EQ( QC_STATUS_OK, ret );
+    ret = OpenclSrvObj.Init( pName, LOGGER_LEVEL_MAX,
+                             OPENCLIFACE_PERF_LOW );   // init twice
+    EXPECT_EQ( QC_STATUS_BAD_STATE, ret );
+
+    (void) bufMgr.Free( imageDesc );
+}
+
+void Coverage4()
+{
+    QCStatus_e ret;
+    std::string errors;
+    BufferManager bufMgr( { "MANAGER", QC_NODE_TYPE_CL_2D_FLEX, 0 } );
+
+    CL2DFlex_Config_t CL2DFlexConfig;
+    CL2DFlexConfig.numOfInputs = 1;
+    for ( int i = 0; i < CL2DFlexConfig.numOfInputs; i++ )
+    {
+        CL2DFlexConfig.workModes[i] = CL2DFLEX_WORK_MODE_RESIZE_NEAREST;
+        CL2DFlexConfig.inputWidths[i] = 128;
+        CL2DFlexConfig.inputHeights[i] = 128;
+        CL2DFlexConfig.inputFormats[i] = QC_IMAGE_FORMAT_RGB888;
+        CL2DFlexConfig.ROIs[i].x = 64;
+        CL2DFlexConfig.ROIs[i].y = 64;
+        CL2DFlexConfig.ROIs[i].width = 64;
+        CL2DFlexConfig.ROIs[i].height = 64;
+    }
+    CL2DFlexConfig.outputWidth = 64;
+    CL2DFlexConfig.outputHeight = 64;
+    CL2DFlexConfig.outputFormat = QC_IMAGE_FORMAT_UYVY;
+
+    CL2DPipelineConvert *pCL2DPipelineConvert = nullptr;
+    pCL2DPipelineConvert = new CL2DPipelineConvert();
+    CL2DPipelineResize *pCL2DPipelineResize = nullptr;
+    pCL2DPipelineResize = new CL2DPipelineResize();
+    CL2DPipelineLetterbox *pCL2DPipelineLetterbox = nullptr;
+    pCL2DPipelineLetterbox = new CL2DPipelineLetterbox();
+    CL2DPipelineConvertUBWC *pCL2DPipelineConvertUBWC = nullptr;
+    pCL2DPipelineConvertUBWC = new CL2DPipelineConvertUBWC();
+    CL2DPipelineLetterboxMultiple *pCL2DPipelineLetterboxMultiple = nullptr;
+    pCL2DPipelineLetterboxMultiple = new CL2DPipelineLetterboxMultiple();
+    CL2DPipelineResizeMultiple *pCL2DPipelineResizeMultiple = nullptr;
+    pCL2DPipelineResizeMultiple = new CL2DPipelineResizeMultiple();
+    CL2DPipelineRemap *pCL2DPipelineRemap = nullptr;
+    pCL2DPipelineRemap = new CL2DPipelineRemap();
+
+    pCL2DPipelineConvert->InitLogger( "Convert", LOGGER_LEVEL_MAX );   // invalid logger init
+    pCL2DPipelineConvert->DeinitLogger();                              // invalid logger deinit
+
+    OpenclSrv openclSrvObj;
+    cl_kernel kernel;
+    ret = openclSrvObj.Init( "Opencl", LOGGER_LEVEL_ERROR, OPENCLIFACE_PERF_NORMAL, 0 );
+    EXPECT_EQ( QC_STATUS_OK, ret );
+    ret = openclSrvObj.LoadFromSource( s_pSourceCL2DFlex );
+    EXPECT_EQ( QC_STATUS_OK, ret );
+    std::vector<std::reference_wrapper<QCBufferDescriptorBase>> buffers;
+
+    // not support pipeline
+    ret = pCL2DPipelineConvert->Init( 0, &kernel, &CL2DFlexConfig, &openclSrvObj, buffers );
+    EXPECT_EQ( QC_STATUS_BAD_ARGUMENTS, ret );
+    ret = pCL2DPipelineResize->Init( 0, &kernel, &CL2DFlexConfig, &openclSrvObj, buffers );
+    EXPECT_EQ( QC_STATUS_BAD_ARGUMENTS, ret );
+    ret = pCL2DPipelineLetterbox->Init( 0, &kernel, &CL2DFlexConfig, &openclSrvObj, buffers );
+    EXPECT_EQ( QC_STATUS_BAD_ARGUMENTS, ret );
+    ret = pCL2DPipelineConvertUBWC->Init( 0, &kernel, &CL2DFlexConfig, &openclSrvObj, buffers );
+    EXPECT_EQ( QC_STATUS_BAD_ARGUMENTS, ret );
+    ret = pCL2DPipelineLetterboxMultiple->Init( 0, &kernel, &CL2DFlexConfig, &openclSrvObj,
+                                                buffers );
+    EXPECT_EQ( QC_STATUS_BAD_ARGUMENTS, ret );
+    ret = pCL2DPipelineResizeMultiple->Init( 0, &kernel, &CL2DFlexConfig, &openclSrvObj, buffers );
+    EXPECT_EQ( QC_STATUS_BAD_ARGUMENTS, ret );
+    ret = pCL2DPipelineRemap->Init( 0, &kernel, &CL2DFlexConfig, &openclSrvObj, buffers );
+    EXPECT_EQ( QC_STATUS_BAD_ARGUMENTS, ret );
+    CL2DFlexConfig.inputFormats[0] = QC_IMAGE_FORMAT_NV12;
+    CL2DFlexConfig.outputFormat = QC_IMAGE_FORMAT_RGB888;
+    CL2DFlexConfig.outputWidth = 128;
+    CL2DFlexConfig.outputHeight = 128;
+    CL2DFlexConfig.numOfInputs = 2;
+    CL2DFlexConfig.inputFormats[1] = QC_IMAGE_FORMAT_NV12;
+    ret = pCL2DPipelineConvert->Init( 0, &kernel, &CL2DFlexConfig, &openclSrvObj, buffers );
+    EXPECT_EQ( QC_STATUS_BAD_ARGUMENTS, ret );
+    ret = pCL2DPipelineConvertUBWC->Init( 0, &kernel, &CL2DFlexConfig, &openclSrvObj, buffers );
+    EXPECT_EQ( QC_STATUS_BAD_ARGUMENTS, ret );
+    ret = pCL2DPipelineLetterboxMultiple->Init( 0, &kernel, &CL2DFlexConfig, &openclSrvObj,
+                                                buffers );
+    EXPECT_EQ( QC_STATUS_BAD_ARGUMENTS, ret );
+    ret = pCL2DPipelineResizeMultiple->Init( 0, &kernel, &CL2DFlexConfig, &openclSrvObj, buffers );
+    EXPECT_EQ( QC_STATUS_BAD_ARGUMENTS, ret );
+    CL2DFlexConfig.outputWidth = 64;
+    CL2DFlexConfig.outputHeight = 64;
+    CL2DFlexConfig.numOfInputs = 1;
+
+    ImageProps_t imgPropInputs[CL2DFlexConfig.numOfInputs];
+    for ( int i = 0; i < CL2DFlexConfig.numOfInputs; i++ )
+    {
+        imgPropInputs[i].batchSize = 1;
+        imgPropInputs[i].width = CL2DFlexConfig.inputWidths[i];
+        imgPropInputs[i].height = CL2DFlexConfig.inputHeights[i];
+        imgPropInputs[i].format = CL2DFlexConfig.inputFormats[i];
+        imgPropInputs[i].stride[0] = CL2DFlexConfig.inputWidths[i];
+        imgPropInputs[i].stride[1] = CL2DFlexConfig.inputWidths[i];
+        imgPropInputs[i].actualHeight[0] = CL2DFlexConfig.inputHeights[i];
+        imgPropInputs[i].actualHeight[1] = CL2DFlexConfig.inputHeights[i] / 2;
+        imgPropInputs[i].planeBufSize[0] = 0;
+        imgPropInputs[i].planeBufSize[1] = 0;
+        imgPropInputs[i].numPlanes = 2;
+    }
+    ImageProps_t imgPropOutput;
+    imgPropOutput.batchSize = CL2DFlexConfig.numOfInputs;
+    imgPropOutput.width = CL2DFlexConfig.outputWidth;
+    imgPropOutput.height = CL2DFlexConfig.outputHeight;
+    imgPropOutput.format = CL2DFlexConfig.outputFormat;
+    imgPropOutput.stride[0] = CL2DFlexConfig.outputWidth * 3;
+    imgPropOutput.actualHeight[0] = CL2DFlexConfig.outputHeight;
+    imgPropOutput.planeBufSize[0] = 0;
+    imgPropOutput.numPlanes = 1;
+    ImageDescriptor_t imageDescInput;
+    ret = bufMgr.Allocate( imgPropInputs[0], imageDescInput );
+    EXPECT_EQ( QC_STATUS_OK, ret );
+    ImageDescriptor_t imageDescOutput;
+    ret = bufMgr.Allocate( imgPropOutput, imageDescOutput );
+    EXPECT_EQ( QC_STATUS_OK, ret );
+
+    // invalid pipeline
+    ret = pCL2DPipelineConvert->Execute( imageDescInput, imageDescOutput );
+    EXPECT_EQ( QC_STATUS_BAD_ARGUMENTS, ret );
+    ret = pCL2DPipelineResize->Execute( imageDescInput, imageDescOutput );
+    EXPECT_EQ( QC_STATUS_BAD_ARGUMENTS, ret );
+    ret = pCL2DPipelineLetterbox->Execute( imageDescInput, imageDescOutput );
+    EXPECT_EQ( QC_STATUS_BAD_ARGUMENTS, ret );
+    ret = pCL2DPipelineConvertUBWC->Execute( imageDescInput, imageDescOutput );
+    EXPECT_EQ( QC_STATUS_BAD_ARGUMENTS, ret );
+    ret = pCL2DPipelineLetterboxMultiple->Execute( imageDescInput, imageDescOutput );
+    EXPECT_EQ( QC_STATUS_BAD_ARGUMENTS, ret );
+    ret = pCL2DPipelineResizeMultiple->Execute( imageDescInput, imageDescOutput );
+    EXPECT_EQ( QC_STATUS_BAD_ARGUMENTS, ret );
+    ret = pCL2DPipelineRemap->Execute( imageDescInput, imageDescOutput );
+    EXPECT_EQ( QC_STATUS_BAD_ARGUMENTS, ret );
+
+    // null input or output pointer
+    ImageDescriptor_t imageDescNull;
+    ret = pCL2DPipelineConvert->Execute( imageDescInput, imageDescNull );
+    EXPECT_EQ( QC_STATUS_NULL_PTR, ret );
+    ret = pCL2DPipelineResize->Execute( imageDescInput, imageDescNull );
+    EXPECT_EQ( QC_STATUS_NULL_PTR, ret );
+    ret = pCL2DPipelineLetterbox->Execute( imageDescInput, imageDescNull );
+    EXPECT_EQ( QC_STATUS_NULL_PTR, ret );
+    ret = pCL2DPipelineLetterboxMultiple->Execute( imageDescInput, imageDescNull );
+    EXPECT_EQ( QC_STATUS_NULL_PTR, ret );
+    ret = pCL2DPipelineResizeMultiple->Execute( imageDescInput, imageDescNull );
+    EXPECT_EQ( QC_STATUS_NULL_PTR, ret );
+    ret = pCL2DPipelineRemap->Execute( imageDescInput, imageDescNull );
+    EXPECT_EQ( QC_STATUS_NULL_PTR, ret );
+    ret = pCL2DPipelineConvert->Execute( imageDescNull, imageDescOutput );
+    EXPECT_EQ( QC_STATUS_NULL_PTR, ret );
+    ret = pCL2DPipelineResize->Execute( imageDescNull, imageDescOutput );
+    EXPECT_EQ( QC_STATUS_NULL_PTR, ret );
+    ret = pCL2DPipelineLetterbox->Execute( imageDescNull, imageDescOutput );
+    EXPECT_EQ( QC_STATUS_NULL_PTR, ret );
+    ret = pCL2DPipelineLetterboxMultiple->Execute( imageDescNull, imageDescOutput );
+    EXPECT_EQ( QC_STATUS_NULL_PTR, ret );
+    ret = pCL2DPipelineResizeMultiple->Execute( imageDescNull, imageDescOutput );
+    EXPECT_EQ( QC_STATUS_NULL_PTR, ret );
+    ret = pCL2DPipelineRemap->Execute( imageDescNull, imageDescOutput );
+    EXPECT_EQ( QC_STATUS_NULL_PTR, ret );
+
+    // fail to execute convert pipeline
+    CL2DFlexConfig.inputFormats[0] = QC_IMAGE_FORMAT_NV12;
+    CL2DFlexConfig.outputFormat = QC_IMAGE_FORMAT_RGB888;
+    ret = pCL2DPipelineConvert->Init( 0, &kernel, &CL2DFlexConfig, &openclSrvObj, buffers );
+    EXPECT_EQ( QC_STATUS_OK, ret );
+    kernel = nullptr;
+    ret = pCL2DPipelineConvert->Execute( imageDescInput, imageDescOutput );
+    EXPECT_EQ( QC_STATUS_FAIL, ret );
+    CL2DFlexConfig.inputFormats[0] = QC_IMAGE_FORMAT_UYVY;
+    CL2DFlexConfig.outputFormat = QC_IMAGE_FORMAT_RGB888;
+    ret = pCL2DPipelineConvert->Init( 0, &kernel, &CL2DFlexConfig, &openclSrvObj, buffers );
+    EXPECT_EQ( QC_STATUS_OK, ret );
+    kernel = nullptr;
+    ret = pCL2DPipelineConvert->Execute( imageDescInput, imageDescOutput );
+    EXPECT_EQ( QC_STATUS_FAIL, ret );
+    CL2DFlexConfig.inputFormats[0] = QC_IMAGE_FORMAT_UYVY;
+    CL2DFlexConfig.outputFormat = QC_IMAGE_FORMAT_NV12;
+    ret = pCL2DPipelineConvert->Init( 0, &kernel, &CL2DFlexConfig, &openclSrvObj, buffers );
+    EXPECT_EQ( QC_STATUS_OK, ret );
+    kernel = nullptr;
+    ret = pCL2DPipelineConvert->Execute( imageDescInput, imageDescOutput );
+    EXPECT_EQ( QC_STATUS_FAIL, ret );
+
+    // fail to execute resize pipeline
+    CL2DFlexConfig.inputFormats[0] = QC_IMAGE_FORMAT_NV12;
+    CL2DFlexConfig.outputFormat = QC_IMAGE_FORMAT_RGB888;
+    ret = pCL2DPipelineResize->Init( 0, &kernel, &CL2DFlexConfig, &openclSrvObj, buffers );
+    EXPECT_EQ( QC_STATUS_OK, ret );
+    kernel = nullptr;
+    ret = pCL2DPipelineResize->Execute( imageDescInput, imageDescOutput );
+    EXPECT_EQ( QC_STATUS_FAIL, ret );
+    CL2DFlexConfig.inputFormats[0] = QC_IMAGE_FORMAT_UYVY;
+    CL2DFlexConfig.outputFormat = QC_IMAGE_FORMAT_RGB888;
+    ret = pCL2DPipelineResize->Init( 0, &kernel, &CL2DFlexConfig, &openclSrvObj, buffers );
+    EXPECT_EQ( QC_STATUS_OK, ret );
+    kernel = nullptr;
+    ret = pCL2DPipelineResize->Execute( imageDescInput, imageDescOutput );
+    EXPECT_EQ( QC_STATUS_FAIL, ret );
+    CL2DFlexConfig.inputFormats[0] = QC_IMAGE_FORMAT_UYVY;
+    CL2DFlexConfig.outputFormat = QC_IMAGE_FORMAT_NV12;
+    ret = pCL2DPipelineResize->Init( 0, &kernel, &CL2DFlexConfig, &openclSrvObj, buffers );
+    EXPECT_EQ( QC_STATUS_OK, ret );
+    kernel = nullptr;
+    ret = pCL2DPipelineResize->Execute( imageDescInput, imageDescOutput );
+    EXPECT_EQ( QC_STATUS_FAIL, ret );
+    CL2DFlexConfig.inputFormats[0] = QC_IMAGE_FORMAT_RGB888;
+    CL2DFlexConfig.outputFormat = QC_IMAGE_FORMAT_RGB888;
+    ret = pCL2DPipelineResize->Init( 0, &kernel, &CL2DFlexConfig, &openclSrvObj, buffers );
+    EXPECT_EQ( QC_STATUS_OK, ret );
+    kernel = nullptr;
+    ret = pCL2DPipelineResize->Execute( imageDescInput, imageDescOutput );
+    EXPECT_EQ( QC_STATUS_FAIL, ret );
+    CL2DFlexConfig.inputFormats[0] = QC_IMAGE_FORMAT_NV12;
+    CL2DFlexConfig.outputFormat = QC_IMAGE_FORMAT_NV12;
+    ret = pCL2DPipelineResize->Init( 0, &kernel, &CL2DFlexConfig, &openclSrvObj, buffers );
+    EXPECT_EQ( QC_STATUS_OK, ret );
+    kernel = nullptr;
+    ret = pCL2DPipelineResize->Execute( imageDescInput, imageDescOutput );
+    EXPECT_EQ( QC_STATUS_FAIL, ret );
+
+    // fail to execute letterbox pipeline
+    CL2DFlexConfig.inputFormats[0] = QC_IMAGE_FORMAT_NV12;
+    CL2DFlexConfig.outputFormat = QC_IMAGE_FORMAT_RGB888;
+    ret = pCL2DPipelineLetterbox->Init( 0, &kernel, &CL2DFlexConfig, &openclSrvObj, buffers );
+    EXPECT_EQ( QC_STATUS_OK, ret );
+    kernel = nullptr;
+    ret = pCL2DPipelineLetterbox->Execute( imageDescInput, imageDescOutput );
+    EXPECT_EQ( QC_STATUS_FAIL, ret );
+
+    // fail for remap pipeline
+    CL2DFlexConfig.inputFormats[0] = QC_IMAGE_FORMAT_NV12;
+    CL2DFlexConfig.outputFormat = QC_IMAGE_FORMAT_RGB888;
+    TensorDescriptor_t mapBufferDesc;
+    TensorProps_t mapProp = { QC_TENSOR_TYPE_FLOAT_32,
+                              { CL2DFlexConfig.outputHeight * CL2DFlexConfig.outputWidth } };
+    ret = bufMgr.Allocate( mapProp, mapBufferDesc );
+    ASSERT_EQ( QC_STATUS_OK, ret );
+    buffers.push_back( mapBufferDesc );
+    CL2DFlexConfig.remapTable[0].mapXBufferId = 0;
+    CL2DFlexConfig.remapTable[0].mapYBufferId = 0;
+    ret = pCL2DPipelineRemap->Init( 0, &kernel, &CL2DFlexConfig, &openclSrvObj, buffers );
+    EXPECT_EQ( QC_STATUS_OK, ret );
+    kernel = nullptr;
+    ret = pCL2DPipelineRemap->Execute( imageDescInput, imageDescOutput );
+    EXPECT_EQ( QC_STATUS_FAIL, ret );
+    CL2DFlexConfig.outputFormat = QC_IMAGE_FORMAT_BGR888;
+    ret = pCL2DPipelineRemap->Init( 0, &kernel, &CL2DFlexConfig, &openclSrvObj, buffers );
+    EXPECT_EQ( QC_STATUS_OK, ret );
+    ret = pCL2DPipelineRemap->Execute( imageDescInput, imageDescOutput );
+    EXPECT_EQ( QC_STATUS_OK, ret );
+    kernel = nullptr;
+    ret = pCL2DPipelineRemap->Execute( imageDescInput, imageDescOutput );
+    EXPECT_EQ( QC_STATUS_FAIL, ret );
+
+    (void) openclSrvObj.Deinit();
+    (void) bufMgr.Free( imageDescInput );
+    (void) bufMgr.Free( imageDescOutput );
+    (void) bufMgr.Free( mapBufferDesc );
+    delete pCL2DPipelineConvert;
+    delete pCL2DPipelineResize;
+    delete pCL2DPipelineLetterbox;
+    delete pCL2DPipelineConvertUBWC;
+    delete pCL2DPipelineLetterboxMultiple;
+    delete pCL2DPipelineResizeMultiple;
+    delete pCL2DPipelineRemap;
+}
+
 TEST( NodeCL2D, Sanity )
 {
     Sanity();
 }
+
+#if defined( ENABLE_COVERAGE_TEST )
+TEST( NodeCL2D, Coverage )
+{
+    printf( "\ncoverage test 1\n" );
+    Coverage1();
+    printf( "\ncoverage test 2\n" );
+    Coverage2();
+    printf( "\ncoverage test 3\n" );
+    Coverage3();
+    printf( "\ncoverage test 4\n" );
+    Coverage4();
+}
+#endif
 
 // md5 of 0.nv12 is a1591f4b8c196a47628f0ef6bc3a721c
 // md5 of 0.uyvy is 5b1ae2203a9d97aeafe65e997f3beebc
@@ -631,6 +1777,14 @@ TEST( NodeCL2D, UBWCAccuracy )
     Accuracy( 1, CL2DFLEX_WORK_MODE_CONVERT_UBWC, QC_IMAGE_FORMAT_NV12_UBWC, QC_IMAGE_FORMAT_NV12,
               3840, 2160, 3840, 2160, "./data/test/CL2DFlex/0.ubwc",
               "./data/test/CL2DFlex/golden8.nv12", false );
+}
+
+TEST( NodeCL2D, MultipleROI )
+{
+    MultipleROI( CL2DFLEX_WORK_MODE_LETTERBOX_NEAREST_MULTIPLE, QC_IMAGE_FORMAT_NV12,
+                 QC_IMAGE_FORMAT_RGB888, 1920, 1024, 1152, 800, "./data/test/CL2DFlex/0.nv12" );
+    MultipleROI( CL2DFLEX_WORK_MODE_RESIZE_NEAREST_MULTIPLE, QC_IMAGE_FORMAT_NV12,
+                 QC_IMAGE_FORMAT_RGB888, 1920, 1024, 1152, 800, "./data/test/CL2DFlex/0.nv12" );
 }
 
 #ifndef GTEST_QCNODE

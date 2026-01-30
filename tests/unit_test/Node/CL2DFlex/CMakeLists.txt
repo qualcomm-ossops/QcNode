@@ -2,7 +2,8 @@ if( NOT TARGET QCNodeCL2DFlex )
     return()
 endif()
 set( HEADERS_DIR ${PROJECT_SOURCE_DIR}/include
-                 ${PROJECT_SOURCE_DIR}/tests/utils 
+                 ${PROJECT_SOURCE_DIR}/tests/utils
+                 ${PROJECT_SOURCE_DIR}/source/Node/CL2DFlex 
 )
 add_executable( gtest_NodeCL2DFlex gtest_NodeCL2DFlex.cpp )
 target_include_directories( gtest_NodeCL2DFlex PUBLIC ${HEADERS_DIR})

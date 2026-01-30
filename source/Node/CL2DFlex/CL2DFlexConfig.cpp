@@ -70,9 +70,6 @@ QCStatus_e CL2DFlexConfig::VerifyStaticConfig( DataTree &dt, std::string &errors
                     status = QC_STATUS_BAD_ARGUMENTS;
                 }
             }
-        }
-        if ( ( "letterbox_nearest_multiple" == mode ) || ( "resize_nearest_multiple" == mode ) )
-        {
             if ( !dt.Exists( "ROIsBufferId" ) )
             {
                 errors += "multiple work mode without ROIs buffer ID, ";
@@ -215,10 +212,6 @@ QCStatus_e CL2DFlexConfig::ParseStaticConfig( DataTree &dt, std::string &errors 
                 config.params.remapTable[inputId].mapYBufferId =
                         idt.Get<uint32_t>( "mapYBufferId", UINT32_MAX );
             }
-            else
-            {
-                config.params.workModes[inputId] = CL2DFLEX_WORK_MODE_RESIZE_NEAREST;
-            }
 
             inputId++;
         }
@@ -263,6 +256,7 @@ QCStatus_e CL2DFlexConfig::VerifyAndSet( const std::string config, std::string &
         }
         else
         {
+            status = QC_STATUS_BAD_ARGUMENTS;
             QC_ERROR( "CL2D only support static config" );
         }
     }

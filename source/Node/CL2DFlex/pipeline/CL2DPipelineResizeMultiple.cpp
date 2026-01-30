@@ -31,6 +31,7 @@ QCStatus_e CL2DPipelineResizeMultiple::Init(
     }
     else
     {
+        m_pipeline = CL2DFLEX_PIPELINE_MAX;
         QC_ERROR( "Invalid CL2DFlex resize multiple pipeline for inputId=%d!", m_inputId );
         ret = QC_STATUS_BAD_ARGUMENTS;
     }
