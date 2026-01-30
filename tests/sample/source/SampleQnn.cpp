@@ -156,8 +156,8 @@ QCStatus_e SampleQnn::ConvertDtToInfo( DataTree &dt, TensorInfo_t &info )
         ret = QC_STATUS_BAD_ARGUMENTS;
     }
 
-    info.properties.type = dt.GetTensorType( "type", QC_TENSOR_TYPE_MAX );
-    if ( QC_TENSOR_TYPE_MAX == info.properties.type )
+    info.properties.tensorType = dt.GetTensorType( "type", QC_TENSOR_TYPE_MAX );
+    if ( QC_TENSOR_TYPE_MAX == info.properties.tensorType )
     {
         ret = QC_STATUS_BAD_ARGUMENTS;
     }
@@ -250,9 +250,9 @@ QCStatus_e SampleQnn::Init( std::string name, SampleConfig_t &config )
         size_t index = 0;
         for ( int i = 0; i < outputNum; ++i )
         {
-            ret = m_tensorPools[index].Init(
-                    "Qnn." + name + "." + std::to_string( index ), m_nodeId, LOGGER_LEVEL_INFO,
-                    m_poolSize, m_outputsInfo[i].properties, QC_MEMORY_ALLOCATOR_DMA_HTP );
+            ret = m_tensorPools[index].Init( "Qnn." + name + "." + std::to_string( index ),
+                                             m_nodeId, LOGGER_LEVEL_INFO, m_poolSize,
+                                             m_outputsInfo[i].properties );
             index += 1;
             if ( QC_STATUS_OK != ret )
             {

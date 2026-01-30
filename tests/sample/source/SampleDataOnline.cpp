@@ -194,17 +194,33 @@ QCStatus_e SampleDataOnline::ReceiveData( Meta &meta )
                 if ( QC_BUFFER_TYPE_IMAGE == dataMeta.dataType )
                 {
                     DataImageMeta *pImageMeta = (DataImageMeta *) &dataMeta;
-                    ret = m_bufferPools[i].Init(
-                            m_name + std::to_string( i ), m_nodeId, LOGGER_LEVEL_INFO, m_poolSize,
-                            pImageMeta->imageProps, QC_MEMORY_ALLOCATOR_DMA, m_bufferCache );
+                    QC_DEBUG( "Recv Image format %d %ux%u size %u", pImageMeta->imageProps.format,
+                              pImageMeta->imageProps.width, pImageMeta->imageProps.height,
+                              pImageMeta->size );
+                    ImageProps_t imageProps;
+                    pImageMeta->imageProps.To( imageProps );
+                    imageProps.allocatorType = QC_MEMORY_ALLOCATOR_DMA;
+                    imageProps.cache = m_bufferCache;
+                    ret = m_bufferPools[i].Init( m_name + std::to_string( i ), m_nodeId,
+                                                 LOGGER_LEVEL_INFO, m_poolSize, imageProps );
                 }
                 else if ( QC_BUFFER_TYPE_TENSOR == dataMeta.dataType )
                 {
                     DataTensorMeta *pTensorMeta = (DataTensorMeta *) &dataMeta;
+                    QC_DEBUG( "Recv Tensor %s dims %u [%u, %u, %u, %u, %u, %u, %u, %u] type %d "
+                              "size %u",
+                              pTensorMeta->name, pTensorMeta->tensorProps.numDims,
+                              pTensorMeta->tensorProps.dims[0], pTensorMeta->tensorProps.dims[1],
+                              pTensorMeta->tensorProps.dims[2], pTensorMeta->tensorProps.dims[3],
+                              pTensorMeta->tensorProps.dims[4], pTensorMeta->tensorProps.dims[5],
+                              pTensorMeta->tensorProps.dims[6], pTensorMeta->tensorProps.dims[7],
+                              pTensorMeta->tensorProps.tensorType, pTensorMeta->size );
+                    TensorProps_t tensorProps;
+                    pTensorMeta->tensorProps.To( tensorProps );
+                    tensorProps.allocatorType = QC_MEMORY_ALLOCATOR_DMA;
+                    tensorProps.cache = m_bufferCache;
                     ret = m_bufferPools[i].Init( m_name + "_" + pTensorMeta->name, m_nodeId,
-                                                 LOGGER_LEVEL_INFO, m_poolSize,
-                                                 pTensorMeta->tensorProps, QC_MEMORY_ALLOCATOR_DMA,
-                                                 m_bufferCache );
+                                                 LOGGER_LEVEL_INFO, m_poolSize, tensorProps );
                 }
                 else
                 {
@@ -402,6 +418,8 @@ QCStatus_e SampleDataOnline::ReceiveMain()
 
     if ( r > 0 )
     {
+        QC_DEBUG( "Recv META cmd %d Id %" PRIu64 " numOfDatas %" PRIu32 " payloadSize %" PRIu64,
+                  meta.command, meta.Id, meta.numOfDatas, meta.payloadSize );
         if ( MetaCommand::META_COMMAND_MODEL_INFO == meta.command )
         {
             ret = ReplyModelInfo();

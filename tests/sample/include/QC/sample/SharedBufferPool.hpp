@@ -131,12 +131,9 @@ public:
         return bufDesc.type;
     }
 
-    QCImageProps_t GetImageProps()
+    ImageProps_t GetImageProps()
     {
-        QCImageProps_t imgProps = {
-                QC_IMAGE_FORMAT_MAX,
-                0,
-        };
+        ImageProps_t imgProps;
         QCBufferDescriptorBase_t &bufDesc = buffer;
         ImageDescriptor_t *pImage = dynamic_cast<ImageDescriptor_t *>( &bufDesc );
         if ( nullptr != pImage )
@@ -154,17 +151,15 @@ public:
         }
         return imgProps;
     };
-    QCTensorProps_t GetTensorProps()
+
+    TensorProps_t GetTensorProps()
     {
-        QCTensorProps_t tsProps = {
-                QC_TENSOR_TYPE_MAX,
-                { 0 },
-        };
+        TensorProps_t tsProps;
         QCBufferDescriptorBase_t &bufDesc = buffer;
         TensorDescriptor_t *pTensor = dynamic_cast<TensorDescriptor_t *>( &bufDesc );
         if ( nullptr != pTensor )
         {
-            tsProps.type = pTensor->tensorType;
+            tsProps.tensorType = pTensor->tensorType;
             tsProps.numDims = pTensor->numDims;
             std::copy( pTensor->dims, pTensor->dims + pTensor->numDims, tsProps.dims );
         }
@@ -228,16 +223,12 @@ public:
      * @param[in] nodeId the nodeId to be used to create the shared memory pool
      * @param[in] level the logger level
      * @param[in] imageProps the specified image properties
-     * @param[in] allocatorType The allocaor type used for allocation the buffer.
-     * @param[in] cache The cache type of the buffer.
      * @detdesc
      * It was by using the specified image properties to allocate image buffers.
      * @return QC_STATUS_OK on success, others on failure
      */
     QCStatus_e Init( std::string name, QCNodeID_t nodeId, Logger_Level_e level, uint32_t number,
-                     const QCImageProps_t &imageProps,
-                     QCMemoryAllocator_e allocatorType = QC_MEMORY_ALLOCATOR_DMA,
-                     QCAllocationCache_e cache = QC_CACHEABLE );
+                     const ImageProps_t &imageProps );
 
     /**
      * @brief Do initialization of the shared memory ping-pong pool
@@ -245,16 +236,12 @@ public:
      * @param[in] nodeId the nodeId to be used to create the shared memory pool
      * @param[in] level the logger level
      * @param[in] tensorProps the specified tensor properties
-     * @param[in] allocatorType The allocaor type used for allocation the buffer.
-     * @param[in] cache The cache type of the buffer.
      * @detdesc
      * It was by using the specified tensor properties to allocate tensor buffers.
      * @return QC_STATUS_OK on success, others on failure
      */
     QCStatus_e Init( std::string name, QCNodeID_t nodeId, Logger_Level_e level, uint32_t number,
-                     const QCTensorProps_t &tensorProps,
-                     QCMemoryAllocator_e allocatorType = QC_MEMORY_ALLOCATOR_DMA,
-                     QCAllocationCache_e cache = QC_CACHEABLE );
+                     const TensorProps_t &tensorProps );
 
     /**
      * @brief Retrieves a list of shared buffer descriptors.

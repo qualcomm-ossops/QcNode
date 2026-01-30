@@ -97,14 +97,11 @@ QCStatus_e SamplePlrPost::Init( std::string name, SampleConfig_t &config )
 
     if ( QC_STATUS_OK == ret )
     {
-        QCTensorProps_t detTsProp = {
-                QC_TENSOR_TYPE_FLOAT_32,
-                { m_config.maxNumDetOut, POSTCENTERPOINT_OBJECT_3D_DIM },
-                2,
-        };
+        TensorProps_t detTsProp( QC_TENSOR_TYPE_FLOAT_32,
+                                 { m_config.maxNumDetOut, POSTCENTERPOINT_OBJECT_3D_DIM },
+                                 QC_MEMORY_ALLOCATOR_DMA_HTP );
 
-        ret = m_objsPool.Init( name, m_nodeId, LOGGER_LEVEL_INFO, m_poolSize, detTsProp,
-                               QC_MEMORY_ALLOCATOR_DMA_HTP );
+        ret = m_objsPool.Init( name, m_nodeId, LOGGER_LEVEL_INFO, m_poolSize, detTsProp );
     }
 
     if ( QC_STATUS_OK == ret )

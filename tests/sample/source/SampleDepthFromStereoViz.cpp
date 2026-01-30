@@ -139,7 +139,7 @@ QCStatus_e SampleDepthFromStereoViz::Init( std::string name, SampleConfig_t &con
 
     if ( QC_STATUS_OK == ret )
     {
-        QCImageProps_t imgProp;
+        ImageProps_t imgProp;
         imgProp.format = QC_IMAGE_FORMAT_RGB888;
         imgProp.batchSize = 1;
         imgProp.width = m_width;

@@ -87,22 +87,22 @@ QCStatus_e SampleDepthFromStereoEvaAuto::Init( std::string name, SampleConfig_t 
 
     if ( QC_STATUS_OK == ret )
     {
-        QCTensorProps_t dispTsProp = { QC_TENSOR_TYPE_UINT_16,
-                                       { 1, ALIGN_S( height, 2 ), ALIGN_S( width, 128 ), 1 },
-                                       4 };
+        TensorProps_t dispTsProp( QC_TENSOR_TYPE_UINT_16,
+                                  { 1, ALIGN_S( height, 2 ), ALIGN_S( width, 128 ), 1 },
+                                  QC_MEMORY_ALLOCATOR_DMA_EVA, m_bufferCache );
 
-        ret = m_dispPool.Init( name + ".disp", m_nodeId, LOGGER_LEVEL_INFO, m_poolSize, dispTsProp,
-                               QC_MEMORY_ALLOCATOR_DMA_EVA, m_bufferCache );
+        ret = m_dispPool.Init( name + ".disp", m_nodeId, LOGGER_LEVEL_INFO, m_poolSize,
+                               dispTsProp );
     }
 
     if ( QC_STATUS_OK == ret )
     {
-        QCTensorProps_t confTsProp = { QC_TENSOR_TYPE_UINT_8,
-                                       { 1, ALIGN_S( height, 2 ), ALIGN_S( width, 128 ), 1 },
-                                       4 };
+        TensorProps_t confTsProp( QC_TENSOR_TYPE_UINT_8,
+                                  { 1, ALIGN_S( height, 2 ), ALIGN_S( width, 128 ), 1 },
+                                  QC_MEMORY_ALLOCATOR_DMA_EVA, m_bufferCache );
 
-        ret = m_confPool.Init( name + ".conf", m_nodeId, LOGGER_LEVEL_INFO, m_poolSize, confTsProp,
-                               QC_MEMORY_ALLOCATOR_DMA_EVA, m_bufferCache );
+        ret = m_confPool.Init( name + ".conf", m_nodeId, LOGGER_LEVEL_INFO, m_poolSize,
+                               confTsProp );
     }
 
     if ( QC_STATUS_OK == ret )

@@ -306,7 +306,7 @@ QCStatus_e SampleRemap::Init( std::string name, SampleConfig_t &config )
 
     if ( QC_STATUS_OK == ret )
     {
-        QCImageProps_t imgProp;
+        ImageProps_t imgProp;
         imgProp.batchSize = m_numOfInputs;
         imgProp.width = m_outputWidth;
         imgProp.height = m_outputHeight;
@@ -318,8 +318,9 @@ QCStatus_e SampleRemap::Init( std::string name, SampleConfig_t &config )
             imgProp.stride[0] = m_outputWidth * 3;
             imgProp.actualHeight[0] = m_outputHeight;
             imgProp.planeBufSize[0] = 0;
-            ret = m_imagePool.Init( name, m_nodeId, LOGGER_LEVEL_INFO, m_poolSize, imgProp,
-                                    QC_MEMORY_ALLOCATOR_DMA_GPU, m_bufferCache );
+            imgProp.allocatorType = QC_MEMORY_ALLOCATOR_DMA_GPU;
+            imgProp.cache = m_bufferCache;
+            ret = m_imagePool.Init( name, m_nodeId, LOGGER_LEVEL_INFO, m_poolSize, imgProp );
         }
         else
         {
@@ -341,8 +342,10 @@ QCStatus_e SampleRemap::Init( std::string name, SampleConfig_t &config )
                     imgProp.stride[1] = m_outputWidth * bpp;
                     imgProp.actualHeight[1] = m_outputHeight / 2;
                     imgProp.planeBufSize[1] = 0;
-                    ret = m_imagePool.Init( name, m_nodeId, LOGGER_LEVEL_INFO, m_poolSize, imgProp,
-                                            QC_MEMORY_ALLOCATOR_DMA_GPU, m_bufferCache );
+                    imgProp.allocatorType = QC_MEMORY_ALLOCATOR_DMA_GPU;
+                    imgProp.cache = m_bufferCache;
+                    ret = m_imagePool.Init( name, m_nodeId, LOGGER_LEVEL_INFO, m_poolSize,
+                                            imgProp );
                 }
                 else if ( QC_IMAGE_FORMAT_UYVY == m_outputFormat )
                 {
@@ -351,8 +354,10 @@ QCStatus_e SampleRemap::Init( std::string name, SampleConfig_t &config )
                     imgProp.stride[0] = m_outputWidth * 2;
                     imgProp.actualHeight[0] = m_outputHeight;
                     imgProp.planeBufSize[0] = 0;
-                    ret = m_imagePool.Init( name, m_nodeId, LOGGER_LEVEL_INFO, m_poolSize, imgProp,
-                                            QC_MEMORY_ALLOCATOR_DMA_GPU, m_bufferCache );
+                    imgProp.allocatorType = QC_MEMORY_ALLOCATOR_DMA_GPU;
+                    imgProp.cache = m_bufferCache;
+                    ret = m_imagePool.Init( name, m_nodeId, LOGGER_LEVEL_INFO, m_poolSize,
+                                            imgProp );
                 }
                 else
                 {

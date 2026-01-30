@@ -59,7 +59,7 @@ private:
         QCImageFormat_e format;
         uint32_t width;
         uint32_t height;
-        QCTensorProps_t tensorProps;
+        TensorProps_t tensorProps;
         std::string dataPath;
     } DataReaderConfig_t;
 

@@ -80,7 +80,7 @@ QCStatus_e SampleRadar::Init( std::string name, SampleConfig_t &config )
     QC_LOG_DEBUG( "Node configuration setup completed" );
     // Initialize output buffer pool for processed radar data
     // Use tensor allocation for raw radar output data
-    QCTensorProps_t outputTensorProps = { QC_TENSOR_TYPE_UINT_8, { m_maxOutputBufferSize }, 1 };
+    TensorProps_t outputTensorProps(QC_TENSOR_TYPE_UINT_8, { m_maxOutputBufferSize });
     ret = m_outputPool.Init( name + "_output", m_nodeId, LOGGER_LEVEL_INFO, m_poolSize, outputTensorProps);
     if ( QC_STATUS_OK != ret )
     {

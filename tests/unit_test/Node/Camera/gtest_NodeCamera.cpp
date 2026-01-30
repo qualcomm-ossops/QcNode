@@ -85,7 +85,7 @@ static void SANITY_Camera( DataTree &dt )
 
     // Allocate buffers
     DataTree streamConfig;
-    QCImageProps_t imgProp;
+    ImageProps_t imgProp;
     uint32_t streamId = 0;
     uint32_t bufferId = 0;
     uint32_t streamNum = streamConfigs.size();
@@ -112,9 +112,11 @@ static void SANITY_Camera( DataTree &dt )
             imgProp.actualHeight[0] = imgProp.height;
             imgProp.numPlanes = 1;
             imgProp.planeBufSize[0] = 0;
+            imgProp.allocatorType = QC_MEMORY_ALLOCATOR_DMA_CAMERA;
+            imgProp.cache = QC_CACHEABLE;
 
             ret = g_bufferPools[i].Init( bufPoolName, nodeId, LOGGER_LEVEL_ERROR, bufferNum,
-                                         imgProp, QC_MEMORY_ALLOCATOR_DMA_CAMERA, QC_CACHEABLE );
+                                         imgProp );
             ASSERT_EQ( QC_STATUS_OK, ret );
         }
         else

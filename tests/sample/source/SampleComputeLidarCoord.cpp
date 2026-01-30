@@ -75,13 +75,15 @@ QCStatus_e SampleComputeLidarCoord::Init( std::string name, SampleConfig_t &conf
         ret = m_pub.Init( name, m_outputTopicName );
     }
 
-    QCTensorProps_t outputTensorProp;
-    outputTensorProp.type = QC_TENSOR_TYPE_FLOAT_32;
+    TensorProps_t outputTensorProp;
+    outputTensorProp.tensorType = QC_TENSOR_TYPE_FLOAT_32;
     outputTensorProp.numDims = 2;
     outputTensorProp.dims[0] = m_blocks * m_cols;
     outputTensorProp.dims[1] = 4;
-    ret = m_outputBufferPool.Init( name, m_nodeId, LOGGER_LEVEL_INFO, m_poolSize, outputTensorProp,
-                                   QC_MEMORY_ALLOCATOR_DMA_GPU, m_bufferCache );
+    outputTensorProp.allocatorType = QC_MEMORY_ALLOCATOR_DMA_GPU;
+    outputTensorProp.cache = m_bufferCache;
+    ret = m_outputBufferPool.Init( name, m_nodeId, LOGGER_LEVEL_INFO, m_poolSize,
+                                   outputTensorProp );
     if ( QC_STATUS_OK != ret )
     {
         QC_ERROR( "Failed to init buffer pool for output buffer" );

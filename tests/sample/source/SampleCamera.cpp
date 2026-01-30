@@ -155,7 +155,7 @@ QCStatus_e SampleCamera::Init( std::string name, SampleConfig_t &config )
     QCStatus_e ret = SampleIF::Init( name );
 
     std::vector<DataTree> streamConfigs;
-    QCImageProps_t imgProp;
+    ImageProps_t imgProp;
     uint32_t streamId = 0;
     uint32_t streamNum = 0;
     uint32_t bufferNum = 0;
@@ -196,10 +196,11 @@ QCStatus_e SampleCamera::Init( std::string name, SampleConfig_t &config )
                 imgProp.actualHeight[0] = imgProp.height;
                 imgProp.numPlanes = 1;
                 imgProp.planeBufSize[0] = 0;
+                imgProp.allocatorType = QC_MEMORY_ALLOCATOR_DMA_CAMERA;
+                imgProp.cache = QC_CACHEABLE;
 
                 ret = m_frameBufferPools[i].Init( bufPoolName, m_nodeId, LOGGER_LEVEL_ERROR,
-                                                  bufferNum, imgProp,
-                                                  QC_MEMORY_ALLOCATOR_DMA_CAMERA, QC_CACHEABLE );
+                                                  bufferNum, imgProp );
             }
             else
             {

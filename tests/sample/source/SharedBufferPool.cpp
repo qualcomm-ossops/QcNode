@@ -157,24 +157,9 @@ QCStatus_e SharedBufferPool::Init( std::string name, QCNodeID_t nodeId, Logger_L
 }
 
 QCStatus_e SharedBufferPool::Init( std::string name, QCNodeID_t nodeId, Logger_Level_e level,
-                                   uint32_t number, const QCImageProps_t &imageProps,
-                                   QCMemoryAllocator_e allocatorType, QCAllocationCache_e cache )
+                                   uint32_t number, const ImageProps_t &imgProp )
 {
-    ImageProps_t imgProp;
     QCStatus_e ret = Init( name, nodeId, level, number );
-
-    imgProp.format = imageProps.format;
-    imgProp.batchSize = imageProps.batchSize;
-    imgProp.width = imageProps.width;
-    imgProp.height = imageProps.height;
-    imgProp.allocatorType = allocatorType;
-    imgProp.cache = cache;
-    std::copy( imageProps.stride, imageProps.stride + imageProps.numPlanes, imgProp.stride );
-    std::copy( imageProps.actualHeight, imageProps.actualHeight + imageProps.numPlanes,
-               imgProp.actualHeight );
-    std::copy( imageProps.planeBufSize, imageProps.planeBufSize + imageProps.numPlanes,
-               imgProp.planeBufSize );
-    imgProp.numPlanes = imageProps.numPlanes;
 
     for ( uint32_t idx = 0; ( idx < m_queue.size() ) && ( QC_STATUS_OK == ret ); idx++ )
     {
@@ -197,16 +182,9 @@ QCStatus_e SharedBufferPool::Init( std::string name, QCNodeID_t nodeId, Logger_L
 }
 
 QCStatus_e SharedBufferPool::Init( std::string name, QCNodeID_t nodeId, Logger_Level_e level,
-                                   uint32_t number, const QCTensorProps_t &tensorProps,
-                                   QCMemoryAllocator_e allocatorType, QCAllocationCache_e cache )
+                                   uint32_t number, const TensorProps_t &tensorProp )
 {
-    TensorProps_t tensorProp;
     QCStatus_e ret = Init( name, nodeId, level, number );
-    tensorProp.tensorType = tensorProps.type;
-    tensorProp.numDims = tensorProps.numDims;
-    tensorProp.allocatorType = allocatorType;
-    tensorProp.cache = cache;
-    std::copy( tensorProps.dims, tensorProps.dims + tensorProps.numDims, tensorProp.dims );
 
     for ( uint32_t idx = 0; ( idx < m_queue.size() ) && ( QC_STATUS_OK == ret ); idx++ )
     {

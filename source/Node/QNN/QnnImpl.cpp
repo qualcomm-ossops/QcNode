@@ -2754,7 +2754,6 @@ QCStatus_e QnnImpl::GetInputTensors( std::vector<Qnn_Tensor_t> &inputTensors )
         inputTensors.resize( m_inputTensorNum );
         for ( uint32_t i = 0; i < m_inputTensorNum; ++i )
         {
-            QCTensorProps_t tensorProp;
             inputTensors[i] = m_graphsInfo[0]->inputTensors[i];
         }
     }
@@ -2774,11 +2773,9 @@ QCStatus_e QnnImpl::GetOutputTensors( std::vector<Qnn_Tensor_t> &outputTensors )
     }
     else
     {
-
         outputTensors.resize( m_outputTensorNum );
         for ( uint32_t i = 0; i < m_outputTensorNum; ++i )
         {
-            QCTensorProps_t tensorProp;
             outputTensors[i] = m_graphsInfo[0]->outputTensors[i];
         }
     }

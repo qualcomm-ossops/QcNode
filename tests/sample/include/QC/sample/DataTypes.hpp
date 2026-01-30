@@ -42,8 +42,8 @@ public:
     QCBufferType_e GetBufferType() { return buffer->GetBufferType(); }
     void *GetDataPtr() { return buffer->GetDataPtr(); }
     uint32_t GetDataSize() { return buffer->GetDataSize(); }
-    QCImageProps_t GetImageProps() { return buffer->GetImageProps(); };
-    QCTensorProps_t GetTensorProps() { return buffer->GetTensorProps(); };
+    ImageProps_t GetImageProps() { return buffer->GetImageProps(); };
+    TensorProps_t GetTensorProps() { return buffer->GetTensorProps(); };
 
     void SetFrameId()
     {
@@ -66,8 +66,8 @@ public:
     void *GetDataPtr( int index ) { return frames[index].GetDataPtr(); }
     uint32_t GetDataSize( int index ) { return frames[index].GetDataSize(); }
 
-    QCImageProps_t GetImageProps( int index ) { return frames[index].GetImageProps(); };
-    QCTensorProps_t GetTensorProps( int index ) { return frames[index].GetTensorProps(); };
+    ImageProps_t GetImageProps( int index ) { return frames[index].GetImageProps(); };
+    TensorProps_t GetTensorProps( int index ) { return frames[index].GetTensorProps(); };
 
     uint64_t FrameId( int index ) { return frames[index].frameId; };
     uint64_t Timestamp( int index ) { return frames[index].timestamp; };
@@ -115,10 +115,10 @@ typedef struct
 
 typedef struct
 {
-    std::string name;           /**< The name of tensor */
-    QCTensorProps_t properties; /**< The property of tensor */
-    float quantScale;           /**< The value of quantization scale */
-    int32_t quantOffset;        /**< The value of quantization offset */
+    std::string name;         /**< The name of tensor */
+    TensorProps_t properties; /**< The property of tensor */
+    float quantScale;         /**< The value of quantization scale */
+    int32_t quantOffset;      /**< The value of quantization offset */
 } TensorInfo_t;
 
 typedef struct

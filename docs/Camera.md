@@ -266,7 +266,7 @@ void Init_CameraStreams()
     ret = staticCfg.Get( "streamConfigs", streamConfigs );
 
     DataTree streamConfig;
-    QCImageProps_t imgProp;
+    ImageProps_t imgProp;
     uint32_t streamId = 0;
     uint32_t bufCnt = 0;
     uint32_t bufferId = 0;

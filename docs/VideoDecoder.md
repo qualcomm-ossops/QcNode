@@ -1,9 +1,9 @@
 *Menu*:
 - [1. Introduction](#1-introduction)
-- [2. Video Decoder Configuration](#2-video-decoder-configuraion)
-  - [2.1 Video Decoder Node Configuration](#21-video-decoder-node-configuraion)
+- [2. Video Decoder Configuration](#2-video-decoder-configuration)
+  - [2.1 Video Decoder Node Configuration](#21-video-decoder-node-configuration)
 - [3. QC VideoDecoder Data Structures](#3-qc-videodecoder-data-structures)
-  - [3.1 The details of VideoFrameDescriptor_t](#31-the-details-of-videoframedescriptor_t)
+  - [3.1 The details of VideoFrameDescriptor\_t](#31-the-details-of-videoframedescriptor_t)
 - [4. QC VideoDecoder APIs](#4-qc-videodecoder-apis)
 - [5. Typical Use Case](#5-typical-use-case)
   - [5.1 Typical use case of dynamic mode](#51-typical-use-case-of-dynamic-mode)
@@ -82,7 +82,7 @@ vidcDecoderConfig.bOutputDynamicMode = true;
 vidcDecoderConfig.numInputBuffer = bufferNum;
 vidcDecoderConfig.numOutputBuffer = bufferNum;
 
-QCImageProps_t inputImgProps;
+ImageProps_t inputImgProps;
 inputImgProps.batchSize = 1;
 inputImgProps.width = 1920;
 inputImgProps.height = 1024;
