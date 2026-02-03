@@ -251,8 +251,8 @@ public:
     virtual QCStatus_e Place( void *ptr, uint32_t &size ) { return QC_STATUS_UNSUPPORTED; }
 
 private:
-    CL2DFlexImpl *m_pCL2DFlexImpl;
     Logger &m_logger;
+    CL2DFlexImpl *m_pCL2DFlexImpl;
     std::string m_options;
     CL2DFlexMonitorConfig_t m_monitorConfig;
 };

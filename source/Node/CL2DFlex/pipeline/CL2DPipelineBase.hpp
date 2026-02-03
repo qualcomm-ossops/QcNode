@@ -67,7 +67,7 @@ class CL2DPipelineBase
 public:
     CL2DPipelineBase();
 
-    ~CL2DPipelineBase();
+    virtual ~CL2DPipelineBase();
 
     CL2DPipelineBase( const CL2DPipelineBase & ) = delete;
     CL2DPipelineBase &operator=( const CL2DPipelineBase & ) = delete;

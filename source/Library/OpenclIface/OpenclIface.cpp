@@ -298,7 +298,6 @@ QCStatus_e OpenclSrv::CreateKernel( cl_kernel *pKernel, const char *pKernelName 
 QCStatus_e OpenclSrv::Deinit()
 {
     QCStatus_e ret = QC_STATUS_OK;
-    cl_int retCL = CL_SUCCESS;
 
     if ( true == m_initialized )
     {
@@ -533,7 +532,6 @@ QCStatus_e OpenclSrv::RegPlane( void *pData, cl_mem *pBufferCL, cl_image_format 
 QCStatus_e OpenclSrv::DeregImage( void *pData )
 {
     QCStatus_e ret = QC_STATUS_OK;
-    cl_int retCL = CL_SUCCESS;
 
     if ( true == m_initialized )
     {
@@ -564,7 +562,6 @@ QCStatus_e OpenclSrv::DeregImage( void *pData )
 QCStatus_e OpenclSrv::DeregPlane( void *pData, cl_image_format *pFormat )
 {
     QCStatus_e ret = QC_STATUS_OK;
-    cl_int retCL = CL_SUCCESS;
 
     if ( true == m_initialized )
     {
@@ -598,7 +595,6 @@ QCStatus_e OpenclSrv::DeregPlane( void *pData, cl_image_format *pFormat )
 QCStatus_e OpenclSrv::DeregBufferDesc( QCBufferDescriptorBase_t &buffer )
 {
     QCStatus_e ret = QC_STATUS_OK;
-    cl_int retCL = CL_SUCCESS;
 
     if ( true == m_initialized )
     {

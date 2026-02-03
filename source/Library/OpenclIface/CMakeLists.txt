@@ -20,6 +20,7 @@ target_compile_definitions(OpenclIface PUBLIC CL_TARGET_OPENCL_VERSION=300)
 endif()
 target_include_directories(OpenclIface PUBLIC ${HEADERS_DIR})
 target_link_libraries(OpenclIface PUBLIC ${TARGET_LIBRARIES})
+target_compile_options( OpenclIface PRIVATE -Wall )
 add_library(Ride::Hal::Libs::OpenclIface ALIAS OpenclIface)
 install(TARGETS OpenclIface DESTINATION lib)
 
