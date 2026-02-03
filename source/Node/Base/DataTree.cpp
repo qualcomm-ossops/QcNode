@@ -66,7 +66,6 @@ QCStatus_e DataTree::Get( const std::string &key, DataTree &dt )
     std::string token;
     const json *pCurrent = &m_json;
     QCStatus_e status = QC_STATUS_OK;
-    bool bHasKey = true;
 
     while ( std::getline( ss, token, '.' ) )
     {

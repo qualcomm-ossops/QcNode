@@ -18,7 +18,7 @@ typedef struct QCNodeID
 {
     constexpr bool operator==( const QCNodeID &nodeId )
     {
-        return ( ( type == nodeId.type ) && ( 0 == name.compare( nodeId.name ) == 0 ) &&
+        return ( ( type == nodeId.type ) && ( 0 == name.compare( nodeId.name ) ) &&
                  ( id == nodeId.id ) );
     };
     constexpr bool operator!=( const QCNodeID &nodeId )

@@ -223,7 +223,7 @@ QCStatus_e BufferManager::Free( const QCBufferDescriptorBase_t &buffer )
         QC_ERROR( "buffer not allocated" );
         status = QC_STATUS_INVALID_BUF;
     }
-    else if ( static_cast<uint64_t>( pid ) != buffer.pid )
+    else if ( pid != buffer.pid )
     {
         QC_ERROR( "buffer not allocated by self, can't do free" );
         status = QC_STATUS_OUT_OF_BOUND;

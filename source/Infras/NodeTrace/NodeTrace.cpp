@@ -220,7 +220,7 @@ void NodeTrace::Trace( std::string name, QCNodeTraceType_e type,
         for ( QCNodeTraceArg_t &arg : args )
         {
             NodeTrace_EventArg_t evtArg;
-            const void *pRaw;
+            const void *pRaw = nullptr;
             size_t lenValue = GetArgValueRawPtrAndSize( arg, pRaw );
             size += sizeof( evtArg ) + arg.name.size() + lenValue;
             m_record.resize( size );

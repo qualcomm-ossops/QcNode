@@ -15,7 +15,7 @@ target_include_directories( QCNodeTrace PUBLIC ${HEADERS_DIR} )
 target_link_libraries( QCNodeTrace PUBLIC ${TARGET_LIBRARIES} )
 target_compile_definitions( QCNodeTrace PUBLIC QC_ENABLE_NODETRACE )
 
-target_compile_options( QCNodeTrace PRIVATE -Wno-error=deprecated-declarations )
+target_compile_options( QCNodeTrace PRIVATE -Wno-error=deprecated-declarations -Wall )
 
 install( FILES ${HEADERS_DIR}/QC/Infras/NodeTrace/Ifs/QCNodeTraceIfs.hpp DESTINATION include/QC/Infras/NodeTrace/Ifs/ )
 install( FILES ${HEADERS_DIR}/QC/Infras/NodeTrace/NodeTrace.hpp DESTINATION include/QC/Infras/NodeTrace/ )

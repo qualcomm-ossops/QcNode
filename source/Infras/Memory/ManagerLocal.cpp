@@ -54,11 +54,7 @@ QCStatus_e ManagerLocal::Initialize( const QCMemoryManagerInit_t &init )
         for ( auto i = 0; i < m_config.numOfNodes; i++ )
         {
             m_pools.push_back( poolMap );
-            std::map<QCMemoryPoolHandle_t, std::reference_wrapper<QCMemoryPoolIfs>> &refPoolMap =
-                    m_pools.back();
-
             m_allocations.push_back( allocSet );
-            std::set<QCBufferDescriptorBase_t> &refAllocSet = m_allocations.back();
         }
         state = QC_OBJECT_STATE_READY;
     }

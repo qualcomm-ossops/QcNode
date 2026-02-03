@@ -71,6 +71,8 @@ target_include_directories( QCNodeMemory PUBLIC ${HEADERS_DIR} )
 
 target_link_libraries( QCNodeMemory PUBLIC ${TARGET_LIBRARIES} )
 
+target_compile_options( QCNodeMemory PRIVATE -Wall )
+
 install( FILES ${MEMORY_HEADERS} DESTINATION include/QC/Infras/Memory )
 
 if( "${CMAKE_SYSTEM_NAME}" STREQUAL "Linux" )

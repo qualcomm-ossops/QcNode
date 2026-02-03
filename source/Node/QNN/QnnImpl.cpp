@@ -763,7 +763,6 @@ QCStatus_e QnnImpl::FreeGraphsInfo( qnn_wrapper_api::GraphInfoPtr_t **graphsInfo
                                     uint32_t numGraphs )
 {
     QCStatus_e status = QC_STATUS_OK;
-    QCStatus_e status2;
     if ( ( graphsInfo == nullptr ) || ( *graphsInfo == nullptr ) )
     {
         status = QC_STATUS_FAIL;
@@ -1451,7 +1450,6 @@ QnnImpl::Initialize( QCNodeEventCallBack_t callback,
 
     if ( QC_STATUS_OK == status )
     {
-        QnnLog_Error_t logError;
         auto logLevel = GetQnnLogLevel( m_logger.GetLevel() );
         retVal = m_qnnFunctionPointers.qnnInterface.logCreate( &QnnLog_Callback, logLevel,
                                                                &m_logHandle );
@@ -2181,7 +2179,6 @@ QCStatus_e QnnImpl::Stop()
 QCStatus_e QnnImpl::DeInitialize()
 {
     QCStatus_e status = QC_STATUS_OK;
-    Qnn_ErrorHandle_t retVal = QNN_SUCCESS;
 
     QC_TRACE_BEGIN( "DeInit", {} );
     if ( QC_OBJECT_STATE_READY != m_state )

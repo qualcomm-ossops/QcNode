@@ -26,6 +26,8 @@ target_include_directories( QCNodeCommon PUBLIC ${HEADERS_DIR} )
 
 target_link_libraries( QCNodeCommon PUBLIC ${TARGET_LIBRARIES} )
 
+target_compile_options( QCNodeCommon PRIVATE -Wall )
+
 install( FILES ${COMMON_HEADERS} DESTINATION include/QC/Common )
 install( FILES ${PROJECT_SOURCE_DIR}/include/QC/Infras/Log/Logger.hpp DESTINATION include/QC/Infras/Log )
 

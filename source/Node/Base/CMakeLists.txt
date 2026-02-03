@@ -23,6 +23,7 @@ set_property( TARGET QCNodeBase PROPERTY POSITION_INDEPENDENT_CODE ON )
 find_package(nlohmann_json 3.2.0 REQUIRED)
 list( APPEND TARGET_LIBRARIES nlohmann_json::nlohmann_json)
 target_link_libraries( QCNodeBase PUBLIC ${TARGET_LIBRARIES} )
+target_compile_options( QCNodeBase PRIVATE -Wall )
 install( FILES ${NODEBASE_HEADERS} DESTINATION include/QC/Node )
 install( FILES  ${HEADERS_DIR}/QC/Common/DataTree.hpp
                 ${HEADERS_DIR}/QC/Common/QCDefs.hpp

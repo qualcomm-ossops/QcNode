@@ -15,7 +15,7 @@ namespace Node
 /** @brief The QCNode QNN Version */
 #define QCNODE_QNN_VERSION_MAJOR 2U
 #define QCNODE_QNN_VERSION_MINOR 0U
-#define QCNODE_QNN_VERSION_PATCH 4U
+#define QCNODE_QNN_VERSION_PATCH 5U
 
 #define QCNODE_QNN_VERSION                                                                         \
     ( ( QCNODE_QNN_VERSION_MAJOR << 16U ) | ( QCNODE_QNN_VERSION_MINOR << 8U ) |                   \
@@ -211,8 +211,8 @@ public:
     virtual QCStatus_e Place( void *pData, uint32_t &size );
 
 private:
-    QnnImpl *m_pQnnImpl = nullptr;
     Logger &m_logger;
+    QnnImpl *m_pQnnImpl = nullptr;
     std::string m_options;
 };
 

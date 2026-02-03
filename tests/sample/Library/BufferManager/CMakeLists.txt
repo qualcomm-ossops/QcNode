@@ -15,4 +15,4 @@ set_property( TARGET BufferManager PROPERTY LINKER_LANGUAGE CXX )
 set_property( TARGET BufferManager PROPERTY POSITION_INDEPENDENT_CODE ON )
 
 target_link_libraries( BufferManager PUBLIC ${TARGET_LIBRARIES} )
-
+target_compile_options( BufferManager PRIVATE -Wall )
