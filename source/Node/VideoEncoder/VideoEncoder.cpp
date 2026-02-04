@@ -802,8 +802,8 @@ QCStatus_e VideoEncoder::CheckBuffer( const VideoFrameDescriptor_t &vidFrmDesc,
     {
         if ( bufferType == VIDEO_CODEC_BUF_INPUT )
         {
-            if ( ( vidFrmDesc.stride[0] != m_vidcEncoderData.planeDefY.actual_stride ) ||
-                 ( vidFrmDesc.stride[1] != m_vidcEncoderData.planeDefUV.actual_stride ) )
+            if ( (  vidFrmDesc.stride[0] != m_vidcEncoderData.planeDefY.actual_stride ) ||
+                 (  vidFrmDesc.stride[1] != m_vidcEncoderData.planeDefUV.actual_stride ) )
             {
                 QC_ERROR( "pBuffer stride [%" PRIu32 "][%" PRIu32
                           "] is not same with actual stride [%" PRIu32 "][%" PRIu32 "] ",
@@ -1001,7 +1001,7 @@ QCStatus_e VideoEncoderConfigIfs::VerifyAndSet( const std::string config, std::s
 void VideoEncoder::InFrameCallback( VideoFrameDescriptor_t &inFrameDesc,
                                     void *pPrivData )
 {
-    VideoEncoder *pNve = reinterpret_cast<VideoEncoder *>( pPrivData );
+    VideoEncoder *pNve = static_cast<VideoEncoder *>( pPrivData );
     if ( pNve != nullptr )
     {
         pNve->InFrameCallback( inFrameDesc );
@@ -1015,7 +1015,7 @@ void VideoEncoder::InFrameCallback( VideoFrameDescriptor_t &inFrameDesc,
 void VideoEncoder::OutFrameCallback( VideoFrameDescriptor_t &outFrameDesc,
                                      void *pPrivData )
 {
-    VideoEncoder *pNve = reinterpret_cast<VideoEncoder *>( pPrivData );
+    VideoEncoder *pNve = static_cast<VideoEncoder *>( pPrivData );
     if ( pNve != nullptr )
     {
         pNve->OutFrameCallback( outFrameDesc );
@@ -1029,7 +1029,7 @@ void VideoEncoder::OutFrameCallback( VideoFrameDescriptor_t &outFrameDesc,
 void VideoEncoder::EventCallback( VideoCodec_EventType_e eventId,
                                   const void *pEvent, void *pPrivData )
 {
-    VideoEncoder *pNve = reinterpret_cast<VideoEncoder *>( pPrivData );
+    VideoEncoder *pNve = static_cast<VideoEncoder *>( pPrivData );
     if ( pNve != nullptr )
     {
         pNve->EventCallback( eventId, pEvent );

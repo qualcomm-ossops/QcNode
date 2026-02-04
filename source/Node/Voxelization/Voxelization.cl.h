@@ -5,9 +5,9 @@
 #ifndef QC_VOXELIZATION_CLH
 #define QC_VOXELIZATION_CLH
 
-#define KernelCode( ... ) #__VA_ARGS__
+#define KERNAL_CODE( ... ) #__VA_ARGS__
 
-static const char *s_pSourceVoxelization = KernelCode(
+static const char *s_pSourceVoxelization = KERNAL_CODE(
 
         __constant float2 ZEROVEC2 = (float2) ( 0.0f );
         __constant float4 ZEROVEC4 = (float4) ( 0.0f );

@@ -178,7 +178,7 @@ uint64_t NodeTrace::Timestamp()
     auto now = std::chrono::high_resolution_clock::now();
 
     timestamp =
-            std::chrono::duration_cast<std::chrono::microseconds>( now.time_since_epoch() ).count();
+            static_cast<uint64_t>(std::chrono::duration_cast<std::chrono::microseconds>( now.time_since_epoch() ).count());
 
     return timestamp;
 }
@@ -200,10 +200,10 @@ void NodeTrace::Trace( std::string name, QCNodeTraceType_e type,
 
         eventHeader.timestamp = timestamp;
         eventHeader.coreIdsMask = m_coreIdsMask;
-        eventHeader.numArgs = args.size();
-        eventHeader.lenName = m_name.size();
-        eventHeader.lenProcessor = m_processor.size();
-        eventHeader.lenEventName = name.size();
+        eventHeader.numArgs = static_cast<uint32_t>(args.size());
+        eventHeader.lenName = static_cast<uint32_t>(m_name.size());
+        eventHeader.lenProcessor = static_cast<uint32_t>(m_processor.size());
+        eventHeader.lenEventName = static_cast<uint32_t>(name.size());
         eventHeader.traceType = type;
         memcpy( m_record.data(), &eventHeader, sizeof( eventHeader ) );
         offset += sizeof( eventHeader );
@@ -226,8 +226,8 @@ void NodeTrace::Trace( std::string name, QCNodeTraceType_e type,
             m_record.resize( size );
 
             evtArg.argType = arg.type;
-            evtArg.lenName = arg.name.size();
-            evtArg.lenValue = lenValue;
+            evtArg.lenName = static_cast<uint32_t>(arg.name.size());
+            evtArg.lenValue = static_cast<uint32_t>(lenValue);
             memcpy( &( m_record.data()[offset] ), &evtArg, sizeof( evtArg ) );
             offset += sizeof( evtArg );
 

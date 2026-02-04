@@ -624,7 +624,7 @@ const std::string &VideoDecoderConfigIfs::GetOptions()
 
 void VideoDecoder::InFrameCallback( VideoFrameDescriptor_t &inFrameDesc, void *pPrivData )
 {
-    VideoDecoder *nvd = reinterpret_cast<VideoDecoder *>( pPrivData );
+    VideoDecoder *nvd = static_cast<VideoDecoder *>( pPrivData );
     if ( nvd != nullptr )
     {
         nvd->InFrameCallback( inFrameDesc );
@@ -637,7 +637,7 @@ void VideoDecoder::InFrameCallback( VideoFrameDescriptor_t &inFrameDesc, void *p
 
 void VideoDecoder::OutFrameCallback( VideoFrameDescriptor_t &outFrameDesc, void *pPrivData )
 {
-    VideoDecoder *nvd = reinterpret_cast<VideoDecoder *>( pPrivData );
+    VideoDecoder *nvd = static_cast<VideoDecoder *>( pPrivData );
     if ( nvd != nullptr )
     {
         nvd->OutFrameCallback( outFrameDesc );
@@ -651,7 +651,7 @@ void VideoDecoder::OutFrameCallback( VideoFrameDescriptor_t &outFrameDesc, void 
 void VideoDecoder::EventCallback( VideoCodec_EventType_e eventId, const void *pEvent,
                                   void *pPrivData )
 {
-    VideoDecoder *nvd = reinterpret_cast<VideoDecoder *>( pPrivData );
+    VideoDecoder *nvd = static_cast<VideoDecoder *>( pPrivData );
     if ( nvd != nullptr )
     {
         nvd->EventCallback( eventId, pEvent );

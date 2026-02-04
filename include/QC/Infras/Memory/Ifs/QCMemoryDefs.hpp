@@ -201,7 +201,7 @@ typedef struct QCBufferPropBase
 #define QC_CALC_ALIGN_SIZE( size, ALLIGNMENT )                                                     \
     ( {                                                                                            \
         size_t ret;                                                                                \
-        ret = size + ALLIGNMENT - 1ul;                                                             \
+        ret = (size) + (ALLIGNMENT) - 1ul;                                                         \
         ret;                                                                                       \
     } )
 
@@ -215,7 +215,7 @@ typedef struct QCBufferPropBase
  * @param ALLIGNMENT The alignment of the buffer.
  */
 #define QC_ALIGN_POINTER( pVoid, ALLIGNMENT )                                                      \
-    ( void *ptr; ( ptr = (void *) ( (long) pVoid + ALLIGNMENT - 1ul ) & ~( ALLIGNMENT - 1ul ) );   \
+    void *ptr = (void *) ( ((long) (pVoid) + (ALLIGNMENT) - 1ul ) & ~( (ALLIGNMENT) - 1ul ) );     \
       ptr )
 
 /**
