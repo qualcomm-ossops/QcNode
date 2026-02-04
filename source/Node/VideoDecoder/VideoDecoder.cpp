@@ -410,7 +410,6 @@ QCStatus_e VideoDecoder::HandleOutputReconfig()
 QCStatus_e VideoDecoder::FinishOutputReconfig()
 {
     QCStatus_e ret = QC_STATUS_OK;
-    int32_t i;
 
     if ( m_OutputReconfigInprogress )
     {
