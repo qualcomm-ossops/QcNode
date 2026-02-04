@@ -31,8 +31,8 @@ export QCNODE_INSTALL_DIR=$destdir
 # Package name
 pkgname=$topdir/qcnode-$target.tar.gz
 
-if [ -f ${QCNODR_DIR}/.build_option ] ; then
-  source ${QCNODR_DIR}/.build_option
+if [ -f ${QCNODR_DIR}/build_option ] ; then
+  source ${QCNODR_DIR}/build_option
 fi
 
 if ! [[ -v QC_TARGET_SOC ]] ; then
@@ -125,6 +125,14 @@ fi
 
 if ! [[ -v ENABLE_GENIE ]] ; then
   export ENABLE_GENIE=OFF
+fi
+
+if ! [[ -v ENABLE_RESMON ]] ; then
+  if [[ "${QC_TARGET_SOC}" == "8797" ]] ; then
+    export ENABLE_RESMON=OFF
+  else
+    export ENABLE_RESMON=OFF
+  fi
 fi
 
 if ! [[ -v ENABLE_RADAR ]] ; then
@@ -448,6 +456,7 @@ cmake \
     -DENABLE_C2C=${ENABLE_C2C} \
     -DENABLE_TRACE=${ENABLE_TRACE} \
     -DENABLE_GENIE=${ENABLE_GENIE} \
+    -DENABLE_RESMON=${ENABLE_RESMON} \
     -DENABLE_RADAR=${ENABLE_RADAR} \
     -DQC_TARGET_SOC=${QC_TARGET_SOC} \
     .. || exit -1
