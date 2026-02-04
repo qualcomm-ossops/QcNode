@@ -1,7 +1,7 @@
 *Menu*:
 - [1. Remap Overview](#1-remap-overview)
     - [Key Features](#key-features)
-- [2. Remap Configuraion](#2-remap-configuraion)
+- [2. Remap Configuration](#2-remap-configuration)
   - [2.1 Remap Static JSON Configuration](#21-remap-static-json-configuration)
 - [3. Remap APIs](#3-remap-apis)
 - [4. Typical Remap API Usage Examples](#4-typical-remap-api-usage-examples)
@@ -12,7 +12,7 @@
 
 # 1. Remap Overview
 
-**QCNode Remap**  is based on [FastADAS Remap APIs](https://docs.qualcomm.com/bundle/publicresource/topics/80-63309-1/remap.html). It can do undistortion, downscaling, color conversion, normalization and ROI scaling in one singel API calling on specific processor(CPU, GPU or DSP). 
+**QCNode Remap** is based on [FastADAS Remap APIs](https://docs.qualcomm.com/bundle/publicresource/topics/80-63309-1/remap.html). It can perform undistortion, downscaling, color conversion, normalization, and ROI scaling in a single API call on a specific processor (CPU, GPU, or DSP).
 
 ### Key Features
 
@@ -34,9 +34,11 @@
 - **Scalable Architecture**
   Designed to handle both single and batched image processing scenarios efficiently.
 
-# 2. Remap Configuraion
+# 2. Remap Configuration
 
 ## 2.1 Remap Static JSON Configuration
+
+The Remap node is configured via a single JSON document under the "static" key. This configuration defines the node identity, processor selection, output image properties, optional undistortion/normalization, and an array of per-input settings (format, dimensions, ROI, and optional map table buffer IDs). Buffer indices such as "bufferIds" and entries in "globalBufferIdMap" reference QCNodeInit::buffers and QCFrameDescriptorNodeIfs positions used during Initialize and ProcessFrameDescriptor.
 
 | Parameter  | Required  | Type        | Description            |
 |------------|-----------|-------------|------------------------|
@@ -58,31 +60,33 @@
 | `BAdd` | false | float    | The normalize parameter for B channel add.     |
 | `BMul` | false | float    | The normalize parameter for B channel mul.     |
 | `BSub` | false | float    | The normalize parameter for B channel sub.     |
-| `inputs`       | true  | object[]    | List of input configurations. <br>Each object contains: <br> - `inputWidth` (uint32_t) <br> - `inputHeight` (uint32_t) <br> - `inputFormat` (string) <br> - `roiX` (uint32_t) <br> - `roiY` (uint32_t) <br> - `roiWidth` (uint32_t) <br> - `roiHeight` (uint32_t) <br> - `workMode` (string) <br> - `mapXBufferId` (uint32_t) <br> - `mapYBufferId` (uint32_t)  |
+| `inputs`       | true  | object[]    | List of input configurations. <br>Each object contains: <br> - `inputWidth` (uint32_t) <br> - `inputHeight` (uint32_t) <br> - `inputFormat` (string) <br> - `mapWidth` (uint32_t) <br> - `mapHeight` (uint32_t) <br> - `roiX` (uint32_t) <br> - `roiY` (uint32_t) <br> - `roiWidth` (uint32_t) <br> - `roiHeight` (uint32_t) <br> - `mapXBufferId` (uint32_t) <br> - `mapYBufferId` (uint32_t)  |
+| `bufferIds` | false    | uint32_t[]  | List of buffer indices in `QCNodeInit::buffers`  |
+| `globalBufferIdMap` | false | object[] | Mapping of buffer names to buffer indices in `QCFrameDescriptorNodeIfs`. <br>Each object contains:<br> - `name` (string)<br> - `id` (uint32_t)   |
+| `deRegisterAllBuffersWhenStop` | false | bool     | Flag to deregister all buffers when stopped      <br>Default: `false` |
+
+| Input Parameter  | Required  | Type        | Description            |
+|------------|-----------|-------------|------------------------|
 | `inputWidth`   | true  | uint32_t    | The input width.       |
 | `inputHeight`  | true  | uint32_t    | The input height.      |
 | `inputFormat`  | true  | string      | The input format. <br> Options: `rgb`, `nv12`, `uyvy`, `nv12_ubwc` |
-| `mapWidth`     | false | uint32_t    | The map roiWidth. <br> Default: `outputWidth`    |
-| `mapHeight`    | false | uint32_t    | The map roiHeight. <br> Default: `outputHeight`  |
+| `mapWidth`     | false | uint32_t    | The map width. <br> Default: `outputWidth`    |
+| `mapHeight`    | false | uint32_t    | The map height. <br> Default: `outputHeight`  |
 | `roiX`         | false | uint32_t    | The input roiX. <br> Default: `0`  |
 | `roiY`         | false | uint32_t    | The input roiY. <br> Default: `0`  |
 | `roiWidth`     | false | uint32_t    | The input roiWidth. <br> Default: `inputWidth`    |
 | `roiHeight`    | false | uint32_t    | The input roiHeight. <br> Default: `inputHeight`  |
 | `mapXBufferId` | false | uint32_t    | The buffer id of X direction map table  |
 | `mapYBufferId` | false | uint32_t    | The buffer id of Y direction map table  |
-| `nodeId`    | true     | uint32_t    | The Node unique ID.    |
-| `bufferIds` | false    | uint32_t[]  | List of buffer indices in `QCNodeInit::buffers`  |
-| `globalBufferIdMap` | false | object[] | Mapping of buffer names to buffer indices in `QCFrameDescriptorNodeIfs`. <br>Each object contains:<br> - `name` (string)<br> - `id` (uint32_t)   |
-| `deRegisterAllBuffersWhenStop` | false | bool     | Flag to deregister all buffers when stopped      <br>Default: `false` |
 
 - Example Configurations
 
-  - two UYV2 inputs remap to RGB output with undistortion CPU pipeline
+  - two UYVY inputs remap to RGB output with undistortion CPU pipeline
     ```json
     {
         "static":
         {
-            "bufferIds":[0,1,2,3,4],
+            "bufferIds":[0,1,2],
             "id":0,
             "inputs":
             [
@@ -96,8 +100,8 @@
                     "roiY":0,
                     "mapHeight":800,
                     "mapWidth":1152,
-                    "mapXBufferId":2,
-                    "mapYBufferId":3
+                    "mapXBufferId":3,
+                    "mapYBufferId":4
                 },
                 {
                     "inputFormat":"uyvy",
@@ -124,7 +128,7 @@
     }
     ```
 
-    - two UYV2 inputs remap to RGB output with normalization HTP pipeline
+    - two UYVY inputs remap to RGB output with normalization HTP pipeline
     ```json
     {
         "static":
@@ -164,13 +168,13 @@
             "bEnableUndistortion":false,
             "bEnableNormalize":true,
             "RSub":123.675,
-            "RMul":1.0/58.395,
+            "RMul":0.017119,
             "RAdd":0.0,
             "GSub":116.28,
-            "GMul":1.0/57.12,
+            "GMul":0.017506,
             "GAdd":0.0,
             "BSub":103.53,
-            "BMul":1.0/57.375,
+            "BMul":0.017423,
             "BAdd":0.0
         }
     }
@@ -207,7 +211,7 @@ The remap configuration parameters of 2 different input images can be set as fol
     dt.Set<uint32_t>( "static.outputHeight", 64 );
     dt.SetImageFormat( "static.outputFormat", QC_IMAGE_FORMAT_RGB888 );
     dt.Set<bool>( "static.bEnableUndistortion", false );
-    dt.Set<bool>( "static.bEnableUndistortion", false );
+    dt.Set<bool>( "static.bEnableNormalize", false );
     dt.SetProcessorType( "static.processorType", QC_PROCESSOR_HTP0 );
     std::vector<DataTree> inputDts;
     for ( int i = 0; i < 2; i++ )
@@ -227,14 +231,14 @@ The remap configuration parameters of 2 different input images can be set as fol
     dt.Set( "static.inputs", inputDts );
     QCNodeInit_t config = { dt.Dump() };
 ```
-The relationship of input, map, ROI, output scales are showed in following picture. The mapWidth must not be larger than inputWidth and the mapHeight must not be larger than inputHeight. The ROI.width+ROI.x must not be larger than mapWidth and the ROI.height+ROI.y must not be larger than mapHeight. The ROI.width must be equal to outputWidth and the ROI.height must be equal to output.height.
+The relationship among input, map, ROI, and output scales is shown in the following figure. The mapWidth must not exceed inputWidth, and mapHeight must not exceed inputHeight. ROI.width + ROI.x must not exceed mapWidth, and ROI.height + ROI.y must not exceed mapHeight. ROI.width must equal outputWidth, and ROI.height must equal outputHeight.
 ![remap-image](./images/remap-image.jpg)
 
-If bEnableUndistortion is set to true, user can do undistortion or lens distortion correction for fisheye type camera by using the calibrated mapping table mapX and mapY. The mapping table mapX and mapY are floating point matrixs, each element is the column/row coordinate of the mapped location in the source image. The following example show how to set a map table with linear resize. 
+If bEnableUndistortion is set to true, you can perform undistortion (lens distortion correction) for fisheye-type cameras by using calibrated mapping tables mapX and mapY. The mapX/mapY tables are floating-point matrices; each element is the column/row coordinate of the mapped location in the source image. The following example shows how to set a map table with linear resize. 
 
 ## 4.2 API Call Flow
 
-The typical call flow of a QC Remap pipeline is showed as following example:
+The typical call flow of a QC Remap pipeline is shown in the following example:
 ```c++
     QCStatus_e ret;
     QCNodeIfs *pRemap = new QC::Node::Remap();
@@ -273,7 +277,7 @@ The typical call flow of a QC Remap pipeline is showed as following example:
 
     ret = pRemap->DeInitialize();
 ```
-Generally, user should call Init API once at the beginning of the pipeline and call Deinit API once at the ending of the pipeline.
+Generally, applications should call Initialize once at the beginning of the pipeline and DeInitialize once at the end of the pipeline.
 
 ## 4.3 Supported pipelines
 
@@ -295,6 +299,6 @@ The supported remap pipelines for different input/output image format on each pr
 
 # 5. References
 
-- [gtest_Remap](../tests/unit_test/Node/Remap/gtest_Remap.cpp)
+- [gtest_NodeRemap](../tests/unit_test/Node/Remap/gtest_NodeRemap.cpp)
 - [SampleRemap](../tests/sample/source/SampleRemap.cpp)
 - [FastADAS Remap](https://docs.qualcomm.com/bundle/publicresource/topics/80-63309-1/remap.html)
