@@ -47,6 +47,10 @@ VoxelizationImpl::Initialize( QCNodeEventCallBack_t callback,
             case QC_PROCESSOR_GPU:
                 processor = "gpu";
                 break;
+            default:
+                ret = QC_STATUS_BAD_ARGUMENTS;
+                QC_ERROR( "invalid processor" );
+                break;
         }
         oss << "{";
         oss << "\"name\": \"" << m_nodeId.name << "\", ";

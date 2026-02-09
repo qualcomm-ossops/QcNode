@@ -204,8 +204,8 @@ public:
      * @return None
      */
     RemapMonitoring( Logger &logger, RemapImpl *pRemapImpl )
-        : m_logger( logger ),
-          m_pRemapImpl( pRemapImpl )
+        : m_pRemapImpl( pRemapImpl ),
+          m_logger(logger)
     {}
     ~RemapMonitoring() {}
 

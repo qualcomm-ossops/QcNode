@@ -48,12 +48,7 @@ QCStatus_e RemapConfig::VerifyStaticConfig( DataTree &dt, std::string &errors )
 
     std::vector<DataTree> inputDts;
     (void) dt.Get( "inputs", inputDts );
-    m_numOfInputs = 0;
-    for ( DataTree &idt : inputDts )
-    {
-        m_numOfInputs++;
-    }
-
+    m_numOfInputs = inputDts.size();
     if ( QC_MAX_INPUTS < m_numOfInputs )
     {
         errors += "inputs number invalid, ";
@@ -204,7 +199,6 @@ QCStatus_e RemapConfig::VerifyAndSet( const std::string config, std::string &err
 
 const std::string &RemapConfig::GetOptions()
 {
-    QCStatus_e status = QC_STATUS_OK;
 
     DataTree dt;
     dt.Set<uint32_t>( "version", QCNODE_REMAP_VERSION );

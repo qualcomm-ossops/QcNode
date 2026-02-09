@@ -312,7 +312,6 @@ QCStatus_e VoxelizationConfig::VerifyAndSet( const std::string config, std::stri
 
 const std::string &VoxelizationConfig::GetOptions()
 {
-    QCStatus_e ret = QC_STATUS_OK;
     return m_options;
 }
 

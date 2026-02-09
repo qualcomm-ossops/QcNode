@@ -164,8 +164,8 @@ public:
      * used by VoxelizationMonitor.
      */
     VoxelizationMonitor( Logger &logger, VoxelizationImpl *pVoxelImpl )
-        : m_logger( logger ),
-          m_pVoxelImpl( pVoxelImpl )
+        : m_pVoxelImpl( pVoxelImpl ),
+          m_logger( logger )
     {}
 
     /**
