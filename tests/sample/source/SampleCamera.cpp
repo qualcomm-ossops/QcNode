@@ -141,6 +141,8 @@ QCStatus_e SampleCamera::ParseConfig( SampleConfig_t &config )
     m_config.Set<bool>( "requestMode", Get( config, "request_mode", false ) );
     m_config.Set<bool>( "primary", Get( config, "is_primary", false ) );
     m_config.Set<bool>( "recovery", Get( config, "recovery", false ) );
+    m_config.Set<bool>( "enableMultiStreamFrameReady",
+                        Get( config, "multi_stream_frame_ready", false ) );
 
     m_dataTree.Set( "static", m_config );
 

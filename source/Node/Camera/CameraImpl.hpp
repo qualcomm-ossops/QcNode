@@ -108,43 +108,40 @@ typedef struct
 
 /**
  * @brief Configuration structure for Camera Node
- *
- * @param numStream             Number of camera stream
- * @note                        If numStream value is larger than 1, the
- *                              CameraNode will be set to multi-stream mode, and
- *                              streamConfigs will take effect.
  * 
- * @param inputId               Camera input id
+ * @param inputId                   Camera input id
  * 
- * @param srcId                 Input source identifier, see QCarCamInputSrc_t
+ * @param srcId                     Input source identifier, see QCarCamInputSrc_t
  *
- * @param clientId              Client id for multi client usecase, set to 0 by
- *                              default for single client usecase
+ * @param clientId                  Client id for multi client usecase, set to 0 by
+ *                                  default for single client usecase
  *
- * @param inputMode             The input mode id is the index into
- *                              QCarCamInputModes_t pModex
+ * @param inputMode                 The input mode id is the index into
+ *                                  QCarCamInputModes_t pModex
  *
- * @param ispUseCase            ISP use case defined by qcarcam
+ * @param ispUseCase                ISP use case defined by qcarcam
  *
- * @param camFrameDropPattern   Frame drop patten defined by qcarcam, Set to 0
- *                              when frame drop is not used
+ * @param camFrameDropPattern       Frame drop patten defined by qcarcam, Set to 0
+ *                                  when frame drop is not used
  *
- * @param opMode                Operation mode defined by qcarcam
+ * @param opMode                    Operation mode defined by qcarcam
  *
- * @param bAllocator            Flag to indicate if node is buffer allocator
+ * @param bAllocator                Flag to indicate if node is buffer allocator
  *
- * @param bRequestMode          Flag to set request buffer mode
+ * @param bRequestMode              Flag to set request buffer mode
  *
- * @param bPrimary              Flag to indicate if the session is primary or
- *                              not, used for multi client usecase
+ * @param bPrimary                  Flag to indicate if the session is primary or
+ *                                  not, used for multi client usecase
  *
- * @param bRecovery             Flag to enable the self-recovery for the session
+ * @param bRecovery                 Flag to enable the self-recovery for the session
  *
- * @param bEnalbleMetaData      Flag to enable metadata feature
+ * @param bEnalbleMetaData          Flag to enable metadata feature
  *
- * @param streamConfigs         Configuration array for each stream.
+ * @param bMultiStreamFrameReady    Flag to set multiple streams frame ready event in one callback
  *
- * @param metaDataConfigs       Configuration array for each metadata.
+ * @param streamConfigs             Configuration array for each stream.
+ *
+ * @param metaDataConfigs           Configuration array for each metadata.
  *
  */
 typedef struct Camera_Config : public QCNodeConfigBase_t
@@ -161,6 +158,7 @@ typedef struct Camera_Config : public QCNodeConfigBase_t
     bool bPrimary;
     bool bRecovery;
     bool bEnalbleMetaData;
+    bool bMultiStreamFrameReady;
     std::vector<CameraStreamConfig_t> streamConfigs;
     std::vector<CameraMetaDataConfig_t> metaDataConfigs;
 } CameraImplConfig_t;
@@ -264,9 +262,9 @@ private:
     QCStatus_e SubmitRequest( const CameraMetaDataDescriptor_t *pMetaData );
 
     QCStatus_e
-    RegisterFrameBuffers( std::vector<std::reference_wrapper<QCBufferDescriptorBase_t>> &buffers );
-    QCStatus_e RegisterMetaDataBuffers(
-            std::vector<std::reference_wrapper<QCBufferDescriptorBase_t>> &buffers );
+    SetFrameBuffers( std::vector<std::reference_wrapper<QCBufferDescriptorBase_t>> &buffers );
+    QCStatus_e
+    SetMetaDataBuffers( std::vector<std::reference_wrapper<QCBufferDescriptorBase_t>> &buffers );
     QCStatus_e SubmitAllBuffers();
     QCStatus_e ImportBuffers();
     QCStatus_e UnImportBuffers();
@@ -280,8 +278,6 @@ private:
     CameraFrameDescriptor_t *GetFrame( const QCarCamFrameInfo_t *pFrameInfo );
     QCStatus_e ValidateConfig( const CameraImplConfig_t *pConfig );
 
-    static void FrameCallback( CameraFrameDescriptor_t *pFrame, void *pPrivData );
-    static void EventCallback( const uint32_t eventId, const void *pPayload, void *pPrivData );
     void FrameCallback( CameraFrameDescriptor_t *pFrame );
     void EventCallback( const uint32_t eventId, const void *pPayload );
 

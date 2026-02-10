@@ -15,7 +15,7 @@ namespace Node
 
 /** @brief The QCNode Camera Version */
 #define QCNODE_CAMERA_VERSION_MAJOR 2U
-#define QCNODE_CAMERA_VERSION_MINOR 1U
+#define QCNODE_CAMERA_VERSION_MINOR 2U
 #define QCNODE_CAMERA_VERSION_PATCH 0U
 
 #define QCNODE_CAMERA_VERSION                                                                      \
@@ -108,6 +108,8 @@ public:
      *         ],
      *         "requestMode": "Flag to set request buffer mode, type: bool",
      *         "enableMetaData": "Flag to enable metadata, type: bool",
+     *         "enableMultiStreamFrameReady": "Flag to set multiple streams frame ready event in one
+     *                                         callback, type: bool",
      *         "primary": "Flag to indicate if the session is primary or not when configured with
      *                    the clientId, type: bool",
      *         "recovery": "Flag to enable self-recovery for the session, type: bool"

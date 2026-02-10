@@ -142,6 +142,7 @@ Refer [DataReader Utils](../../scripts/utils/data_reader/README.md#L38) for how 
 | frame_drop_period | false | int  | 0       | The frame drop period defined by qcarcam |
 | isp_use_case | false | int       | 3       | The ISP use case |
 | op_mode   | false    | int       | 2       | The input operation mode, 1: Inline ISP, 2: Injection to ISP. |
+| multi_stream_frame_ready   | false    | bool       | false       | Flag to set multiple streams frame ready event in one callback. |
 | ignore_error | false | bool      | false   | Ignore the error of Camera Init&Start |
 | immediate_release | false | bool | false   | Perform an immediate camera frame release in the camera frame ready callback if true. Be cautious, as this approach does not provide life cycle management for the camera buffer, and data consistency is not guaranteed. |
 | topic     | true     | string    | -       | The output topic name |
@@ -157,23 +158,31 @@ Note: "X" is value from 1 to number-1, thus the attribute with suffix "X" is rep
 
 The command line template example:
 
+- Basic request mode:
 ```sh
   -n CAM0 -t Camera -k input_id -v 0 \
     -k width -v 1928 -k height -v 1208 \
-    -k request_mode -v false \
+    -k request_mode -v true \
     -k topic -v /sensor/camera/CAM0/raw \
 ```
 
+- Multi-stream mode with request pattern:
 ```sh
-  -n IMX728_0 -t Camera -k input_id -v 0 -k number -v 2 \
-    -k stream_id -v 0 -k width -v 1920 -k height -v 1080 -k format -v nv12_ubwc \
-    -k stream_id1 -v 1 -k width1 -v 3840 -k height1 -v 2160 -k format1 -v nv12_ubwc \
-    -k submit_request_pattern1 -v 3 \
-    -k isp_use_case -v 135 \
-    -k request_mode -v true -k pool_size -v 4 \
-    -k topic -v /sensor/camera/IMX728_0/raw \
-    -k topic1 -v /sensor/camera/IMX728_0_S1/raw \
+-n CAM0 -t Camera -k input_id -v 8 -k number -v 2 \
+    -k isp_use_case -v 65 -k request_mode -v true \
+    -k multi_stream_frame_ready -v true \
+    -k stream_id -v 1 \
+    -k submit_request_pattern -v 1 \
+    -k width -v 3840 -k height -v 2160 \
+    -k pool_size -v 4 \
+    -k topic -v /sensor/camera/CAM0_0/raw \
+    -k stream_id1 -v 5 \
+    -k submit_request_pattern1 -v 0 \
+    -k width1 -v 3840 -k height1 -v 2160 \
+    -k pool_size1 -v 4 \
+    -k topic1 -v /sensor/camera/CAM0_1/raw
 ```
+
 
 ### 2.3 QCNode C2D Sample
 
