@@ -383,7 +383,7 @@ QCStatus_e SampleVideoEncoder::ParseConfig( SampleConfig_t &config )
     {
     }
 
-    m_bufSize = Get( config, "buffer_size", 2 * 1024 * 1024 );
+    m_bufSize = Get( config, "buffer_size", ( 2 * m_width * m_height ) );
     if ( 0 == m_bufSize )
     {
         QC_ERROR( "invalid buffer_size = %u", m_bufSize );
@@ -419,10 +419,15 @@ QCStatus_e SampleVideoEncoder::ParseConfig( SampleConfig_t &config )
     m_config.Set<std::string>( "inputImageFormat", Get( config, "format", "nv12" ) );
     m_config.Set<std::string>( "outputImageFormat", Get( config, "output_format", "h265" ) );
 
-    m_config.Set<uint32_t>( "gop", 20 );
+    m_config.Set<uint32_t>( "gop", Get( config, "gop", 20 ) );
     m_config.Set<bool>( "bInputDynamicMode", true );
     m_config.Set<bool>( "bOutputDynamicMode", false );
-    m_config.Set<std::string>( "profile", "HEVC_MAIN" );
+    std::string dftProfile = "HEVC_MAIN";
+    if ( QC_IMAGE_FORMAT_COMPRESSED_H264 == m_outFormat )
+    {
+        dftProfile = "H264_MAIN";
+    }
+    m_config.Set<std::string>( "profile", Get( config, "profile", dftProfile ) );
 
     m_dataTree.Set( "static", m_config );
 
