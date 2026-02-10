@@ -740,6 +740,10 @@ QCStatus_e VoxelizationImpl::ProcessCL( TensorDescriptor_t &inputTensorDesc,
         m_openCLArgsFeatGather[0].argSize = sizeof( cl_mem );
         m_openCLArgsFeatGather[1].pArg = (void *) &clOutputFeatBufferMem;
         m_openCLArgsFeatGather[1].argSize = sizeof( cl_mem );
+        uint32_t maxPlrNum = m_config.voxelConfig.maxNumPlrs;
+        int numOfPillar = ( (int *) m_plrPointsTensor.pBuf )[maxPlrNum];
+        m_openCLArgsFeatGather[12].pArg = (void *) &numOfPillar;
+        m_openCLArgsFeatGather[12].argSize = sizeof( cl_int );
 
         OpenclIface_WorkParams_t OpenclWorkParams2;
         OpenclWorkParams2.workDim = 1;
@@ -884,8 +888,6 @@ QCStatus_e VoxelizationImpl::SetupGlobalBufferIdMap()
 
 void VoxelizationImpl::InitOpenCLArgs()
 {
-    uint32_t maxPlrNum = m_config.voxelConfig.maxNumPlrs;
-
     m_openCLArgsClusterPoint[3].pArg = (void *) &m_clCoordToPlrIdxBuffer;
     m_openCLArgsClusterPoint[3].argSize = sizeof( cl_mem );
     m_openCLArgsClusterPoint[4].pArg = (void *) &m_clPlrPointsBuffer;
@@ -939,9 +941,6 @@ void VoxelizationImpl::InitOpenCLArgs()
     m_openCLArgsFeatGather[10].argSize = sizeof( cl_uint );
     m_openCLArgsFeatGather[11].pArg = (void *) &m_config.voxelConfig.numOutFeatureDim;
     m_openCLArgsFeatGather[11].argSize = sizeof( cl_uint );
-    int numOfPillar = ( (int *) m_plrPointsTensor.pBuf )[maxPlrNum];
-    m_openCLArgsFeatGather[12].pArg = (void *) &numOfPillar;
-    m_openCLArgsFeatGather[12].argSize = sizeof( cl_int );
 }
 
 }   // namespace Node
