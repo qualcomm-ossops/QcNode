@@ -45,6 +45,18 @@ using namespace QC::Memory;
 #define CDSP1_DOMAIN "&_dom=cdsp1"
 #endif
 
+#ifndef HPASS_FASTRPC_ENUM_VAL
+#define HPASS_FASTRPC_ENUM_VAL HPASS
+#endif
+
+#ifndef NSP_FASTRPC_ENUM_VAL
+#define NSP_FASTRPC_ENUM_VAL NSP
+#endif
+
+#ifndef NSP_CORES_ID_MAX
+#define NSP_CORES_ID_MAX 3
+#endif
+
 typedef FadasError_e ( *FuncFadasInitGPU_t )( const char *licenseKey );
 typedef FadasError_e ( *FuncFadasDeInitGPU_t )( void );
 typedef FadasError_e ( *FuncFadasRegBufGPU_t )( FadasBufType_e bufType, const void *buf,
@@ -66,7 +78,8 @@ typedef FadasError_e ( *FuncFadasRemap_DestroyMapGPU_t )( FadasRemapMap_t *map )
 class FadasSrv
 {
 public:
-    QCStatus_e Init( QCProcessorType_e coreId, const char *pName, Logger_Level_e level );
+    QCStatus_e Init( QCProcessorType_e processor, const char *pName, Logger_Level_e level,
+                     uint32_t coreId = 0 );
     QCStatus_e Deinit();
     int32_t RegBuf( const QCBufferDescriptorBase_t &bufDesc, FadasBufType_e bufferType );
     void DeregBuf( void *pBuffer );
@@ -83,11 +96,13 @@ protected:
         size_t sizeOne;
     };
     QCProcessorType_e m_processor;
+    uint32_t m_coreId;
+    uint32_t m_handleIndex;
 
 private:
     QCStatus_e InitCPU();
     QCStatus_e InitGPU();
-    QCStatus_e InitDSP( QCProcessorType_e coreId );
+    QCStatus_e InitDSP( QCProcessorType_e processor, uint32_t coreId = 0 );
     int32_t FadasMemMapDSP( const QCBufferDescriptorBase_t &bufDesc );
     int32_t FadasMemMap( const QCBufferDescriptorBase_t &bufDesc );
     QCStatus_e FadasRegisterBufDSP( FadasBufType_e bufType, const uint8_t *bufPtr, int32_t bufFd,
@@ -100,14 +115,17 @@ private:
                                  uint32_t bufSize, uint32_t bufOffset, uint32_t batch );
     int32_t RegisterImage( const ImageDescriptor_t &imageDesc, FadasBufType_e bufferType );
     int32_t RegisterTensor( const TensorDescriptor_t &tensorDesc, FadasBufType_e bufferType );
+#if ( QC_TARGET_SOC == 8797 )
+    QCStatus_e GetDomain( QCProcessorType_e processor, uint32_t coreId, fastrpc_domain &domain );
+#endif
 
 private:
-    static std::mutex s_coreLock[QC_PROCESSOR_MAX];
+    static std::mutex s_coreLock[QC_PROCESSOR_MAX + NSP_CORES_ID_MAX];
     static std::mutex s_FadasLock;
-    static remote_handle64 s_handle64[QC_PROCESSOR_MAX];
-    static uint64_t s_useRef[QC_PROCESSOR_MAX];
-    static bool s_initialized[QC_PROCESSOR_MAX];
-    static std::map<void *, MemInfo> s_memMaps[QC_PROCESSOR_MAX];
+    static remote_handle64 s_handle64[QC_PROCESSOR_MAX + NSP_CORES_ID_MAX];
+    static uint64_t s_useRef[QC_PROCESSOR_MAX + NSP_CORES_ID_MAX];
+    static bool s_initialized[QC_PROCESSOR_MAX + NSP_CORES_ID_MAX];
+    static std::map<void *, MemInfo> s_memMaps[QC_PROCESSOR_MAX + NSP_CORES_ID_MAX];
     static long int s_client;
     static FuncFadasInitGPU_t s_FadasInitGPU;
     static FuncFadasDeInitGPU_t s_FadasDeInitGPU;

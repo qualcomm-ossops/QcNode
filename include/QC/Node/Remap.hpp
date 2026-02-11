@@ -54,6 +54,7 @@ typedef struct
 typedef struct
 {
     QCProcessorType_e processor;                     /**<pipelie processor type*/
+    uint32_t coreId;                                 /**<processor core ID*/
     Remap_InputConfig_t inputConfigs[QC_MAX_INPUTS]; /**<input images configuration*/
     uint32_t numOfInputs;                            /**<number of input images*/
     uint32_t outputWidth;                            /**<output image width*/

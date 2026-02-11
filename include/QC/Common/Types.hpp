@@ -23,14 +23,13 @@ namespace QC
 #define QC_MAX_INPUTS 32
 #endif
 
-/** @brief QC Computing Processor Type
- * @deprecated
- * @note This enum is deprecated as json configure was used for QCNode.
- */
+/** @brief QC Computing Processor Type*/
 typedef enum
 {
     QC_PROCESSOR_HTP0, /**< do computing on the processor HTP0 */
     QC_PROCESSOR_HTP1, /**< do computing on the processor HTP1 */
+    QC_PROCESSOR_HTP2, /**< do computing on the processor HTP2 */
+    QC_PROCESSOR_HTP3, /**< do computing on the processor HTP3 */
     QC_PROCESSOR_CPU,  /**< do computing on the processor CPU */
     QC_PROCESSOR_GPU,  /**< do computing on the processor GPU */
     QC_PROCESSOR_MAX
