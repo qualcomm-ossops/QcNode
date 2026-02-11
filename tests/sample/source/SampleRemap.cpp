@@ -36,6 +36,14 @@ QCStatus_e SampleRemap::ParseConfig( SampleConfig_t &config )
     }
     m_dataTree.SetProcessorType( "static.processorType", processor );
 
+    uint32_t coreId = Get( config, "core_id", 0 );
+    if ( NSP_CORES_ID_MAX < coreId )
+    {
+        QC_ERROR( "invalid coreId\n" );
+        ret = QC_STATUS_BAD_ARGUMENTS;
+    }
+    m_dataTree.Set<uint32_t>( "static.coreId", coreId );
+
     m_outputWidth = Get( config, "output_width", 1920 );
     if ( 0 == m_outputWidth )
     {

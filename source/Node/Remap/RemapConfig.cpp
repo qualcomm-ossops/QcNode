@@ -60,6 +60,16 @@ QCStatus_e RemapConfig::VerifyStaticConfig( DataTree &dt, std::string &errors )
         status = QC_STATUS_BAD_ARGUMENTS;
     }
 
+    if ( dt.Exists( "coreId" ) )
+    {
+        uint32_t coreId = dt.Get<uint32_t>( "coreId", UINT32_MAX );
+        if ( NSP_CORES_ID_MAX < coreId )
+        {
+            errors += "coreId invalid, ";
+            status = QC_STATUS_BAD_ARGUMENTS;
+        }
+    }
+
     std::vector<DataTree> globalBufferIdMap;
     status2 = dt.Get( "globalBufferIdMap", globalBufferIdMap );
     if ( QC_STATUS_OUT_OF_BOUND == status2 )
@@ -109,6 +119,7 @@ QCStatus_e RemapConfig::ParseStaticConfig( DataTree &dt, std::string &errors )
 
         config.params.numOfInputs = m_numOfInputs;
         config.params.processor = dt.GetProcessorType( "processorType", QC_PROCESSOR_HTP0 );
+        config.params.coreId = dt.Get<uint32_t>( "coreId", 0 );
         config.params.outputWidth = dt.Get<uint32_t>( "outputWidth", 1024 );
         config.params.outputHeight = dt.Get<uint32_t>( "outputHeight", 1024 );
         config.params.outputFormat = dt.GetImageFormat( "outputFormat", QC_IMAGE_FORMAT_RGB888 );
