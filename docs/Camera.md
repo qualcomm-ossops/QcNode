@@ -19,6 +19,12 @@
   - [4.6 Camera execution](#46-camera-execution)
   - [4.7 Buffer free](#47-buffer-free)
   - [4.8 Main function](#48-main-function)
+  - [4.9 Typical usecases](#49-typical-usecases)
+    - [4.9.1 Request buffer mode](#491-request-buffer-mode)
+    - [4.9.2 Non-request buffer mode](#492-non-request-buffer-mode)
+    - [4.9.3 Multi-stream with submit request pattern](#493-multi-stream-with-submit-request-pattern)
+    - [4.9.4 Multi-client feature](#494-multi-client-feature)
+    - [4.9.5 Camera frame drop pattern and period](#495-camera-frame-drop-pattern-and-period)
 - [5. References](#5-references)
 
 
@@ -59,15 +65,17 @@ A camera instance is operated through a sequence of function calls for optimal p
 | `camFrameDropPattern` | true      | uint32_t    | Frame drop pattern defined by qcarcam. Default: `0`   |
 | `camFrameDropPeriod`  | true      | uint32_t    | Frame drop period defined by qcarcam. Default: `0`   |
 | `streamConfigs`       | true      | object[]    | Configurations for each camera stream. The stream object configuration is shown in Camera Stream Configuraion table. |
-| `requestMode`| false     | bool         | Flag to set request buffer mode.   |
-| `primary`    | false     | bool         | Flag to indicate if the session is primary or not when configured with the clientId.   |
-| `recovery`   | false     | bool         | Flag to enable self-recovery for the session.   |
+| `requestMode`                 | false     | bool         | Flag to set request buffer mode.   |
+| `enableMetaData`              | false     | bool         | Flag to enable metadata.   |
+| `enableMultiStreamFrameReady` | false     | bool         | Flag to set multiple streams frame ready event in one callback.   |
+| `primary`                     | false     | bool         | Flag to indicate if the session is primary or not when configured with the clientId.   |
+| `recovery`                    | false     | bool         | Flag to enable self-recovery for the session.   |
 
 ## 2.2 Camera Stream Configuraion
 | Parameter    | Required  | Type         | Description                  |
 |--------------|-----------|--------------|------------------------------|
 | `streamId`   | true      | uint32_t     | Camera stream id.            |
-| `bufCnt`     | true      | uint32_t     | Buffer count set to camera.  |
+| `bufferIds`  | true      | uint32_t[]   | The indices of camera frame buffers in QCNodeInit::buffers.  |
 | `width`      | true      | uint32_t     | Camera frame width.          |
 | `height`     | true      | uint32_t     | Camera frame height.         |
 | `format`     | true      | string       | Camera frame format. Options: `nv12`, `nv12_ubwc`, `uyvy`, `rgb`, `bgr`, `p010`, `tp10_ubwc` |
@@ -156,10 +164,12 @@ A camera instance is operated through a sequence of function calls for optimal p
 ## 4.1 Camera working mode
 
 ### 4.1.1 Request buffer mode
-Camera works on request buffer mode when `requestMode` parameter is set to true in camera config. In this mode new camera frames are delivered in frame callback function and user can request new frames from camera when processing of the frame is done in application.
+
+When the `requestMode` parameter in the camera configuration is set to true, the camera works in request buffer mode. In this mode, new frames are delivered through the frame callback function, and the application can request the next frame only after it has completed processing the current one.
 
 ### 4.1.2 Non request buffer mode
-Camera works on non request buffer mode when `requestMode` parameter is set to false in camera config. In this mode new camera frames are delivered in frame callback function and user shall release the frame back to camera when processing of the frame is done in application.
+
+When the `requestMode` parameter in the camera configuration is set to false, the camera works in non‑request buffer mode. In this mode, new frames are delivered through the frame callback function, and the application is responsible for releasing each frame back to the camera once processing is complete.
 
 
 ## 4.2 header files and macro/variable definitions
@@ -192,7 +202,7 @@ std::string g_CameraConfig = EXPAND_JSON( {
                 "streamConfigs": [
                     {
                         "streamId": 1,
-                        "bufCnt": 8,
+                        "bufferIds": [0, 1, 2, 3],
                         "format": "nv12",
                         "height": 2160,
                         "width": 3840,
@@ -201,7 +211,8 @@ std::string g_CameraConfig = EXPAND_JSON( {
                 ],
                 "requestMode": true,
                 "primary": false,
-                "recovery": false
+                "recovery": false,
+                "enableMetaData": false
             }
         } );
 
@@ -356,6 +367,205 @@ int main()
     return 0;
 }
 ```
+
+## 4.9 Typical usecases
+
+### 4.9.1 Request buffer mode
+
+Example configuration:
+```json
+{
+    "static": {
+        "name": "CAM",
+        "id": 0,
+        "inputId": 8,
+        "srcId": 0,
+        "clientId": 0,
+        "inputMode": 0,
+        "ispUseCase": 65,
+        "camFrameDropPattern": 0,
+        "camFrameDropPeriod": 0,
+        "opMode": 2,
+        "streamConfigs": [
+            {
+                "streamId": 1,
+                "bufferIds": [0, 1, 2, 3],
+                "format": "nv12",
+                "height": 2160,
+                "width": 3840,
+                "submitRequestPattern": 0
+            }
+        ],
+        "primary": false,
+        "recovery": false,
+        "requestMode": true,
+        "enableMetaData": false
+    }
+}
+```
+
+### 4.9.2 Non-request buffer mode
+
+Example configuration:
+```json
+{
+    "static": {
+        "name": "CAM",
+        "id": 0,
+        "inputId": 8,
+        "srcId": 0,
+        "clientId": 0,
+        "inputMode": 0,
+        "ispUseCase": 65,
+        "camFrameDropPattern": 0,
+        "camFrameDropPeriod": 0,
+        "opMode": 2,
+        "streamConfigs": [
+            {
+                "streamId": 1,
+                "bufferIds": [0, 1, 2, 3],
+                "format": "nv12",
+                "height": 2160,
+                "width": 3840,
+                "submitRequestPattern": 0
+            }
+        ],
+        "primary": false,
+        "recovery": false,
+        "requestMode": false,
+        "enableMetaData": false
+    }
+}
+```
+
+### 4.9.3 Multi-stream with submit request pattern
+The `submitRequestPattern` option in CameraStreamConfig_t is only valid when `requestMode` is set to true and `streamConfigs` has 2 or more elements. The purpose of submitRequestPattern is to reduce the camera's frames per second (FPS) to lower DDR usage. And the `enableMultiStreamFrameReady` option is used to set multiple streams frame ready event in one callback, which could reduce CPU loading.
+
+Example configuration:
+```json
+{
+    "static": {
+        "name": "CAM",
+        "id": 0,
+        "inputId": 8,
+        "srcId": 0,
+        "clientId": 0,
+        "inputMode": 0,
+        "ispUseCase": 65,
+        "camFrameDropPattern": 0,
+        "camFrameDropPeriod": 0,
+        "opMode": 2,
+        "streamConfigs": [
+            {
+                "streamId": 1,
+                "bufferIds": [0, 1, 2, 3],
+                "format": "nv12",
+                "height": 2160,
+                "width": 3840,
+                "submitRequestPattern": 0
+            },
+            {
+                "streamId": 2,
+                "bufferIds": [4, 5, 6, 7],
+                "format": "nv12",
+                "height": 2160,
+                "width": 3840,
+                "submitRequestPattern": 3
+            }
+        ],
+        "primary": false,
+        "recovery": false,
+        "requestMode": true,
+        "enableMetaData": false,
+        "enableMultiStreamFrameReady": true
+    }
+}
+```
+- For any stream with a non-zero submitRequestPattern, the FPS is calculated as:
+    - FPS = The FPS of stream 0 / submitRequestPattern
+- In this configuration:
+    - The stream 0 will operate at 30 FPS.
+    - The stream 1 will operate at 10 FPS (calculated as 30 / 3).
+
+### 4.9.4 Multi-client feature
+
+The camera supports multi‑client mode, allowing two or more processes to open and stream from the same camera sensor simultaneously. QCNode camera enables this functionality through the clientId and bPrimary configuration options. Note that when clientId is set to 0, the system defaults to single‑client mode, in which case only one process can open and stream from the camera sensor.
+
+Example configuration for primary session:
+```json
+{
+    "static": {
+        "name": "CAM0",
+        "id": 0,
+        "inputId": 8,
+        "srcId": 0,
+        "clientId": 1,
+        "inputMode": 0,
+        "ispUseCase": 65,
+        "camFrameDropPattern": 0,
+        "camFrameDropPeriod": 0,
+        "opMode": 2,
+        "streamConfigs": [
+            {
+                "streamId": 1,
+                "bufferIds": [0, 1, 2, 3],
+                "format": "nv12",
+                "height": 2160,
+                "width": 3840,
+                "submitRequestPattern": 0
+            }
+        ],
+        "primary": true,
+        "recovery": false,
+        "requestMode": true,
+        "enableMetaData": false
+    }
+}
+```
+
+Example configuration for subscriber (non-primary) session:
+```json
+{
+    "static": {
+        "name": "CAM1",
+        "id": 0,
+        "inputId": 8,
+        "srcId": 0,
+        "clientId": 3,
+        "inputMode": 0,
+        "ispUseCase": 65,
+        "camFrameDropPattern": 0,
+        "camFrameDropPeriod": 0,
+        "opMode": 2,
+        "streamConfigs": [
+            {
+                "streamId": 1,
+                "bufferIds": [4, 5, 6, 7],
+                "format": "nv12",
+                "height": 2160,
+                "width": 3840,
+                "submitRequestPattern": 0
+            }
+        ],
+        "primary": false,
+        "recovery": false,
+        "requestMode": true,
+        "enableMetaData": false
+    }
+}
+```
+
+### 4.9.5 Camera frame drop pattern and period
+
+The option `camFrameDropPattern` and c`amFrameDropPeriod` can be used to drop camera frames to reduce camera FPS.
+Below is the frame drop pattern and period has been tested.
+
+| FPS    | pattern | period |
+|--------|---------|--------|
+|   15   |   10    |   3    |
+|   7.5  |   7     |   3    |
+|   10   |   6     |   2    |
+
 
 # 5. References
 - [gtest Camera](../tests/unit_test/Node/Camera/gtest_NodeCamera.cpp).

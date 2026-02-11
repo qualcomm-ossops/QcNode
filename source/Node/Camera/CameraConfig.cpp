@@ -294,6 +294,21 @@ QCStatus_e CameraConfig::VerifyStaticConfig( DataTree &dt, std::string &errors )
                                   " is larger than maximum, ";
                         status = QC_STATUS_BAD_ARGUMENTS;
                     }
+                    else
+                    {
+                        // Check for duplicate buffer id
+                        for ( uint32_t bufferId : metadataBufferIds )
+                        {
+                            if ( usedBufferIds.find( bufferId ) != usedBufferIds.end() )
+                            {
+                                errors += "duplicate buffer ID " + std::to_string( bufferId ) +
+                                          " found in metadata " + std::to_string( i ) + ", ";
+                                status = QC_STATUS_BAD_ARGUMENTS;
+                                break;
+                            }
+                            usedBufferIds.insert( bufferId );
+                        }
+                    }
                 }
 
                 if ( QC_STATUS_OK != status )
@@ -361,6 +376,7 @@ QCStatus_e CameraConfig::ParseStaticConfig( DataTree &dt, std::string &errors )
         config.bRequestMode = dt.Get<bool>( "requestMode", true );
         config.bPrimary = dt.Get<bool>( "primary", true );
         config.bEnalbleMetaData = dt.Get<bool>( "enableMetaData", false );
+        config.bMultiStreamFrameReady = dt.Get<bool>( "enableMultiStreamFrameReady", false );
         config.bRecovery = dt.Get<bool>( "recovery", false );
     }
 

@@ -324,8 +324,15 @@ CameraImpl::Initialize( QCNodeEventCallBack_t callback,
 
     if ( QC_STATUS_OK == ret )
     {
-        param = QCARCAM_EVENT_FRAME_READY | QCARCAM_EVENT_INPUT_SIGNAL | QCARCAM_EVENT_ERROR |
-                QCARCAM_EVENT_MC_NOTIFY;
+        param = QCARCAM_EVENT_INPUT_SIGNAL | QCARCAM_EVENT_ERROR | QCARCAM_EVENT_MC_NOTIFY;
+        if ( true == m_config.bMultiStreamFrameReady )
+        {
+            param |= QCARCAM_EVENT_MULTI_STREAM_FRAME_READY;
+        }
+        else
+        {
+            param |= QCARCAM_EVENT_FRAME_READY;
+        }
         status = QCarCamSetParam( m_QcarCamHndl, QCARCAM_STREAM_CONFIG_PARAM_EVENT_MASK, &param,
                                   sizeof( param ) );
         if ( QCARCAM_RET_OK != status )
@@ -385,7 +392,6 @@ CameraImpl::Initialize( QCNodeEventCallBack_t callback,
                 QC_INFO( "QCARCAM_PARAM_FRAME_RATE Success" );
             }
         }
-        m_state = QC_OBJECT_STATE_READY;
     }
 
     if ( QC_STATUS_OK == ret )
@@ -407,33 +413,33 @@ CameraImpl::Initialize( QCNodeEventCallBack_t callback,
         }
         else
         {
-            /* register frame buffers */
-            ret = RegisterFrameBuffers( buffers );
+            /* set frame buffers */
+            ret = SetFrameBuffers( buffers );
             if ( QC_STATUS_OK == ret )
             {
-                QC_INFO( "Register frame buffers successfully" );
+                QC_INFO( "Set frame buffers successfully" );
             }
             else
             {
-                QC_ERROR( "Failed to register frame buffers" );
+                QC_ERROR( "Failed to set frame buffers" );
             }
         }
     }
 
     if ( QC_STATUS_OK == ret )
     {
-        /* register metadata buffers */
+        /* Set metadata buffers */
         if ( true == m_enableMetaData )
         {
             m_metaDataBuffers.resize( m_metaDataNum );
-            ret = RegisterMetaDataBuffers( buffers );
+            ret = SetMetaDataBuffers( buffers );
             if ( QC_STATUS_OK == ret )
             {
-                QC_INFO( "Register metadata buffers successfully" );
+                QC_INFO( "Set metadata buffers successfully" );
             }
             else
             {
-                QC_ERROR( "Failed to register metadata buffers" );
+                QC_ERROR( "Failed to set metadata buffers" );
             }
         }
     }
@@ -456,6 +462,7 @@ CameraImpl::Initialize( QCNodeEventCallBack_t callback,
 
     if ( QC_STATUS_OK == ret )
     {
+        m_state = QC_OBJECT_STATE_READY;
         QC_INFO( "Initialize camera successfully" );
     }
     else
@@ -605,20 +612,10 @@ QCStatus_e CameraImpl::ProcessFrameDescriptor( QCFrameDescriptorNodeIfs &frameDe
         else
         {
             bufferIdx = pCamMetaDataDesc->id;
-            bufferHandle = pCamMetaDataDesc->dmaHandle;
 
             QC_TRACE_BEGIN( "Execute", { QCNodeTraceArg( "bufferIdx", bufferIdx ) } );
 
-            if ( m_metaDataBufferMap.find( bufferHandle ) == m_metaDataBufferMap.end() )
-            {
-                ret = QC_STATUS_INVALID_BUF;
-                QC_ERROR( "metadata buffer is not registered, bufferIdx: %u", bufferIdx );
-            }
-
-            if ( QC_STATUS_OK == ret )
-            {
-                ret = SubmitRequest( pCamMetaDataDesc );
-            }
+            ret = SubmitRequest( pCamMetaDataDesc );
 
             if ( QC_STATUS_OK != ret )
             {
@@ -972,7 +969,7 @@ QCStatus_e CameraImpl::SubmitRequest( const CameraMetaDataDescriptor_t *pMetaDat
     return ret;
 }
 
-QCStatus_e CameraImpl::RegisterFrameBuffers(
+QCStatus_e CameraImpl::SetFrameBuffers(
         std::vector<std::reference_wrapper<QCBufferDescriptorBase_t>> &buffers )
 {
     QCStatus_e ret = QC_STATUS_OK;
@@ -990,19 +987,10 @@ QCStatus_e CameraImpl::RegisterFrameBuffers(
     CameraFrameDescriptor_t *pCamFrameBuf = nullptr;
     QCarCamBuffer_t *pQcarCamBuf = nullptr;
 
-    if ( QC_OBJECT_STATE_READY != m_state )
+    if ( ( 0 != m_clientId ) && ( false == m_bIsPrimary ) )
     {
-        ret = QC_STATUS_BAD_STATE;
-        QC_ERROR( "Camera is not in ready state: %d", m_state );
-    }
-
-    if ( QC_STATUS_OK == ret )
-    {
-        if ( ( 0 != m_clientId ) && ( false == m_bIsPrimary ) )
-        {
-            ret = QC_STATUS_BAD_ARGUMENTS;
-            QC_ERROR( "Register frame buffer is not allowed for multi-client non primary session" );
-        }
+        ret = QC_STATUS_BAD_ARGUMENTS;
+        QC_ERROR( "Setting frame buffer is not allowed for multi-client non primary session" );
     }
 
     if ( QC_STATUS_OK == ret )
@@ -1031,7 +1019,7 @@ QCStatus_e CameraImpl::RegisterFrameBuffers(
                 pCamFrameBuf = &m_frameBuffers[streamId].pCamFrameDescs[j];
                 pQcarCamBuf = &m_frameBuffers[streamId].pQcarCamFrameBuffers[j];
                 pCamFrameBuf->streamId = streamId;
-                pCamFrameBuf->frameIdx = bufferIdx;
+                pCamFrameBuf->frameIdx = j;
 
                 if ( nullptr == pCamFrameBuf->pBuf )
                 {
@@ -1054,7 +1042,7 @@ QCStatus_e CameraImpl::RegisterFrameBuffers(
                         ret = QC_STATUS_INVALID_BUF;
                         QC_ERROR( "Camera frame descriptor buffer is registered for stream %u, "
                                   "bufferIdx %u",
-                                  streamId, bufferIdx );
+                                  streamId, j );
                         break;
                     }
                 }
@@ -1139,7 +1127,7 @@ QCStatus_e CameraImpl::RegisterFrameBuffers(
                         pQcarCamBuf->planes[1].offset = pQcarCamBuf->planes[0].size;
                     }
 
-                    QC_INFO( "Register frame buffer index %u: memHndl: %llu, va: %p, width: %u, "
+                    QC_INFO( "Set frame buffer index %u: memHndl: %llu, va: %p, width: %u, "
                              "height: %u, stride: %u size: %u",
                              i, pQcarCamBuf->planes[0].memHndl, pCamFrameBuf->pBuf,
                              pQcarCamBuf->planes[0].width, pQcarCamBuf->planes[0].height,
@@ -1172,7 +1160,7 @@ QCStatus_e CameraImpl::RegisterFrameBuffers(
     return ret;
 }
 
-QCStatus_e CameraImpl::RegisterMetaDataBuffers(
+QCStatus_e CameraImpl::SetMetaDataBuffers(
         std::vector<std::reference_wrapper<QCBufferDescriptorBase_t>> &buffers )
 {
     QCStatus_e ret = QC_STATUS_OK;
@@ -1185,19 +1173,10 @@ QCStatus_e CameraImpl::RegisterMetaDataBuffers(
     BufferDescriptor_t *pCamMetaDataBuf = nullptr;
     QCarCamBuffer_t *pQcarCamBuf = nullptr;
 
-    if ( QC_OBJECT_STATE_READY != m_state )
+    if ( false == m_enableMetaData )
     {
-        ret = QC_STATUS_BAD_STATE;
-        QC_ERROR( "Camera is not in ready state: %d", m_state );
-    }
-
-    if ( QC_STATUS_OK == ret )
-    {
-        if ( false == m_enableMetaData )
-        {
-            ret = QC_STATUS_BAD_ARGUMENTS;
-            QC_ERROR( "metadata is not enabled" );
-        }
+        ret = QC_STATUS_BAD_ARGUMENTS;
+        QC_ERROR( "metadata is not enabled" );
     }
 
     if ( QC_STATUS_OK == ret )
@@ -1257,8 +1236,8 @@ QCStatus_e CameraImpl::RegisterMetaDataBuffers(
                 }
             }
 
-            QC_INFO( "Register metadata buffer index %u: memHndl: %llu, va: %p, size: %u",
-                     bufferIdx, pQcarCamBuf->planes[0].memHndl, pCamMetaDataBuf->pBuf,
+            QC_INFO( "Set metadata buffer index %u: memHndl: %llu, va: %p, size: %u", bufferIdx,
+                     pQcarCamBuf->planes[0].memHndl, pCamMetaDataBuf->pBuf,
                      pQcarCamBuf->planes[0].size );
 
             if ( QCARCAM_RET_OK == status )
@@ -1738,19 +1717,6 @@ QCStatus_e CameraImpl::ValidateConfig( const CameraImplConfig_t *pConfig )
     return ret;
 }
 
-void CameraImpl::FrameCallback( CameraFrameDescriptor_t *pFrame, void *pPrivData )
-{
-    CameraImpl *self = reinterpret_cast<CameraImpl *>( pPrivData );
-    if ( nullptr != self )
-    {
-        self->FrameCallback( pFrame );
-    }
-    else
-    {
-        QC_LOG_ERROR( "Camera: pAppPriv is invalid" );
-    }
-}
-
 void CameraImpl::FrameCallback( CameraFrameDescriptor_t *pFrame )
 {
     QCStatus_e ret = QC_STATUS_OK;
@@ -1784,13 +1750,6 @@ void CameraImpl::FrameCallback( CameraFrameDescriptor_t *pFrame )
     {
         QC_ERROR( "Failed to set frame buffer descriptor" );
     }
-}
-
-void CameraImpl::EventCallback( const uint32_t eventId, const void *pPayload, void *pPrivData )
-{
-    CameraImpl *self = reinterpret_cast<CameraImpl *>( pPrivData );
-
-    self->EventCallback( eventId, pPayload );
 }
 
 void CameraImpl::EventCallback( const uint32_t eventId, const void *pPayload )
@@ -1855,13 +1814,39 @@ QCarCamRet_e CameraImpl::QcarcamEventCb( const QCarCamHndl_t hndl, const uint32_
             pCameraFrame = GetFrame( &pPayload->frameInfo );
             if ( nullptr != pCameraFrame )
             {
-                FrameCallback( pCameraFrame, (void *) this );
+                FrameCallback( pCameraFrame );
             }
             else
             {
                 QC_ERROR( "GetFrame failed, returning nullptr" );
             }
 
+            break;
+        }
+        case QCARCAM_EVENT_MULTI_STREAM_FRAME_READY:
+        {
+            const QCarCamMultiFrameInfo_t &multiFrameInfo = pPayload->multiFrameInfo;
+            QCarCamFrameInfo_t frameInfo = {};
+            frameInfo.requestId = multiFrameInfo.requestId;
+            frameInfo.sofTimestamp = multiFrameInfo.sofTimestamp;
+            frameInfo.timestamp = multiFrameInfo.timestamp;
+            for ( uint32_t i = 0U; i < multiFrameInfo.numFrameInfo; i++ )
+            {
+                const QCarCamSingleFrameInfo_t &singleFrameInfo = multiFrameInfo.batchFrameInfo[i];
+                frameInfo.id = singleFrameInfo.id;
+                frameInfo.flags = singleFrameInfo.flags;
+                frameInfo.seqNo = singleFrameInfo.seqNo;
+                frameInfo.bufferIndex = singleFrameInfo.bufferIndex;
+                pCameraFrame = GetFrame( &frameInfo );
+                if ( nullptr != pCameraFrame )
+                {
+                    FrameCallback( pCameraFrame );
+                }
+                else
+                {
+                    QC_ERROR( "GetFrame failed, returning nullptr" );
+                }
+            }
             break;
         }
         case QCARCAM_EVENT_INPUT_SIGNAL:
@@ -1912,7 +1897,7 @@ QCarCamRet_e CameraImpl::QcarcamEventCb( const QCarCamHndl_t hndl, const uint32_
                     break;
             }
             /* Let the user applicaiton to handle the multi-client event */
-            EventCallback( eventId, (void *) pPayload, (void *) this );
+            EventCallback( eventId, (void *) pPayload );
             break;
         }
         case QCARCAM_EVENT_ERROR:
@@ -1920,7 +1905,7 @@ QCarCamRet_e CameraImpl::QcarcamEventCb( const QCarCamHndl_t hndl, const uint32_
             QC_ERROR( "QCARCAM_EVENT_ERROR: error Id=%d, code=%u, source=%u",
                       pPayload->errInfo.errorId, pPayload->errInfo.errorCode,
                       pPayload->errInfo.errorSource );
-            EventCallback( eventId, (void *) pPayload, (void *) this );
+            EventCallback( eventId, (void *) pPayload );
             break;
         }
         default:
