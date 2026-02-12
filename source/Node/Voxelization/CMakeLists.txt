@@ -25,3 +25,5 @@ target_include_directories( QCNodeVoxelization PUBLIC ${HEADERS_DIR} )
 target_link_libraries( QCNodeVoxelization PUBLIC ${TARGET_LIBRARIES} )
 
 install( FILES ${QC_NODE_VOXELIZATION_HEADERS} DESTINATION include/QC/Node )
+
+target_compile_options( QCNodeVoxelization PRIVATE -Wall )
