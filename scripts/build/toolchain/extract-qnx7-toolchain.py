@@ -318,6 +318,8 @@ copy_file( mm_video_path + "source/filedemux/FileBaseLib/inc/parserinternaldefs.
 make_directory( tcIncDir + "/WF" )
 copy_file( srcPatchIncDir + "/WF/wfdplatform.h", tcIncDir + "/WF" )
 
+libListC2C = [ "libc2c.so", "libep_client.so", "librc_client.so", "libmhi_client.so" ]
+libListXml = [ "libsafe_xml.so", "libxml2_no_sock.so", "libsafe_xml_c.so" ]
 libListVidc  = [ "libvidc.so", "libFileSource.so", "libioctlClient.so", "libOSAbstraction.so", "libopenwfd.so", "libpool.so", "libss_drv_util.so", "libhwio.so.1", "libtzss_drv.so", "libssloader.so", "libioctlServer.so", "libpil_client.so" ]
 libListC2d   = [ "libc2d30.so" ]
 libListPmem  = [ "libpmem_client.so", "libpmemext.so" ]
@@ -334,15 +336,15 @@ libList = libListVidc + libListFastCV + libListC2d + libListPmem + libListQgptp 
         "libsysprofiler.so", "libQProfilerInterface.so", "libfdt_utils.so", "libtzbsplib.so", "libtzbsplib.so.1",
         "libsmmu_clientS.a", "libfastcvopt.a", "libfastcvoptS.a",
         "liblibstd.so", "libmmap_peer.so", "libxml_config.so", "libOpenCL_Adreno.so",
-        "libicb_client.so", "libnpa_client.so", "libc2c.so", "libep_client.so", "librc_client.so",
-        "libsafe_xml.so", "libsafe_xml_c.so"
-    ] + libListRSM
+        "libicb_client.so", "libnpa_client.so",
+    ] + libListRSM + libListXml + libListC2C
 
 targetLibDirs = [
         inputDir + '/qnx_ap/install/aarch64le',
         inputDir + '/qnx_ap/AMSS/qaic/prebuilt/lib64'
     ]
 
+AllowMissingLibs = libListXml + libListC2C
 
 for lib in libList:
     print( "Copying library/symbol file: " + lib + " to: " + tcLibDir )
@@ -354,7 +356,10 @@ for lib in libList:
             copied = True
             break
     if not copied:
-        sys.exit("Failed to copy: " + lib )
+        if lib not in AllowMissingLibs:
+            sys.exit("Failed to copy: " + lib )
+        else:
+            print(f"\nWARNING: {lib} missing\n")
 
 # multimedia dependent libraries
 mm_build_path = mm_video_path + "build"
