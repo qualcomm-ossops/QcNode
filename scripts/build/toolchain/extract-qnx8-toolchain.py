@@ -118,6 +118,15 @@ def merge_directories( srcDir, dstDir ):
     except:
         print_traceback_and_exit()
 
+def FindFile( rootDir, fileName ):
+    try:
+        for currDir, dirs, files in os.walk( rootDir ):
+            if fileName in files:
+                return [os.path.join( currDir, fileName )]
+    except:
+        print_traceback_and_exit()
+    return []
+
 def generate_env_file( envFilePath, sdpVersion ):
     with open( envFilePath, "wt") as textFile:
         textFile.write( '''#/bin/bash
@@ -209,10 +218,9 @@ incList = [ inputDir  + "/qnx_ap/AMSS/inc/AEEStdDef.h",
             srcIncDir + "/amss/multimedia/camera_qcx/qcarcam_types.h",
           ]
 
-mm_video_path = inputDir + "/qnx_ap/AMSS/multimedia/video/vendor/qcom/proprietary/video-driver/test/"
+mm_video_path = inputDir + "/qnx_ap/AMSS/multimedia/video"
 OneOfIncList = [
-    [
-        inputDir  + "/qnx_ap/AMSS/pcie_c2c/vendor/qcom/proprietary/pcie-c2c/c2clib/public/c2c.h",
+    FindFile(inputDir  + "/qnx_ap/AMSS/pcie_c2c", "c2c.h") + [
         inputDir  + "/qnx_ap/AMSS/pcie_c2c/c2clib/protected/c2c.h",
         inputDir  + "/qnx_ap/AMSS/inc/c2c.h"
     ],
@@ -224,16 +232,13 @@ OneOfIncList = [
         srcIncDir + "/amss/multimedia/video/vidc_types.h",
         inputDir  + "/qnx_ap/AMSS/multimedia/video/source/common/drivers/inc/vidc_types.h"
     ],
-    [
-        mm_video_path + "source/filedemux/Api/inc/filesource.h",
+    FindFile(mm_video_path, "filesource.h") + [
         inputDir  + "/qnx_ap/test/multimedia/experimental/video/source/filedemux/FileSource/inc/filesource.h"
     ],
-    [
-        mm_video_path + "source/filedemux/Api/inc/filesourcetypes.h",
+    FindFile(mm_video_path, "filesourcetypes.h") + [
         inputDir  + "/qnx_ap/test/multimedia/experimental/video/source/filedemux/FileSource/inc/filesourcetypes.h"
     ],
-    [
-        mm_video_path + "source/filedemux/FileBaseLib/inc/parserinternaldefs.h",
+    FindFile(mm_video_path, "parserinternaldefs.h") + [
         inputDir  + "/qnx_ap/test/multimedia/experimental/video/source/filedemux/FileBaseLib/inc/parserinternaldefs.h"
     ]
 
@@ -254,10 +259,14 @@ for inc in incList:
     print( "Copying header file: " + inc + " to: " + tcIncDir )
     copy_file( inc, tcIncDir)
 
-svIncDir = inputDir  + "/qnx_ap/AMSS/multimedia/compute/sv/vendor/qcom/proprietary/sv-auto/public/amss/multimedia/sv/"
-for inc in glob.glob(f"{svIncDir}/*.h"):
-    print( "Copying header file: " + inc + " to: " + tcIncDir )
-    copy_file( inc, tcIncDir)
+svSdkDir = inputDir  + "/qnx_ap/AMSS/multimedia/compute/sv"
+for x in ["svBlobDetector.h", "svBuffer.h", "svConfigMap.h", "svDescriptor.h",
+          "svDescriptorMatch.h", "svFeature.h", "svFpx.h", "svLme.h", "svNcc.h",
+          "svSession.h", "svSpatialStats.h", "svStereoDisparity.h", "svTypes.h",
+          "svUtils.h"]:
+    for inc in FindFile(svSdkDir, x):
+        print( "Copying header file: " + inc + " to: " + tcIncDir )
+        copy_file( inc, tcIncDir)
 
 # copy qcom OpenCL extension
 CL_EXT_H_LIST = [
