@@ -10,6 +10,10 @@ set( CMAKE_CXX_COMPILER_TARGET ${arch} )
 
 set( CMAKE_SYSROOT $ENV{QNX_TARGET}/aarch64le/ )
 
+if( DEFINED ENV{BSP_ROOT} )
+add_link_options("--sysroot=$ENV{BSP_ROOT}/install/aarch64le")
+endif()
+
 set( CMAKE_FIND_LIBRARY_PREFIXES lib )
 set( CMAKE_FIND_LIBRARY_SUFFIXES .so )
 
