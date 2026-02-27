@@ -107,6 +107,16 @@ VoxelizationImpl::Initialize( QCNodeEventCallBack_t callback,
                     {
                         QC_ERROR( "Failed to create cluster point kernel for INPUT_XYZR mode" );
                     }
+                    else
+                    {
+                        ret = m_openCLSrvObj.CreateKernel( &m_featGatherKernel,
+                                                           "FeatureGatherFromXYZR" );
+                        if ( QC_STATUS_OK != ret )
+                        {
+                            QC_ERROR(
+                                    "Failed to create feature gather kernel for INPUT_XYZR mode" );
+                        }
+                    }
                 }
                 else if ( ( VOXELIZATION_INPUT_MODE_XYZRT == m_inputMode ) &&
                           ( 5 == m_config.voxelConfig.numInFeatureDim ) )
@@ -117,40 +127,21 @@ VoxelizationImpl::Initialize( QCNodeEventCallBack_t callback,
                     {
                         QC_ERROR( "Failed to create cluster point kernel for INPUT_XYZRT mode" );
                     }
+                    else
+                    {
+                        ret = m_openCLSrvObj.CreateKernel( &m_featGatherKernel,
+                                                           "FeatureGatherFromXYZRT" );
+                        if ( QC_STATUS_OK != ret )
+                        {
+                            QC_ERROR(
+                                    "Failed to create feature gather kernel for INPUT_XYZRT mode" );
+                        }
+                    }
                 }
                 else
                 {
                     ret = QC_STATUS_BAD_ARGUMENTS;
                     QC_ERROR( "GPU voxelization mode for cluster point kernel is invalid!" );
-                }
-            }
-
-            if ( QC_STATUS_OK == ret )
-            {
-                if ( ( VOXELIZATION_INPUT_MODE_XYZR == m_inputMode ) &&
-                     ( 4 == m_config.voxelConfig.numInFeatureDim ) )
-                {
-                    ret = m_openCLSrvObj.CreateKernel( &m_featGatherKernel,
-                                                       "FeatureGatherFromXYZR" );
-                    if ( QC_STATUS_OK != ret )
-                    {
-                        QC_ERROR( "Failed to create feature gather kernel for INPUT_XYZR mode" );
-                    }
-                }
-                else if ( ( VOXELIZATION_INPUT_MODE_XYZRT == m_inputMode ) &&
-                          ( 5 == m_config.voxelConfig.numInFeatureDim ) )
-                {
-                    ret = m_openCLSrvObj.CreateKernel( &m_featGatherKernel,
-                                                       "FeatureGatherFromXYZRT" );
-                    if ( QC_STATUS_OK != ret )
-                    {
-                        QC_ERROR( "Failed to create feature gather kernel for INPUT_XYZRT mode" );
-                    }
-                }
-                else
-                {
-                    ret = QC_STATUS_BAD_ARGUMENTS;
-                    QC_ERROR( "GPU voxelization mode for feature gather kernel is invalid!" );
                 }
             }
         }
@@ -503,7 +494,8 @@ QCStatus_e VoxelizationImpl::ProcessFrameDescriptor( QCFrameDescriptorNodeIfs &f
                 QC_ERROR( "Output pillar tensor is invalid for XYZR pointcloud input!" );
             }
         }
-        else if ( ( VOXELIZATION_INPUT_MODE_XYZRT == m_inputMode ) )
+
+        if ( ( VOXELIZATION_INPUT_MODE_XYZRT == m_inputMode ) )
         {
             if ( ( nullptr == pOutputPlrTensor->pBuf ) || ( 2 != pOutputPlrTensor->numDims ) ||
                  ( QC_TENSOR_TYPE_INT_32 != pOutputPlrTensor->tensorType ) ||

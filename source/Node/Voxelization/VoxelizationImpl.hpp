@@ -132,6 +132,10 @@ typedef struct VoxelizationImplMonitorConfig : public QCNodeMonitoringBase_t
 } VoxelizationImplMonitorConfig_t;
 
 
+#ifndef VOXELIZATIONIMPL_FRIEND_CLASS
+#define VOXELIZATIONIMPL_FRIEND_CLASS()
+#endif
+
 class VoxelizationImpl
 {
 public:
@@ -267,6 +271,8 @@ private:
     std::unordered_map<uint64_t, MemInfo> m_bufferMap;
 
     QC_DECLARE_NODETRACE();
+
+    VOXELIZATIONIMPL_FRIEND_CLASS();
 };
 
 
