@@ -5,7 +5,7 @@
 #ifndef QC_CL2D_PIPELINE_REMAP_CLH
 #define QC_CL2D_PIPELINE_REMAP_CLH
 
-KernelCode(
+KERNELCODE(
 
         __kernel void RemapNV12ToRGB( __global const uchar *srcPtr, int srcOffset,
                                       __global uchar *dstPtr, int dstOffset, int inputHeight,

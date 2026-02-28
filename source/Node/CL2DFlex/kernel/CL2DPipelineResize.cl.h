@@ -5,7 +5,7 @@
 #ifndef QC_CL2D_PIPELINE_RESIZE_CLH
 #define QC_CL2D_PIPELINE_RESIZE_CLH
 
-KernelCode(
+KERNELCODE(
 
         __kernel void ResizeNV12ToRGB( __global const uchar *srcPtr, int srcOffset,
                                        __global uchar *dstPtr, int dstOffset, int inputHeight,
@@ -26,11 +26,11 @@ KernelCode(
             int uPtr = mad24( yIn / 2, inputStride1, ( xIn / 2 ) << 1 );
             float Y = max( 0, ySrc[yPtr] - 16 ) * coeffY;
             float2 UV = convert_float2( vload2( 0, uSrc + uPtr ) ) - 128.0f;
-            float4 UV4 = ( float4 )( UV, UV );
+            float4 UV4 = (float4) ( UV, UV );
             UV4 = mad( UV4, coeffUV4, 0.5f );
             UV4.s1 = UV4.s1 + UV4.s2 - 0.5f;
             UV4 += Y;
-            uchar3 RGB = convert_uchar3_sat( ( float3 )( UV4.s3, UV4.s1, UV4.s0 ) );
+            uchar3 RGB = convert_uchar3_sat( (float3) ( UV4.s3, UV4.s1, UV4.s0 ) );
             vstore3( RGB, 0, dst );
         }
 
@@ -51,11 +51,11 @@ KernelCode(
             int uPtr = mad24( yIn, inputStride, ( xIn / 2 ) * 4 );
             float Y = max( 0, src[yPtr] - 16 ) * coeffY;
             float3 UV3 = convert_float3( vload3( 0, src + uPtr ) ) - 128.0f;
-            float4 UV4 = ( float4 )( UV3.s0, UV3.s2, UV3.s0, UV3.s2 );
+            float4 UV4 = (float4) ( UV3.s0, UV3.s2, UV3.s0, UV3.s2 );
             UV4 = mad( UV4, coeffUV4, 0.5f );
             UV4.s1 = UV4.s1 + UV4.s2 - 0.5f;
             UV4 += Y;
-            uchar3 RGB = convert_uchar3_sat( ( float3 )( UV4.s3, UV4.s1, UV4.s0 ) );
+            uchar3 RGB = convert_uchar3_sat( (float3) ( UV4.s3, UV4.s1, UV4.s0 ) );
             vstore3( RGB, 0, dst );
         }
 

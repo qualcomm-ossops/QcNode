@@ -20,6 +20,8 @@ namespace Memory
 ** Typedefs & Enumerations
 ================================================================================================**/
 
+#define QC_MEMORY_MAX_POOLS_PER_NODE UINT8_MAX
+
 /**
  * @enum QCMemoryAllocator_e
  * @brief Enumerates the types of memory allocators.
@@ -117,6 +119,15 @@ typedef size_t QCAlignment_t;
 typedef unsigned long QCCount_t;
 
 /**
+ * @def QC_MEMORY_HEAP_MINIMAL_ALLIGNMENT
+ * @brief Default memory alignment value.
+ *
+ * This constant specifies the default memory alignment value.
+ */
+static const QCAlignment_t QC_MEMORY_HEAP_MINIMAL_ALLIGNMENT = 16;
+
+
+/**
  * @def QC_MEMORY_DEFAULT_ALLIGNMENT
  * @brief Default memory alignment value.
  *
@@ -190,7 +201,7 @@ typedef struct QCBufferPropBase
 #define QC_CALC_ALIGN_SIZE( size, ALLIGNMENT )                                                     \
     ( {                                                                                            \
         size_t ret;                                                                                \
-        ret = size + ALLIGNMENT - 1ul;                                                             \
+        ret = (size) + (ALLIGNMENT) - 1ul;                                                         \
         ret;                                                                                       \
     } )
 
@@ -204,7 +215,7 @@ typedef struct QCBufferPropBase
  * @param ALLIGNMENT The alignment of the buffer.
  */
 #define QC_ALIGN_POINTER( pVoid, ALLIGNMENT )                                                      \
-    ( void *ptr; ( ptr = (void *) ( (long) pVoid + ALLIGNMENT - 1ul ) & ~( ALLIGNMENT - 1ul ) );   \
+    void *ptr = (void *) ( ((long) (pVoid) + (ALLIGNMENT) - 1ul ) & ~( (ALLIGNMENT) - 1ul ) );     \
       ptr )
 
 /**
@@ -217,7 +228,7 @@ typedef struct QCBufferPropBase
  * @param ALLIGNMENT The alignment of the buffer.
  */
 #define QC_ALIGN_SIZE( size, ALLIGNMENT )                                                          \
-    ( ( ( ( size ) + ( ALLIGNMENT ) - 1 ) / ( ALLIGNMENT ) ) * ( ALLIGNMENT ) )
+    ( ( ( ( size ) + (ALLIGNMENT) -1 ) / ( ALLIGNMENT ) ) * ( ALLIGNMENT ) )
 
 }   // namespace Memory
 }   // namespace QC

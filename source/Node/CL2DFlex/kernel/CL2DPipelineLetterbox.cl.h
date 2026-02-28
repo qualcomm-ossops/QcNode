@@ -5,7 +5,7 @@
 #ifndef QC_CL2D_PIPELINE_LETTERBOX_CLH
 #define QC_CL2D_PIPELINE_LETTERBOX_CLH
 
-KernelCode(
+KERNELCODE(
 
         __kernel void LetterboxNV12ToRGB( __global const uchar *srcPtr, int srcOffset,
                                           __global uchar *dstPtr, int dstOffset, int inputHeight,
@@ -33,18 +33,18 @@ KernelCode(
                     int uPtr = mad24( yIn / 2, inputStride1, ( xIn / 2 ) << 1 );
                     float Y = max( 0, ySrc[yPtr] - 16 ) * coeffY;
                     float2 UV = convert_float2( vload2( 0, uSrc + uPtr ) ) - 128.0f;
-                    float4 UV4 = ( float4 )( UV, UV );
+                    float4 UV4 = (float4) ( UV, UV );
                     UV4 = mad( UV4, coeffUV4, 0.5f );
                     UV4.s1 = UV4.s1 + UV4.s2 - 0.5f;
                     UV4 += Y;
-                    RGB = convert_uchar3_sat( ( float3 )( UV4.s3, UV4.s1, UV4.s0 ) );
+                    RGB = convert_uchar3_sat( (float3) ( UV4.s3, UV4.s1, UV4.s0 ) );
                     vstore3( RGB, 0, dst );
                 }
                 else
                 {
                     RGB.s0 = ( paddingValue >> 16 ) & 0xFF;
                     RGB.s1 = ( paddingValue >> 8 ) & 0xFF;
-                    RGB.s2 = (paddingValue) &0xFF;
+                    RGB.s2 = ( paddingValue ) & 0xFF;
                     vstore3( RGB, 0, dst );
                 }
             }
@@ -62,18 +62,18 @@ KernelCode(
                     int uPtr = mad24( yIn / 2, inputStride1, ( xIn / 2 ) << 1 );
                     float Y = max( 0, ySrc[yPtr] - 16 ) * coeffY;
                     float2 UV = convert_float2( vload2( 0, uSrc + uPtr ) ) - 128.0f;
-                    float4 UV4 = ( float4 )( UV, UV );
+                    float4 UV4 = (float4) ( UV, UV );
                     UV4 = mad( UV4, coeffUV4, 0.5f );
                     UV4.s1 = UV4.s1 + UV4.s2 - 0.5f;
                     UV4 += Y;
-                    RGB = convert_uchar3_sat( ( float3 )( UV4.s3, UV4.s1, UV4.s0 ) );
+                    RGB = convert_uchar3_sat( (float3) ( UV4.s3, UV4.s1, UV4.s0 ) );
                     vstore3( RGB, 0, dst );
                 }
                 else
                 {
                     RGB.s0 = ( paddingValue >> 16 ) & 0xFF;
                     RGB.s1 = ( paddingValue >> 8 ) & 0xFF;
-                    RGB.s2 = (paddingValue) &0xFF;
+                    RGB.s2 = ( paddingValue ) & 0xFF;
                     vstore3( RGB, 0, dst );
                 }
             }

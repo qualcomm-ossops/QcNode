@@ -61,13 +61,13 @@ QCStatus_e CL2DFlex::DeInitialize()
     QCStatus_e status2;
 
     status2 = m_pCL2DFlexImpl->DeInitialize();
-    if ( QC_STATUS_OK == status2 )
+    if ( QC_STATUS_OK != status2 )
     {
         status = status2;
     }
 
     status2 = NodeBase::DeInitialize();
-    if ( QC_STATUS_OK == status2 )
+    if ( QC_STATUS_OK != status2 )
     {
         status = status2;
     }

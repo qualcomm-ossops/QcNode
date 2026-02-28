@@ -86,13 +86,14 @@ typedef struct Voxelization_Config_t
     uint32_t maxNumInPts;
     uint32_t maxNumPlrs;
     uint32_t maxNumPtsPerPlr;
-    std::string inputMode;
+    Voxelization_InputMode_e inputMode;
 } Voxelization_Config_t;
 
 
 /** @brief Configuration structure for Voxelization Node
  *
  * @param voxelConfig               Configuration structure for Voxelization function parameters
+ * @param inputPcdBufferIds         The indices of buffers for input pointcloud tensors
  * @param outputPlrBufferIds        The indices of buffers for output pillar tensors
  * @param outputFeatureBufferIds    The indices of buffers for output feature tensors
  * @param plrPointsBufferId         The index of buffer for maximal pliiar point number
@@ -115,6 +116,7 @@ typedef struct Voxelization_Config_t
 typedef struct VoxelizationImplConfig : public QCNodeConfigBase_t
 {
     Voxelization_Config_t voxelConfig;
+    std::vector<uint32_t> inputPcdBufferIds;
     std::vector<uint32_t> outputPlrBufferIds;
     std::vector<uint32_t> outputFeatureBufferIds;
     uint32_t plrPointsBufferId;
@@ -212,13 +214,12 @@ private:
                           TensorDescriptor_t &outputPlrTensorDesc,
                           TensorDescriptor_t &outputFeatTensorDesc );
 
-    QCStatus_e RegisterBuffer( QCBufferDescriptorBase_t &buffer, uint32_t bufferId,
-                               FadasBufType_e bufferType );
-    QCStatus_e DeRegisterBuffer( QCBufferDescriptorBase_t &buffer, uint32_t bufferId );
+    QCStatus_e RegisterBuffer( QCBufferDescriptorBase_t &buffer, FadasBufType_e bufferType );
+    QCStatus_e DeRegisterBuffer( QCBufferDescriptorBase_t &buffer );
+    QCStatus_e DeRegisterAllBuffers();
+
 
     QCStatus_e SetupGlobalBufferIdMap();
-
-    Voxelization_InputMode_e GetInputMode( std::string &mode );
 
     void InitOpenCLArgs();
 
@@ -240,7 +241,6 @@ private:
     TensorDescriptor_t m_plrPointsTensor;
     TensorDescriptor_t m_coordToPlrIdxTensor;
 
-    bool m_bufferRegisterOK;
     FadasPlrPreProc m_plrPre;
     OpenclSrv m_openCLSrvObj;
 
@@ -256,7 +256,15 @@ private:
 
     cl_mem m_clPlrPointsBuffer;
     cl_mem m_clCoordToPlrIdxBuffer;
-    std::unordered_map<uint64_t, cl_mem> m_clBufferDescMap;
+
+    struct MemInfo
+    {
+        QCBufferDescriptorBase_t bufDesc;
+        cl_mem bufferCL;
+        int fd;
+    };
+
+    std::unordered_map<uint64_t, MemInfo> m_bufferMap;
 
     QC_DECLARE_NODETRACE();
 };
@@ -266,4 +274,3 @@ private:
 }   // namespace QC
 
 #endif   // QC_NODE_VOXELIZATION_IMPL_HPP
-

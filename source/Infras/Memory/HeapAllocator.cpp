@@ -40,6 +40,13 @@ QCStatus_e HeapAllocator::Allocate( const QCBufferPropBase_t &request,
         QC_ERROR( "QC_CACHEABLE != request.cache" );
         status = QC_STATUS_BAD_ARGUMENTS;
     }
+    // check minimal alignment request
+    else if ( request.alignment < QC_MEMORY_HEAP_MINIMAL_ALLIGNMENT )
+    {
+        QC_ERROR( "request.alignment(%d) < QC_MEMORY_HEAP_MINIMAL_ALLIGNMENT(%d)",
+                  request.alignment, QC_MEMORY_HEAP_MINIMAL_ALLIGNMENT );
+        status = QC_STATUS_BAD_ARGUMENTS;
+    }
     else
     {
         QC_DEBUG(
@@ -64,9 +71,9 @@ QCStatus_e HeapAllocator::Allocate( const QCBufferPropBase_t &request,
         }
         else
         {
-            QC_DEBUG(
-                    "%s: Allocated %zu bytes aligned at %lu byte boundary from the process's heap",
-                    GetConfiguration().name.c_str(), request.size, request.alignment );
+            QC_DEBUG( "%s: Allocated %zu bytes aligned at %lu byte boundary heap at %p",
+                      GetConfiguration().name.c_str(), request.size, request.alignment,
+                      response.pBuf );
         }
     }
 

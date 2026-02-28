@@ -8,9 +8,6 @@
 #include "Voxelization.cl.h"
 #include "VoxelizationImpl.hpp"
 
-extern const size_t VOXELIZATION_PILLAR_COORDS_DIM =
-        sizeof( FadasVM_PointPillar_t ) / sizeof( float );
-
 namespace QC
 {
 namespace Node
@@ -32,7 +29,6 @@ VoxelizationImpl::Initialize( QCNodeEventCallBack_t callback,
 
     bool bFadasInitOK = false;
     bool bOpenclInitOK = false;
-    m_bufferRegisterOK = false;
 
     QC_TRACE_INIT( [&]() {
         std::ostringstream oss;
@@ -50,6 +46,10 @@ VoxelizationImpl::Initialize( QCNodeEventCallBack_t callback,
                 break;
             case QC_PROCESSOR_GPU:
                 processor = "gpu";
+                break;
+            default:
+                ret = QC_STATUS_BAD_ARGUMENTS;
+                QC_ERROR( "invalid processor" );
                 break;
         }
         oss << "{";
@@ -69,7 +69,7 @@ VoxelizationImpl::Initialize( QCNodeEventCallBack_t callback,
     if ( QC_STATUS_OK == ret )
     {
         m_state = QC_OBJECT_STATE_INITIALIZING;
-        m_inputMode = GetInputMode( m_config.voxelConfig.inputMode );
+        m_inputMode = m_config.voxelConfig.inputMode;
         m_processor = m_config.voxelConfig.processor;
         m_gridXSize = ceil( ( m_config.voxelConfig.maxXRange - m_config.voxelConfig.minXRange ) /
                             m_config.voxelConfig.pillarXSize );
@@ -201,8 +201,34 @@ VoxelizationImpl::Initialize( QCNodeEventCallBack_t callback,
 
     if ( QC_STATUS_OK == ret )
     {
-        m_state = QC_OBJECT_STATE_READY;
         ret = SetupGlobalBufferIdMap();
+    }
+
+    if ( QC_STATUS_OK == ret )
+    {
+        // Register input point cloud
+        for ( uint32_t bufferId : m_config.inputPcdBufferIds )
+        {
+            if ( bufferId < buffers.size() )
+            {
+                ret = RegisterBuffer( buffers[bufferId], FADAS_BUF_TYPE_IN );
+                if ( QC_STATUS_OK != ret )
+                {
+                    QC_ERROR( "Failed to register input pointcloud buffer for buffer id %u",
+                              bufferId );
+                }
+            }
+            else
+            {
+                ret = QC_STATUS_BAD_ARGUMENTS;
+                QC_ERROR( "input pointcloud buffer id %u out of range", bufferId );
+            }
+
+            if ( QC_STATUS_OK != ret )
+            {
+                break;
+            }
+        }
     }
 
     if ( QC_STATUS_OK == ret )
@@ -213,7 +239,7 @@ VoxelizationImpl::Initialize( QCNodeEventCallBack_t callback,
         {
             if ( bufferId < buffers.size() )
             {
-                ret = RegisterBuffer( buffers[bufferId], bufferId, FADAS_BUF_TYPE_OUT );
+                ret = RegisterBuffer( buffers[bufferId], FADAS_BUF_TYPE_OUT );
                 if ( QC_STATUS_OK != ret )
                 {
                     QC_ERROR( "Failed to register output pillar buffer for buffer id %u",
@@ -224,6 +250,11 @@ VoxelizationImpl::Initialize( QCNodeEventCallBack_t callback,
             {
                 ret = QC_STATUS_BAD_ARGUMENTS;
                 QC_ERROR( "Output pillar buffer id %u out of range", bufferId );
+            }
+
+            if ( QC_STATUS_OK != ret )
+            {
+                break;
             }
         }
     }
@@ -236,7 +267,7 @@ VoxelizationImpl::Initialize( QCNodeEventCallBack_t callback,
         {
             if ( bufferId < buffers.size() )
             {
-                ret = RegisterBuffer( buffers[bufferId], bufferId, FADAS_BUF_TYPE_OUT );
+                ret = RegisterBuffer( buffers[bufferId], FADAS_BUF_TYPE_OUT );
                 if ( QC_STATUS_OK != ret )
                 {
                     QC_ERROR( "Failed to register output feature buffer for buffer id %u",
@@ -247,6 +278,11 @@ VoxelizationImpl::Initialize( QCNodeEventCallBack_t callback,
             {
                 ret = QC_STATUS_BAD_ARGUMENTS;
                 QC_ERROR( "Output feature buffer id %u out of range", bufferId );
+            }
+
+            if ( QC_STATUS_OK != ret )
+            {
+                break;
             }
         }
     }
@@ -268,8 +304,7 @@ VoxelizationImpl::Initialize( QCNodeEventCallBack_t callback,
                     ret = m_openCLSrvObj.RegBufferDesc( bufDesc, m_clPlrPointsBuffer );
                     if ( QC_STATUS_OK == ret )
                     {
-                        // Mark buffer as registered for cleanup tracking
-                        m_clBufferDescMap[m_plrPointsTensor.dmaHandle] = m_clPlrPointsBuffer;
+                        m_bufferMap[bufDesc.dmaHandle] = { bufDesc, m_clPlrPointsBuffer, 0 };
                     }
                     else
                     {
@@ -278,7 +313,7 @@ VoxelizationImpl::Initialize( QCNodeEventCallBack_t callback,
                 }
                 else
                 {
-                    ret = QC_STATUS_NULL_PTR;
+                    ret = QC_STATUS_INVALID_BUF;
                     QC_ERROR( "Failed to cast pointer for plrPointsBuffer" );
                 }
             }
@@ -307,9 +342,7 @@ VoxelizationImpl::Initialize( QCNodeEventCallBack_t callback,
                     ret = m_openCLSrvObj.RegBufferDesc( bufDesc, m_clCoordToPlrIdxBuffer );
                     if ( QC_STATUS_OK == ret )
                     {
-                        // Mark buffer as registered for cleanup tracking
-                        m_clBufferDescMap[m_coordToPlrIdxTensor.dmaHandle] =
-                                m_clCoordToPlrIdxBuffer;
+                        m_bufferMap[bufDesc.dmaHandle] = { bufDesc, m_clCoordToPlrIdxBuffer, 0 };
                     }
                     else
                     {
@@ -318,7 +351,7 @@ VoxelizationImpl::Initialize( QCNodeEventCallBack_t callback,
                 }
                 else
                 {
-                    ret = QC_STATUS_NULL_PTR;
+                    ret = QC_STATUS_INVALID_BUF;
                     QC_ERROR( "Failed to cast pointer for coordToPlrIdxBuffer" );
                 }
             }
@@ -333,7 +366,7 @@ VoxelizationImpl::Initialize( QCNodeEventCallBack_t callback,
 
     if ( QC_STATUS_OK == ret )
     {
-        m_bufferRegisterOK = true;
+        m_state = QC_OBJECT_STATE_READY;
         if ( QC_PROCESSOR_GPU == m_processor )
         {
             InitOpenCLArgs();
@@ -344,6 +377,8 @@ VoxelizationImpl::Initialize( QCNodeEventCallBack_t callback,
     {
         m_state = QC_OBJECT_STATE_INITIAL;
 
+        (void) DeRegisterAllBuffers();
+
         if ( bFadasInitOK )
         {
             (void) m_plrPre.Deinit();
@@ -351,35 +386,6 @@ VoxelizationImpl::Initialize( QCNodeEventCallBack_t callback,
         if ( bOpenclInitOK )
         {
             (void) m_openCLSrvObj.Deinit();
-        }
-        if ( m_bufferRegisterOK )
-        {
-            for ( uint32_t i = 0; i < buffers.size(); i++ )
-            {
-                if ( m_clBufferDescMap.find( buffers[i].get().dmaHandle ) !=
-                     m_clBufferDescMap.end() )
-                {
-                    (void) DeRegisterBuffer( buffers[i], i );
-                }
-            }
-            if ( QC_PROCESSOR_GPU == m_processor )
-            {
-                if ( m_clBufferDescMap.find( m_plrPointsTensor.dmaHandle ) !=
-                     m_clBufferDescMap.end() )
-                {
-                    QCBufferDescriptorBase_t &bufDesc = m_plrPointsTensor;
-                    (void) m_openCLSrvObj.DeregBufferDesc( bufDesc );
-                    m_clBufferDescMap.erase( m_plrPointsTensor.dmaHandle );
-                }
-                if ( m_clBufferDescMap.find( m_coordToPlrIdxTensor.dmaHandle ) !=
-                     m_clBufferDescMap.end() )
-                {
-                    QCBufferDescriptorBase_t &bufDesc = m_coordToPlrIdxTensor;
-                    (void) m_openCLSrvObj.DeregBufferDesc( bufDesc );
-                    m_clBufferDescMap.erase( m_coordToPlrIdxTensor.dmaHandle );
-                }
-            }
-            m_bufferRegisterOK = false;
         }
         QC_ERROR( "Failed to initialize Voxelization, ret = %u!", ret );
     }
@@ -524,6 +530,11 @@ QCStatus_e VoxelizationImpl::ProcessFrameDescriptor( QCFrameDescriptorNodeIfs &f
 
     if ( QC_STATUS_OK == ret )
     {
+        ret = RegisterBuffer( *pInputTensor, FADAS_BUF_TYPE_IN );
+    }
+
+    if ( QC_STATUS_OK == ret )
+    {
         if ( QC_PROCESSOR_GPU == m_processor )
         {
             ret = ProcessCL( *pInputTensor, *pOutputPlrTensor, *pOutputFeatTensor );
@@ -547,7 +558,14 @@ QCStatus_e VoxelizationImpl::Stop()
 
     if ( QC_OBJECT_STATE_RUNNING == m_state )
     {
-        m_state = QC_OBJECT_STATE_READY;
+        if ( true == m_config.bDeRegisterAllBuffersWhenStop )
+        {
+            ret = DeRegisterAllBuffers();
+        }
+        if ( QC_STATUS_OK == ret )
+        {
+            m_state = QC_OBJECT_STATE_READY;
+        }
     }
     else
     {
@@ -562,24 +580,32 @@ QCStatus_e VoxelizationImpl::Stop()
 
 QCStatus_e VoxelizationImpl::DeInitialize()
 {
-    QCStatus_e ret = QC_STATUS_OK;
+    QCStatus_e status = QC_STATUS_OK;
+    QCStatus_e ret;
 
     QC_TRACE_BEGIN( "DeInit", {} );
 
     if ( QC_OBJECT_STATE_READY != m_state )
     {
-        ret = QC_STATUS_BAD_STATE;
+        status = QC_STATUS_BAD_STATE;
         QC_ERROR( "Voxelization not in ready state: %d", m_state );
     }
 
-    if ( QC_STATUS_OK == ret )
+    if ( QC_STATUS_OK == status )
     {
+        ret = DeRegisterAllBuffers();
+        if ( ret != QC_STATUS_OK )
+        {
+            status = ret;
+        }
+
         if ( QC_PROCESSOR_GPU == m_processor )
         {
             ret = m_openCLSrvObj.Deinit();
             if ( QC_STATUS_OK != ret )
             {
                 QC_ERROR( "Release OpenclSrvObj resources failed: %u", ret );
+                status = ret;
             }
         }
         else
@@ -587,16 +613,22 @@ QCStatus_e VoxelizationImpl::DeInitialize()
             ret = m_plrPre.DestroyPreProc();
             if ( QC_STATUS_OK != ret )
             {
+                QC_ERROR( "PlrPre DestroyPreProc failed: %u", ret );
+                status = ret;
+            }
+
+            ret = m_plrPre.Deinit();
+            if ( QC_STATUS_OK != ret )
+            {
                 QC_ERROR( "PlrPre Deinit failed: %u", ret );
+                status = ret;
             }
         }
-
-        m_clBufferDescMap.clear();
     }
 
     QC_TRACE_END( "DeInit", {} );
 
-    return ret;
+    return status;
 }
 
 QCObjectState_e VoxelizationImpl::GetState()
@@ -618,39 +650,23 @@ QCStatus_e VoxelizationImpl::ProcessCL( TensorDescriptor_t &inputTensorDesc,
     cl_mem clOutputPlrBufferMem;
     cl_mem clOutputFeatBufferMem;
 
-    if ( m_bufferRegisterOK != true )
+    auto inputIt = m_bufferMap.find( inputBufferHandle );
+    if ( inputIt != m_bufferMap.end() )
+    {
+        clInputBufferMem = inputIt->second.bufferCL;
+    }
+    else
     {
         ret = QC_STATUS_INVALID_BUF;
-        QC_ERROR( "Buffers are not registered" );
+        QC_ERROR( "input buffer is not registered" );
     }
 
     if ( ret == QC_STATUS_OK )
     {
-        auto inputIt = m_clBufferDescMap.find( inputBufferHandle );
-        if ( inputIt != m_clBufferDescMap.end() )
+        auto outputPlrIt = m_bufferMap.find( outputPlrBufferHandle );
+        if ( outputPlrIt != m_bufferMap.end() )
         {
-            clInputBufferMem = inputIt->second;
-        }
-        else
-        {
-            ret = m_openCLSrvObj.RegBufferDesc( inputTensorDesc, clInputBufferMem );
-            if ( QC_STATUS_OK == ret )
-            {
-                m_clBufferDescMap[inputBufferHandle] = clInputBufferMem;
-            }
-            else
-            {
-                QC_ERROR( "Failed to register input buffer for OpenCL" );
-            }
-        }
-    }
-
-    if ( ret == QC_STATUS_OK )
-    {
-        auto outputPlrIt = m_clBufferDescMap.find( outputPlrBufferHandle );
-        if ( outputPlrIt != m_clBufferDescMap.end() )
-        {
-            clOutputPlrBufferMem = outputPlrIt->second;
+            clOutputPlrBufferMem = outputPlrIt->second.bufferCL;
         }
         else
         {
@@ -661,10 +677,10 @@ QCStatus_e VoxelizationImpl::ProcessCL( TensorDescriptor_t &inputTensorDesc,
 
     if ( ret == QC_STATUS_OK )
     {
-        auto outputFeatIt = m_clBufferDescMap.find( outputFeatBufferHandle );
-        if ( outputFeatIt != m_clBufferDescMap.end() )
+        auto outputFeatIt = m_bufferMap.find( outputFeatBufferHandle );
+        if ( outputFeatIt != m_bufferMap.end() )
         {
-            clOutputFeatBufferMem = outputFeatIt->second;
+            clOutputFeatBufferMem = outputFeatIt->second.bufferCL;
         }
         else
         {
@@ -675,12 +691,12 @@ QCStatus_e VoxelizationImpl::ProcessCL( TensorDescriptor_t &inputTensorDesc,
 
     if ( ret == QC_STATUS_OK )
     {
-        if ( nullptr == m_plrPointsTensor.pBuf || m_plrPointsTensor.size == 0 )
+        if ( ( nullptr == m_plrPointsTensor.pBuf ) || ( m_plrPointsTensor.size == 0 ) )
         {
             ret = QC_STATUS_INVALID_BUF;
             QC_ERROR( "Invalid plrPointsTensor buffer" );
         }
-        else if ( nullptr == m_coordToPlrIdxTensor.pBuf || m_coordToPlrIdxTensor.size == 0 )
+        else if ( ( nullptr == m_coordToPlrIdxTensor.pBuf ) || ( m_coordToPlrIdxTensor.size == 0 ) )
         {
             ret = QC_STATUS_INVALID_BUF;
             QC_ERROR( "Invalid coordToPlrIdxTensor buffer" );
@@ -728,6 +744,10 @@ QCStatus_e VoxelizationImpl::ProcessCL( TensorDescriptor_t &inputTensorDesc,
         m_openCLArgsFeatGather[0].argSize = sizeof( cl_mem );
         m_openCLArgsFeatGather[1].pArg = (void *) &clOutputFeatBufferMem;
         m_openCLArgsFeatGather[1].argSize = sizeof( cl_mem );
+        uint32_t maxPlrNum = m_config.voxelConfig.maxNumPlrs;
+        int numOfPillar = ( (int *) m_plrPointsTensor.pBuf )[maxPlrNum];
+        m_openCLArgsFeatGather[12].pArg = (void *) &numOfPillar;
+        m_openCLArgsFeatGather[12].argSize = sizeof( cl_int );
 
         OpenclIface_WorkParams_t OpenclWorkParams2;
         OpenclWorkParams2.workDim = 1;
@@ -749,36 +769,28 @@ QCStatus_e VoxelizationImpl::ProcessCL( TensorDescriptor_t &inputTensorDesc,
     return ret;
 }
 
-QCStatus_e VoxelizationImpl::RegisterBuffer( QCBufferDescriptorBase_t &buffer, uint32_t bufferId,
+QCStatus_e VoxelizationImpl::RegisterBuffer( QCBufferDescriptorBase_t &buffer,
                                              FadasBufType_e bufferType )
 {
     QCStatus_e ret = QC_STATUS_OK;
     uint64_t bufferHandle = buffer.dmaHandle;
 
-    if ( QC_OBJECT_STATE_READY != m_state )
+    if ( QC_BUFFER_TYPE_TENSOR == buffer.type )
     {
-        ret = QC_STATUS_BAD_STATE;
-        QC_ERROR( "Voxelization not in ready state: %d", m_state );
-    }
-
-    if ( QC_STATUS_OK == ret )
-    {
-        if ( QC_BUFFER_TYPE_TENSOR == buffer.type )
+        if ( m_bufferMap.find( bufferHandle ) == m_bufferMap.end() )
         {
             if ( QC_PROCESSOR_GPU == m_processor )
             {
-                if ( m_clBufferDescMap.find( bufferHandle ) == m_clBufferDescMap.end() )
+                cl_mem bufferCL;
+                ret = m_openCLSrvObj.RegBufferDesc( buffer, bufferCL );
+                if ( QC_STATUS_OK == ret )
                 {
-                    cl_mem bufferCL;
-                    ret = m_openCLSrvObj.RegBufferDesc( buffer, bufferCL );
-                    if ( QC_STATUS_OK == ret )
-                    {
-                        m_clBufferDescMap[bufferHandle] = bufferCL;
-                    }
-                    else
-                    {
-                        QC_ERROR( "Failed to register buffer[%u] for OpenCL", bufferId );
-                    }
+                    m_bufferMap[bufferHandle] = { buffer, bufferCL, 0 };
+                    QC_INFO( "Buffer(%p) register as CL MEM %p", buffer.pBuf, bufferCL );
+                }
+                else
+                {
+                    QC_ERROR( "Failed to register buffer(%p) for OpenCL", buffer.pBuf );
                 }
             }
             else
@@ -787,60 +799,63 @@ QCStatus_e VoxelizationImpl::RegisterBuffer( QCBufferDescriptorBase_t &buffer, u
                 if ( 0 > fd )
                 {
                     ret = QC_STATUS_FAIL;
-                    QC_ERROR( "Failed to register buffer[%u] for fadas", bufferId );
+                    QC_ERROR( "Failed to register buffer(%p) for fadas", buffer.pBuf );
+                }
+                else
+                {
+                    m_bufferMap[bufferHandle] = { buffer, nullptr, fd };
+                    QC_INFO( "Buffer(%p) register as Fadas FD %p", buffer.pBuf, fd );
                 }
             }
         }
-        else
-        {
-            ret = QC_STATUS_BAD_ARGUMENTS;
-            QC_ERROR( "Buffer[%u] is not tensor type", bufferId );
-        }
+    }
+    else
+    {
+        ret = QC_STATUS_BAD_ARGUMENTS;
+        QC_ERROR( "Buffer(%p) is not tensor type", buffer.pBuf );
     }
 
     return ret;
 }
 
-QCStatus_e VoxelizationImpl::DeRegisterBuffer( QCBufferDescriptorBase_t &buffer, uint32_t bufferId )
+QCStatus_e VoxelizationImpl::DeRegisterBuffer( QCBufferDescriptorBase_t &buffer )
 {
     QCStatus_e ret = QC_STATUS_OK;
     uint64_t bufferHandle = buffer.dmaHandle;
 
-    if ( ( QC_OBJECT_STATE_READY != m_state ) && ( QC_OBJECT_STATE_RUNNING != m_state ) )
+    if ( QC_PROCESSOR_GPU == m_processor )
     {
-        ret = QC_STATUS_BAD_STATE;
-        QC_ERROR( "Voxelization not in ready or running state: %d", m_state );
+        ret = m_openCLSrvObj.DeregBufferDesc( buffer );
+        if ( QC_STATUS_OK != ret )
+        {
+            QC_ERROR( "Failed to deregister buffer(%p) for OpenCL", buffer.pBuf );
+        }
     }
+    else
+    {
+        m_plrPre.DeregBuf( buffer.pBuf );
+    }
+    m_bufferMap.erase( bufferHandle );
 
-    if ( QC_STATUS_OK == ret )
-    {
-        if ( QC_BUFFER_TYPE_TENSOR == buffer.type )
-        {
-            if ( QC_PROCESSOR_GPU == m_processor )
-            {
-                ret = m_openCLSrvObj.DeregBufferDesc( buffer );
-                if ( QC_STATUS_OK != ret )
-                {
-                    QC_ERROR( "Failed to deregister buffer[%u] for OpenCL", bufferId );
-                }
-                if ( m_clBufferDescMap.find( bufferHandle ) != m_clBufferDescMap.end() )
-                {
-                    m_clBufferDescMap.erase( bufferHandle );
-                }
-            }
-            else
-            {
-                m_plrPre.DeregBuf( buffer.pBuf );
-            }
-        }
-        else
-        {
-            ret = QC_STATUS_BAD_ARGUMENTS;
-            QC_ERROR( "buffer[%u] is not tensor type", bufferId );
-        }
-    }
+    QC_INFO( "Buffer(%p) deregister", buffer.pBuf );
 
     return ret;
+}
+
+QCStatus_e VoxelizationImpl::DeRegisterAllBuffers()
+{
+    QCStatus_e status = QC_STATUS_OK;
+    while ( false == m_bufferMap.empty() )
+    {
+        auto it = m_bufferMap.begin();
+        auto &info = it->second;
+        QCStatus_e ret = DeRegisterBuffer( info.bufDesc );
+        if ( ret != QC_STATUS_OK )
+        {
+            status = ret;
+        }
+    }
+    return status;
 }
 
 
@@ -875,29 +890,8 @@ QCStatus_e VoxelizationImpl::SetupGlobalBufferIdMap()
     return ret;
 }
 
-Voxelization_InputMode_e VoxelizationImpl::GetInputMode( std::string &mode )
-{
-    Voxelization_InputMode_e inputMode;
-    if ( mode == "xyzr" )
-    {
-        inputMode = VOXELIZATION_INPUT_MODE_XYZR;
-    }
-    else if ( mode == "xyzrt" )
-    {
-        inputMode = VOXELIZATION_INPUT_MODE_XYZRT;
-    }
-    else
-    {
-        inputMode = VOXELIZATION_INPUT_MODE_MAX;
-    }
-
-    return inputMode;
-}
-
 void VoxelizationImpl::InitOpenCLArgs()
 {
-    uint32_t maxPlrNum = m_config.voxelConfig.maxNumPlrs;
-
     m_openCLArgsClusterPoint[3].pArg = (void *) &m_clCoordToPlrIdxBuffer;
     m_openCLArgsClusterPoint[3].argSize = sizeof( cl_mem );
     m_openCLArgsClusterPoint[4].pArg = (void *) &m_clPlrPointsBuffer;
@@ -921,15 +915,15 @@ void VoxelizationImpl::InitOpenCLArgs()
     m_openCLArgsClusterPoint[13].pArg = (void *) &m_config.voxelConfig.pillarZSize;
     m_openCLArgsClusterPoint[13].argSize = sizeof( cl_float );
     m_openCLArgsClusterPoint[14].pArg = (void *) &m_gridXSize;
-    m_openCLArgsClusterPoint[14].argSize = sizeof( cl_int );
+    m_openCLArgsClusterPoint[14].argSize = sizeof( cl_ulong );
     m_openCLArgsClusterPoint[15].pArg = (void *) &m_gridYSize;
-    m_openCLArgsClusterPoint[15].argSize = sizeof( cl_int );
+    m_openCLArgsClusterPoint[15].argSize = sizeof( cl_ulong );
     m_openCLArgsClusterPoint[16].pArg = (void *) &m_config.voxelConfig.maxNumPlrs;
-    m_openCLArgsClusterPoint[16].argSize = sizeof( cl_int );
+    m_openCLArgsClusterPoint[16].argSize = sizeof( cl_uint );
     m_openCLArgsClusterPoint[17].pArg = (void *) &m_config.voxelConfig.maxNumPtsPerPlr;
-    m_openCLArgsClusterPoint[17].argSize = sizeof( cl_int );
+    m_openCLArgsClusterPoint[17].argSize = sizeof( cl_uint );
     m_openCLArgsClusterPoint[18].pArg = (void *) &m_config.voxelConfig.numOutFeatureDim;
-    m_openCLArgsClusterPoint[18].argSize = sizeof( cl_int );
+    m_openCLArgsClusterPoint[18].argSize = sizeof( cl_uint );
 
     m_openCLArgsFeatGather[2].pArg = (void *) &m_clPlrPointsBuffer;
     m_openCLArgsFeatGather[2].argSize = sizeof( cl_mem );
@@ -946,16 +940,12 @@ void VoxelizationImpl::InitOpenCLArgs()
     m_openCLArgsFeatGather[8].pArg = (void *) &m_config.voxelConfig.pillarZSize;
     m_openCLArgsFeatGather[8].argSize = sizeof( cl_float );
     m_openCLArgsFeatGather[9].pArg = (void *) &m_config.voxelConfig.maxNumPlrs;
-    m_openCLArgsFeatGather[9].argSize = sizeof( cl_int );
+    m_openCLArgsFeatGather[9].argSize = sizeof( cl_uint );
     m_openCLArgsFeatGather[10].pArg = (void *) &m_config.voxelConfig.maxNumPtsPerPlr;
-    m_openCLArgsFeatGather[10].argSize = sizeof( cl_int );
+    m_openCLArgsFeatGather[10].argSize = sizeof( cl_uint );
     m_openCLArgsFeatGather[11].pArg = (void *) &m_config.voxelConfig.numOutFeatureDim;
-    m_openCLArgsFeatGather[11].argSize = sizeof( cl_int );
-    int numOfPillar = ( (int *) m_plrPointsTensor.pBuf )[maxPlrNum];
-    m_openCLArgsFeatGather[12].pArg = (void *) &numOfPillar;
-    m_openCLArgsFeatGather[12].argSize = sizeof( cl_int );
+    m_openCLArgsFeatGather[11].argSize = sizeof( cl_uint );
 }
 
 }   // namespace Node
 }   // namespace QC
-

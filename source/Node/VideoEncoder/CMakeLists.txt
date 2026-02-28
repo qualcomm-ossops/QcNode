@@ -18,6 +18,7 @@ set_property( TARGET QCNodeVideoEncoder PROPERTY POSITION_INDEPENDENT_CODE ON )
 
 target_include_directories( QCNodeVideoEncoder PUBLIC ${HEADERS_DIR} )
 
+target_compile_options( QCNodeVideoEncoder PRIVATE -Wall )
 target_link_libraries( QCNodeVideoEncoder PUBLIC ${TARGET_LIBRARIES} )
 
 install( FILES ${NODE_VIDEOENCODER_HEADERS} DESTINATION include/QC/Node )

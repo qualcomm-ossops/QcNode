@@ -23,64 +23,17 @@ namespace QC
 #define QC_MAX_INPUTS 32
 #endif
 
-/** @brief Allocate uncached memory (default). */
-#define QC_BUFFER_FLAGS_CACHE_NONE (QCBufferFlags_t) 0x00000000U
-
-/** @brief Allocate write-back, write-allocate memory, to be used if IP block is
- * coherent with CPU cache. */
-#define QC_BUFFER_FLAGS_CACHE_WB_WA (QCBufferFlags_t) 0x0000001U
-
-#define QC_BUFFER_FLAGS_CACHE_MASK (QCBufferFlags_t) 0x0000000FU
-
-
-/** @brief QC Buffer Flags */
-typedef uint32_t QCBufferFlags_t;
-
-/** @brief QC Buffer Usage */
-typedef enum
-{
-    QC_BUFFER_USAGE_DEFAULT = 0, /**< Default */
-    QC_BUFFER_USAGE_CAMERA,      /**< Buffer used by camera */
-    QC_BUFFER_USAGE_GPU,         /**< Buffer used by GPU */
-    QC_BUFFER_USAGE_VPU,         /**< Buffer used by VPU */
-    QC_BUFFER_USAGE_EVA,         /**< Buffer used by EVA */
-    QC_BUFFER_USAGE_HTP,         /**< Buffer used by HTP */
-    QC_BUFFER_USAGE_MAX
-} QCBufferUsage_e;
-
-/** @brief QC Computing Processor Type
- * @deprecated
- * @note This enum is deprecated as json configure was used for QCNode.
- */
+/** @brief QC Computing Processor Type*/
 typedef enum
 {
     QC_PROCESSOR_HTP0, /**< do computing on the processor HTP0 */
     QC_PROCESSOR_HTP1, /**< do computing on the processor HTP1 */
+    QC_PROCESSOR_HTP2, /**< do computing on the processor HTP2 */
+    QC_PROCESSOR_HTP3, /**< do computing on the processor HTP3 */
     QC_PROCESSOR_CPU,  /**< do computing on the processor CPU */
     QC_PROCESSOR_GPU,  /**< do computing on the processor GPU */
-#if QC_TARGET_SOC == 8797
-    // Short-term workaround for NSP resource protection on 8797
-    QC_PROCESSOR_HTP0_CORE0 = QC_PROCESSOR_HTP0,
-    QC_PROCESSOR_HTP0_CORE1 = 4,
-    QC_PROCESSOR_HTP0_CORE2,
-    QC_PROCESSOR_HTP0_CORE3,
-    QC_PROCESSOR_HTP2,
-    QC_PROCESSOR_HTP3,
-#endif
     QC_PROCESSOR_MAX
 } QCProcessorType_e;
-
-/** @brief The attributes of an allocated DMA memory. */
-typedef struct
-{
-    void *pData;           /**< The buffer virtual address */
-    uint64_t dmaHandle;    /**< The buffer DMA handle */
-    size_t size;           /**< The buffer size */
-    uint64_t id;           /**< The unique ID assigned by the buffer manager */
-    uint64_t pid;          /**< The process id that allocated this buffer */
-    QCBufferUsage_e usage; /**< The buffer usage */
-    QCBufferFlags_t flags; /**< The buffer flags */
-} QCBuffer_t;
 
 /** @brief The image format. */
 typedef enum
@@ -100,27 +53,6 @@ typedef enum
     QC_IMAGE_FORMAT_COMPRESSED_H265,
     QC_IMAGE_FORMAT_COMPRESSED_MAX,
 } QCImageFormat_e;
-
-/** @brief The image properties. */
-typedef struct
-{
-    QCImageFormat_e format; /**< The image format */
-    uint32_t batchSize;     /**< The image batch size */
-    uint32_t width;         /**< The image width in pixels */
-    uint32_t height;        /**< The image height in pixels */
-    uint32_t stride[QC_NUM_IMAGE_PLANES];
-    /**< The image stride along width in bytes for each plane */
-
-    uint32_t actualHeight[QC_NUM_IMAGE_PLANES];
-    /**< The image actual height in scanlines for each plane */
-
-    uint32_t planeBufSize[QC_NUM_IMAGE_PLANES];
-    /**< The image actual buffer size for each plane.
-     * This equals to (stride * actualHeight + padding size).
-     */
-
-    uint32_t numPlanes; /**< The number of the image planes */
-} QCImageProps_t;
 
 /** @brief The QC tensor data type. */
 typedef enum
@@ -150,15 +82,6 @@ typedef enum
 
     QC_TENSOR_TYPE_MAX,
 } QCTensorType_e;
-
-/** @brief The tensor properties. */
-typedef struct
-{
-    QCTensorType_e type;               /**< The tensor type */
-    uint32_t dims[QC_NUM_TENSOR_DIMS]; /**< The tensor dimensions */
-    uint32_t numDims;                  /**< The number of dimensions */
-} QCTensorProps_t;
-
 
 }   // namespace QC
 

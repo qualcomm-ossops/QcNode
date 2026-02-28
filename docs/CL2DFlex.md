@@ -1,7 +1,7 @@
 *Menu*:
 - [1. CL2DFlex Overview](#1-cl2dflex-overview)
     - [Key Features](#key-features)
-- [2. CL2DFlex Configuraion](#2-cl2dflex-configuraion)
+- [2. CL2DFlex Configuration](#2-cl2dflex-configuration)
   - [2.1 CL2DFlex Static JSON Configuration](#21-cl2dflex-static-json-configuration)
 - [3. CL2DFlex APIs](#3-cl2dflex-apis)
 - [4. Typical CL2DFlex API Usage Examples](#4-typical-cl2dflex-api-usage-examples)
@@ -12,7 +12,7 @@
 
 # 1. CL2DFlex Overview
 
-**QCNode CL2DFlex** is based on OpenCL library, it provides user-friendly APIs and visible CL kernels to do color conversion and resize on single image input. Currently support color conversion and resize of multiple image inputs to single output between different formats. It also supports remap from mapping table. 
+**QCNode CL2DFlex** is based on the OpenCL library. It provides user-friendly APIs and visible CL kernels to perform color conversion and resizing on single image input. It currently supports color conversion and resizing of multiple image inputs to a single output across different formats. It also supports remap from a mapping table.
 
 ### Key Features
 
@@ -32,9 +32,11 @@
   Built upon OpenCL for leveraging GPU acceleration capabilities with configurable priority and device ID.
 
 
-# 2. CL2DFlex Configuraion
+# 2. CL2DFlex Configuration
 
 ## 2.1 CL2DFlex Static JSON Configuration
+
+The CL2DFlex node is configured via a single JSON document under the "static" key. This configuration defines the node identity, output image properties, OpenCL execution settings (priority and deviceId), and an array of per-input settings including format, dimensions, ROI, work mode, and optional map table buffer IDs. For multiple-ROI modes, numOfROIs and ROIsBufferId specify how outputs are partitioned. Buffer indices such as "bufferIds" and entries in "globalBufferIdMap" reference QCNodeInit::buffers and QCFrameDescriptorNodeIfs positions used during Initialize and ProcessFrameDescriptor.
 
 | Parameter  | Required  | Type        | Description            |
 |------------|-----------|-------------|------------------------|
@@ -45,8 +47,16 @@
 | `deviceId` | false     | uint32_t    | The device index to use. <br> Default: `0` |
 | `outputWidth`  | true  | uint32_t    | The output width.      |
 | `outputHeight` | true  | uint32_t    | The output height.     |
-| `outputFormat` | true  | string      | The output format. <br> Options: `rgb`, `bgr`, `nv12`, `uyvy` <br> Default: `rgb` |
+| `outputFormat` | true  | string      | The output format. <br> Options: `rgb`, `bgr`, `nv12`, `uyvy`, `nv12_ubwc` <br> Default: `rgb` |
 | `inputs`       | true  | object[]    | List of input configurations. <br>Each object contains: <br> - `inputWidth` (uint32_t) <br> - `inputHeight` (uint32_t) <br> - `inputFormat` (string) <br> - `roiX` (uint32_t) <br> - `roiY` (uint32_t) <br> - `roiWidth` (uint32_t) <br> - `roiHeight` (uint32_t) <br> - `workMode` (string) <br> - `mapXBufferId` (uint32_t) <br> - `mapYBufferId` (uint32_t)  |
+| `numOfROIs`    | false | uint32_t    | The number of ROIs for multiple ROIs work mode.  |
+| `ROIsBufferId` | false | uint32_t    | The ROIs buffer ID for multiple ROIs work mode.  |
+| `bufferIds` | false    | uint32_t[]  | List of buffer indices in `QCNodeInit::buffers`  |
+| `globalBufferIdMap` | false | object[] | Mapping of buffer names to buffer indices in `QCFrameDescriptorNodeIfs`. <br>Each object contains:<br> - `name` (string)<br> - `id` (uint32_t)   |
+| `deRegisterAllBuffersWhenStop` | false | bool     | Flag to deregister all buffers when stopped      <br>Default: `false` |
+
+| Input Parameter  | Required  | Type        | Description            |
+|------------|-----------|-------------|------------------------|
 | `inputWidth`   | true  | uint32_t    | The input width.       |
 | `inputHeight`  | true  | uint32_t    | The input height.      |
 | `inputFormat`  | true  | string      | The input format. <br> Options: `rgb`, `nv12`, `uyvy`, `nv12_ubwc` |
@@ -54,15 +64,9 @@
 | `roiY`         | false | uint32_t    | The input roiY. <br> Default: `0`  |
 | `roiWidth`     | false | uint32_t    | The input roiWidth. <br> Default: `inputWidth`    |
 | `roiHeight`    | false | uint32_t    | The input roiHeight. <br> Default: `inputHeight`  |
-| `workMode`     | true  | string      | The input format. <br> Options: `convert`, `resize_nearest`, `letterbox_nearest`, `convert_ubwc`, `letterbox_nearest_multiple`, `resize_nearest_multiple`, `remap_nearest` |
+| `workMode`     | true  | string      | The input work mode. <br> Options: `convert`, `resize_nearest`, `letterbox_nearest`, `convert_ubwc`, `letterbox_nearest_multiple`, `resize_nearest_multiple`, `remap_nearest` |
 | `mapXBufferId` | false | uint32_t    | The buffer id of X direction map table  |
 | `mapYBufferId` | false | uint32_t    | The buffer id of Y direction map table  |
-| `numOfROIs`    | false | uint32_t    | The number of ROIs for multiple ROIs work mode.  |
-| `ROIsBufferId` | false | uint32_t    | TThe ROIs buffer ID for multiple ROIs work mode.  |
-| `nodeId`    | true     | uint32_t    | The Node unique ID.    |
-| `bufferIds` | false    | uint32_t[]  | List of buffer indices in `QCNodeInit::buffers`  |
-| `globalBufferIdMap` | false | object[] | Mapping of buffer names to buffer indices in `QCFrameDescriptorNodeIfs`. <br>Each object contains:<br> - `name` (string)<br> - `id` (uint32_t)   |
-| `deRegisterAllBuffersWhenStop` | false | bool     | Flag to deregister all buffers when stopped      <br>Default: `false` |
 
 - Example Configurations
 
@@ -175,7 +179,7 @@ Note that the ROI.width+ROI.x must not be larger than inputWidth and the ROI.hei
 
 ## 4.2 API Call Flow
 
-The typical call flow of a QC CL2DFlex pipeline with certain configurations is showed in following codes as an example:
+The typical call flow of a QC CL2DFlex pipeline with certain configurations is shown in the following example:
 ```c++
     QCStatus_e ret;
     QCNodeIfs *pCL2DFlex = new QC::Node::CL2DFlex();
@@ -214,11 +218,11 @@ The typical call flow of a QC CL2DFlex pipeline with certain configurations is s
 
     ret = pCL2DFlex->DeInitialize();
 ```
-Generally, user should call Init API once at the beginning of the pipeline and call Deinit API once at the ending of the pipeline.
+Generally, applications should call Initialize once at the beginning of the pipeline and DeInitialize once at the end of the pipeline.
 
 ## 4.3 Supported Pipelines
 
-The currently supported input/output image format for each work mode of CL2DFLex pipelines are listed below.
+The currently supported input/output image format for each work mode of CL2DFlex pipelines is listed below.
 
 | Work Mode | Input Format | Output Format | 
 |-----------|--------------|---------------|

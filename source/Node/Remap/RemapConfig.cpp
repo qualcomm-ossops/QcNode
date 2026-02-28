@@ -48,16 +48,21 @@ QCStatus_e RemapConfig::VerifyStaticConfig( DataTree &dt, std::string &errors )
 
     std::vector<DataTree> inputDts;
     (void) dt.Get( "inputs", inputDts );
-    m_numOfInputs = 0;
-    for ( DataTree &idt : inputDts )
-    {
-        m_numOfInputs++;
-    }
-
+    m_numOfInputs = inputDts.size();
     if ( QC_MAX_INPUTS < m_numOfInputs )
     {
         errors += "inputs number invalid, ";
         status = QC_STATUS_BAD_ARGUMENTS;
+    }
+
+    if ( dt.Exists( "coreId" ) )
+    {
+        uint32_t coreId = dt.Get<uint32_t>( "coreId", UINT32_MAX );
+        if ( NSP_CORES_ID_MAX < coreId )
+        {
+            errors += "coreId invalid, ";
+            status = QC_STATUS_BAD_ARGUMENTS;
+        }
     }
 
     std::vector<DataTree> globalBufferIdMap;
@@ -109,6 +114,7 @@ QCStatus_e RemapConfig::ParseStaticConfig( DataTree &dt, std::string &errors )
 
         config.params.numOfInputs = m_numOfInputs;
         config.params.processor = dt.GetProcessorType( "processorType", QC_PROCESSOR_HTP0 );
+        config.params.coreId = dt.Get<uint32_t>( "coreId", 0 );
         config.params.outputWidth = dt.Get<uint32_t>( "outputWidth", 1024 );
         config.params.outputHeight = dt.Get<uint32_t>( "outputHeight", 1024 );
         config.params.outputFormat = dt.GetImageFormat( "outputFormat", QC_IMAGE_FORMAT_RGB888 );
@@ -204,7 +210,6 @@ QCStatus_e RemapConfig::VerifyAndSet( const std::string config, std::string &err
 
 const std::string &RemapConfig::GetOptions()
 {
-    QCStatus_e status = QC_STATUS_OK;
 
     DataTree dt;
     dt.Set<uint32_t>( "version", QCNODE_REMAP_VERSION );

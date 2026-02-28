@@ -73,6 +73,10 @@ QCStatus_e VoxelizationConfig::VerifyStaticConfig( DataTree &dt, std::string &er
             errors += "the inputMode is invalid, ";
             ret = QC_STATUS_BAD_ARGUMENTS;
         }
+        else
+        {
+            /* OK */
+        }
     }
 
     if ( QC_STATUS_OK == ret )
@@ -81,6 +85,17 @@ QCStatus_e VoxelizationConfig::VerifyStaticConfig( DataTree &dt, std::string &er
         if ( 0 == outputFeatureDimNum )
         {
             errors += "the outputFeatureDimNum is empty, ";
+            ret = QC_STATUS_BAD_ARGUMENTS;
+        }
+    }
+
+    if ( dt.Exists( "inputPcdBufferIds" ) )
+    {
+        std::vector<uint32_t> inputPcdBufferIds =
+                dt.Get<uint32_t>( "inputPcdBufferIds", std::vector<uint32_t>{} );
+        if ( 0 == inputPcdBufferIds.size() )
+        {
+            errors += "the inputPcdBufferIds is invalid, ";
             ret = QC_STATUS_BAD_ARGUMENTS;
         }
     }
@@ -139,6 +154,10 @@ QCStatus_e VoxelizationConfig::VerifyStaticConfig( DataTree &dt, std::string &er
                 ret = QC_STATUS_BAD_ARGUMENTS;
             }
         }
+        else
+        {
+            /* OK */
+        }
     }
 
     std::vector<DataTree> globalBufferIdMap;
@@ -174,6 +193,28 @@ QCStatus_e VoxelizationConfig::VerifyStaticConfig( DataTree &dt, std::string &er
         }
     }
 
+
+    float pillarXSize = dt.Get<float>( "Xsize", 0.0f );
+    if ( 0.0f == pillarXSize )
+    {
+        errors += "the pillarXSize is 0, ";
+        ret = QC_STATUS_BAD_ARGUMENTS;
+    }
+
+    float pillarYSize = dt.Get<float>( "Ysize", 0.0f );
+    if ( 0.0f == pillarYSize )
+    {
+        errors += "the pillarYSize is 0, ";
+        ret = QC_STATUS_BAD_ARGUMENTS;
+    }
+
+    float pillarZSize = dt.Get<float>( "Zsize", 0.0f );
+    if ( 0.0f == pillarZSize )
+    {
+        errors += "the pillarZSize is 0, ";
+        ret = QC_STATUS_BAD_ARGUMENTS;
+    }
+
     return ret;
 }
 
@@ -203,13 +244,15 @@ QCStatus_e VoxelizationConfig::ParseStaticConfig( DataTree &dt, std::string &err
         config.voxelConfig.maxNumPtsPerPlr = dt.Get<uint32_t>( "maxPointNumPerPlr", UINT32_MAX );
         config.voxelConfig.numOutFeatureDim = dt.Get<uint32_t>( "outputFeatureDimNum", UINT32_MAX );
 
-        config.voxelConfig.inputMode = dt.Get<std::string>( "inputMode", "" );
-        if ( "xyzr" == config.voxelConfig.inputMode )
+        std::string inputMode = dt.Get<std::string>( "inputMode", "" );
+        if ( "xyzr" == inputMode )
         {
+            config.voxelConfig.inputMode = VOXELIZATION_INPUT_MODE_XYZR;
             config.voxelConfig.numInFeatureDim = 4;
         }
-        else if ( "xyzrt" == config.voxelConfig.inputMode )
+        else if ( "xyzrt" == inputMode )
         {
+            config.voxelConfig.inputMode = VOXELIZATION_INPUT_MODE_XYZRT;
             config.voxelConfig.numInFeatureDim = 5;
         }
         else
@@ -221,6 +264,7 @@ QCStatus_e VoxelizationConfig::ParseStaticConfig( DataTree &dt, std::string &err
 
     if ( QC_STATUS_OK == ret )
     {
+        config.inputPcdBufferIds = dt.Get<uint32_t>( "inputPcdBufferIds", std::vector<uint32_t>{} );
         config.outputPlrBufferIds =
                 dt.Get<uint32_t>( "outputPlrBufferIds", std::vector<uint32_t>{} );
         config.outputFeatureBufferIds =
@@ -268,7 +312,6 @@ QCStatus_e VoxelizationConfig::VerifyAndSet( const std::string config, std::stri
 
 const std::string &VoxelizationConfig::GetOptions()
 {
-    QCStatus_e ret = QC_STATUS_OK;
     return m_options;
 }
 
@@ -279,4 +322,3 @@ const QCNodeConfigBase_t &VoxelizationConfig::Get()
 
 }   // namespace Node
 }   // namespace QC
-

@@ -5,9 +5,9 @@
 #ifndef QC_VOXELIZATION_CLH
 #define QC_VOXELIZATION_CLH
 
-#define KernelCode( ... ) #__VA_ARGS__
+#define KERNAL_CODE( ... ) #__VA_ARGS__
 
-static const char *s_pSourceVoxelization = KernelCode(
+static const char *s_pSourceVoxelization = KERNAL_CODE(
 
         __constant float2 ZEROVEC2 = (float2) ( 0.0f );
         __constant float4 ZEROVEC4 = (float4) ( 0.0f );
@@ -18,9 +18,9 @@ static const char *s_pSourceVoxelization = KernelCode(
                 __global int *coorToPlrIdx, __global int *numOfPts, const float minXRange,
                 const float minYRange, const float minZRange, const float maxXRange,
                 const float maxYRange, const float maxZRange, const float pillarXSize,
-                const float pillarYSize, const float pillarZSize, const int gridXSize,
-                const int gridYSize, const int maxNumPlrs, const int maxNumPtsPerPlr,
-                const int numOutFeatureDim ) {
+                const float pillarYSize, const float pillarZSize, const ulong gridXSize,
+                const ulong gridYSize, const uint maxNumPlrs, const uint maxNumPtsPerPlr,
+                const uint numOutFeatureDim ) {
             int x = get_global_id( 0 );
 
             float4 xyzr = vload4( x, pInPts );
@@ -74,9 +74,9 @@ static const char *s_pSourceVoxelization = KernelCode(
                 __global int *coorToPlrIdx, __global int *numOfPts, const float minXRange,
                 const float minYRange, const float minZRange, const float maxXRange,
                 const float maxYRange, const float maxZRange, const float pillarXSize,
-                const float pillarYSize, const float pillarZSize, const int gridXSize,
-                const int gridYSize, const int maxNumPlrs, const int maxNumPtsPerPlr,
-                const int numOutFeatureDim ) {
+                const float pillarYSize, const float pillarZSize, const ulong gridXSize,
+                const ulong gridYSize, const uint maxNumPlrs, const uint maxNumPtsPerPlr,
+                const uint numOutFeatureDim ) {
             int x = get_global_id( 0 );
 
             float4 xyzr = vload4( 0, pInPts + x * 5 );
@@ -129,7 +129,7 @@ static const char *s_pSourceVoxelization = KernelCode(
                 __global float *pOutPlrs, __global float *pOutFeature, __global int *numOfPts,
                 const float minXRange, const float minYRange, const float minZRange,
                 const float pillarXSize, const float pillarYSize, const float pillarZSize,
-                const int maxNumPlrs, const int maxNumPtsPerPlr, const int numOutFeatureDim,
+                const uint maxNumPlrs, const uint maxNumPtsPerPlr, const uint numOutFeatureDim,
                 const int numOfPillar ) {
             int x = get_global_id( 0 );
 
@@ -182,7 +182,7 @@ static const char *s_pSourceVoxelization = KernelCode(
                 __global int *pOutPlrs, __global float *pOutFeature, __global int *numOfPts,
                 const float minXRange, const float minYRange, const float minZRange,
                 const float pillarXSize, const float pillarYSize, const float pillarZSize,
-                const int maxNumPlrs, const int maxNumPtsPerPlr, const int numOutFeatureDim,
+                const uint maxNumPlrs, const uint maxNumPtsPerPlr, const uint numOutFeatureDim,
                 const int numOfPillar ) {
             int x = get_global_id( 0 );
 
@@ -196,7 +196,7 @@ static const char *s_pSourceVoxelization = KernelCode(
                 float2 minRangeXY = (float2) ( minXRange, minYRange );
                 float2 pillarSizeXY = (float2) ( pillarXSize, pillarYSize ) + 0.5f;
                 float2 pillarXY = mad( outPillarXY, pillarSizeXY, minRangeXY );
-                int numPts = min( numOfPts[x], maxNumPtsPerPlr );
+                int numPts = (int) min( numOfPts[x], (int) maxNumPtsPerPlr );
                 for ( int i = 0; i < numPts; i++ )
                 {
                     int id1 = x * maxNumPtsPerPlr * numOutFeatureDim + i * numOutFeatureDim;
@@ -231,4 +231,3 @@ static const char *s_pSourceVoxelization = KernelCode(
         } );
 
 #endif   // QC_VOXELIZATION_CLH
-

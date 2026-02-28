@@ -116,18 +116,17 @@ QCStatus_e SampleVideoEncoder::Init( std::string name, SampleConfig_t &samplecfg
         m_nodeCfg.callback = std::bind( &SampleVideoEncoder::OnDoneCb, this, _1 );
     }
 
-    QCImageProps_t imgProp;
-
-    memset( &imgProp, 0, sizeof( imgProp ) );
+    ImageProps_t imgProp;
     imgProp.format = m_outFormat;
     imgProp.width = m_width;
     imgProp.height = m_height;
     imgProp.batchSize = 1;
     imgProp.numPlanes = 1;
-    imgProp.planeBufSize[0] = 2 * 1024 * 1024;
+    imgProp.planeBufSize[0] = m_bufSize;
+    imgProp.allocatorType = QC_MEMORY_ALLOCATOR_DMA_VPU;
 
     ret = m_frameBufferPools.Init( m_name, m_nodeId, LOGGER_LEVEL_INFO, m_numOutputBufferReq,
-                                   imgProp, QC_MEMORY_ALLOCATOR_DMA_VPU );
+                                   imgProp );
 
     if ( QC_STATUS_OK == ret )
     {
@@ -349,7 +348,7 @@ QCStatus_e SampleVideoEncoder::ParseConfig( SampleConfig_t &config )
         m_config.Set<uint32_t>( "numOutputBufferReq", m_numOutputBufferReq );
     }
 
-    m_bitRate = Get( config, "bitrate", 64000 );
+    m_bitRate = Get( config, "bitrate", 8000000 );
     if ( 0 == m_bitRate )
     {
         QC_ERROR( "invalid bitrate = %u", m_bitRate );
@@ -384,6 +383,13 @@ QCStatus_e SampleVideoEncoder::ParseConfig( SampleConfig_t &config )
     {
     }
 
+    m_bufSize = Get( config, "buffer_size", ( 2 * m_width * m_height ) );
+    if ( 0 == m_bufSize )
+    {
+        QC_ERROR( "invalid buffer_size = %u", m_bufSize );
+        ret = QC_STATUS_BAD_ARGUMENTS;
+    }
+
     m_outputTopicName = Get( config, "output_topic", "" );
     if ( "" == m_outputTopicName )
     {
@@ -413,9 +419,15 @@ QCStatus_e SampleVideoEncoder::ParseConfig( SampleConfig_t &config )
     m_config.Set<std::string>( "inputImageFormat", Get( config, "format", "nv12" ) );
     m_config.Set<std::string>( "outputImageFormat", Get( config, "output_format", "h265" ) );
 
-    m_config.Set<uint32_t>( "gop", 20 );
+    m_config.Set<uint32_t>( "gop", Get( config, "gop", 20 ) );
     m_config.Set<bool>( "bInputDynamicMode", true );
     m_config.Set<bool>( "bOutputDynamicMode", false );
+    std::string dftProfile = "HEVC_MAIN";
+    if ( QC_IMAGE_FORMAT_COMPRESSED_H264 == m_outFormat )
+    {
+        dftProfile = "H264_MAIN";
+    }
+    m_config.Set<std::string>( "profile", Get( config, "profile", dftProfile ) );
 
     m_dataTree.Set( "static", m_config );
 
@@ -431,4 +443,3 @@ REGISTER_SAMPLE( VideoEncoder, SampleVideoEncoder );
 
 }   // namespace sample
 }   // namespace QC
-

@@ -32,4 +32,6 @@ target_include_directories( QCNodeCL2DFlex PUBLIC ${HEADERS_DIR} )
 
 target_link_libraries( QCNodeCL2DFlex PUBLIC ${TARGET_LIBRARIES} )
 
+target_compile_options( QCNodeCL2DFlex PRIVATE -Wall )
+
 install( FILES ${QC_NODE_CL2D_HEADERS} DESTINATION include/QC/Node )

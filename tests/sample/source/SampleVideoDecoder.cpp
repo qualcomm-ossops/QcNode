@@ -133,7 +133,8 @@ QCStatus_e SampleVideoDecoder::Init( std::string name, SampleConfig_t &samplecfg
 
     if ( QC_STATUS_OK == ret )
     {
-        ret = m_sub.Init( name, m_inputTopicName );
+        /* queueDepth = 8 and first in first out mode */
+        ret = m_sub.Init( name, m_inputTopicName, 8, false );
     }
 
     if ( QC_STATUS_OK == ret )
@@ -371,7 +372,7 @@ QCStatus_e SampleVideoDecoder::ParseConfig( SampleConfig_t &config )
     {
     }
 
-    m_inFormat = Get( config, "input_format ", QC_IMAGE_FORMAT_COMPRESSED_H265 );
+    m_inFormat = Get( config, "input_format", QC_IMAGE_FORMAT_COMPRESSED_H265 );
     if ( QC_IMAGE_FORMAT_MAX == m_inFormat || ( m_inFormat != QC_IMAGE_FORMAT_COMPRESSED_H264 &&
                                                 m_inFormat != QC_IMAGE_FORMAT_COMPRESSED_H265 ) )
 
@@ -380,7 +381,7 @@ QCStatus_e SampleVideoDecoder::ParseConfig( SampleConfig_t &config )
         ret = QC_STATUS_BAD_ARGUMENTS;
     }
 
-    m_outFormat = Get( config, "output_format ", QC_IMAGE_FORMAT_NV12 );
+    m_outFormat = Get( config, "output_format", QC_IMAGE_FORMAT_NV12 );
     if ( QC_IMAGE_FORMAT_MAX == m_outFormat ||
          ( m_outFormat != QC_IMAGE_FORMAT_NV12 && m_outFormat != QC_IMAGE_FORMAT_NV12_UBWC ) )
     {
@@ -388,8 +389,8 @@ QCStatus_e SampleVideoDecoder::ParseConfig( SampleConfig_t &config )
         ret = QC_STATUS_BAD_ARGUMENTS;
     }
 
-    m_config.Set<std::string>( "inputImageFormat", Get( config, "input_format ", "h265" ) );
-    m_config.Set<std::string>( "outputImageFormat", Get( config, "output_format ", "nv12" ) );
+    m_config.Set<std::string>( "inputImageFormat", Get( config, "input_format", "h265" ) );
+    m_config.Set<std::string>( "outputImageFormat", Get( config, "output_format", "nv12" ) );
 
     m_config.Set<bool>( "bInputDynamicMode", true );
     m_config.Set<bool>( "bOutputDynamicMode", false );

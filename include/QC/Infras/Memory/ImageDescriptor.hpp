@@ -232,15 +232,6 @@ public:
     ImageDescriptor &operator=( const QCBufferDescriptorBase_t &other );
 
     /**
-     * @brief Initializes the image descriptor using another shared buffer object.
-     * @param[in] other The shared buffer object from which buffer data is copied.
-     * @return The updated image descriptor.
-     * @note This is a temporary workaround API introduced to facilitate development during phase 2.
-     *       It will be removed once phase 2 development is complete.
-     */
-    ImageDescriptor &operator=( const QCSharedBuffer_t &other );
-
-    /**
      * @brief Converts the image buffer descriptor to a tensor buffer descriptor.
      * @param[out] tensorDesc The tensor buffer descriptor.
      * @return QC_STATUS_OK on success, other status codes on failure.

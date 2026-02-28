@@ -1,6 +1,7 @@
 # aarch64 QNX & HGY based toolchain
 
-FROM ubuntu:20.04
+ARG DOCKER_REGISTRY
+FROM ${DOCKER_REGISTRY}ubuntu:20.04
 
 ARG DEBIAN_FRONTEND=noninteractive
 

@@ -22,7 +22,9 @@ namespace utils
 std::string MD5Sum( const void *data, uint32_t length )
 {
     std::string md5Value = "";
+#ifndef OSSL_DEPRECATEDIN_3_0
     MD5_CTX ctx;
+#endif
     uint8_t md5Digest[MD5_DIGEST_LENGTH];
     char digest[MD5_DIGEST_LENGTH * 2 + 1];
     int ret;

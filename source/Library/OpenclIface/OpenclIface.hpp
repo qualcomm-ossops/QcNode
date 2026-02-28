@@ -120,18 +120,6 @@ public:
     QCStatus_e Deinit();
 
     /**
-     * deprecated function, will be removed after QCnode phase2 development
-     * @brief Register the OpenclIface buffer
-     * @param[in] pBuffer the QC buffer pointer to register
-     * @param[in] pBufferCL the OpenCL memory buffer pointer
-     * @return QC_STATUS_OK on success, others on failure
-     * @note Create an OpenCL memory buffer and register the host QC buffer to it in zero
-     * memory copy method. Then store the OpenCL memory buffer to buffer map, so the same host
-     * buffer would not be registered twice.
-     */
-    QCStatus_e RegBuf( const QCBuffer_t *pBuffer, cl_mem *pBufferCL );
-
-    /**
      * @brief Register the OpenclIface buffer in image format
      * @param[in] pData the image data pointer to register
      * @param[in] dmaHandle the dma handle of image buffer
@@ -167,16 +155,6 @@ public:
      * buffer would not be registered twice.
      */
     QCStatus_e RegBufferDesc( QCBufferDescriptorBase_t &buffer, cl_mem &bufferCL );
-
-    /**
-     * deprecated function, will be removed after QCnode phase2 development
-     * @brief Deregister the OpenclIface buffer
-     * @param[in] pBuffer the QC buffer pointer to deregister
-     * @return QC_STATUS_OK on success, others on failure
-     * @note Release the OpenCL memory buffer corresponding to the host QC buffer and
-     * erase it in the buffer map.
-     */
-    QCStatus_e DeregBuf( const QCBuffer_t *pBuffer );
 
     /**
      * @brief Deregister the OpenclIface image
@@ -219,6 +197,7 @@ public:
 
 
 private:
+    bool m_initialized = false;
     cl_platform_id m_platformID;                         /**OpenCL platform ID*/
     cl_device_id m_deviceID;                             /**OpenCL device ID*/
     cl_command_queue m_commandQueue;                     /**OpenCL command queue*/

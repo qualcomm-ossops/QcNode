@@ -21,7 +21,7 @@ std::mutex BufferManager::s_instanceMapMutex;
 std::map<uint32_t, BufferManager::BufferManagerHolder> BufferManager::s_instanceMap;
 
 #ifndef QC_BUFMGR_MAX_NODE
-#define QC_BUFMGR_MAX_NODE 1024
+#define QC_BUFMGR_MAX_NODE 255
 #endif
 
 #if defined( __QNXNTO__ )
@@ -39,11 +39,11 @@ public:
                 defaultAllocators = { m_heapAllocator,   m_dmaAllocator,    m_dmaCameraAllocator,
                                       m_dmaGpuAllocator, m_dmaVpuAllocator, m_dmaEvaAllocator,
                                       m_dmaHtpAllocator };
-        uint32_t numOfNodes = QC_BUFMGR_MAX_NODE;
+        uint8_t numOfNodes = QC_BUFMGR_MAX_NODE;
         const char *envValue = getenv( "QC_NUM_NODE" );
         if ( nullptr != envValue )
         {
-            numOfNodes = (uint32_t) atoi( envValue );
+            numOfNodes = (uint8_t) atoi( envValue );
         }
         QCMemoryManagerInit_t memorymanagerInit( numOfNodes, defaultAllocators );
         QCStatus_e status = m_defaultMemoryMgr.Initialize( memorymanagerInit );
@@ -223,7 +223,7 @@ QCStatus_e BufferManager::Free( const QCBufferDescriptorBase_t &buffer )
         QC_ERROR( "buffer not allocated" );
         status = QC_STATUS_INVALID_BUF;
     }
-    else if ( static_cast<uint64_t>( pid ) != buffer.pid )
+    else if ( pid != buffer.pid )
     {
         QC_ERROR( "buffer not allocated by self, can't do free" );
         status = QC_STATUS_OUT_OF_BOUND;
@@ -254,7 +254,8 @@ BufferManager *BufferManager::Get( const QCNodeID_t &nodeId, Logger_Level_e logL
         BufferManager *pBufMgrNew = new BufferManager( nodeId, logLevel );
         if ( nullptr != pBufMgrNew )
         {
-            if ( pBufMgrNew->m_memoryHandle.GetHandle() != 0u )
+            QCMemoryHandle_t memoryHandleDefault;
+            if ( pBufMgrNew->m_memoryHandle != memoryHandleDefault )
             {
                 pBufMgr = pBufMgrNew;
                 s_instanceMap[nodeId.id] = { pBufMgrNew, 1 };

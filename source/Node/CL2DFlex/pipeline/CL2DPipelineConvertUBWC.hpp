@@ -19,6 +19,9 @@ public:
 
     ~CL2DPipelineConvertUBWC();
 
+    CL2DPipelineConvertUBWC( const CL2DPipelineConvertUBWC & ) = delete;
+    CL2DPipelineConvertUBWC &operator=( const CL2DPipelineConvertUBWC & ) = delete;
+
     QCStatus_e Init( uint32_t inputId, cl_kernel *pKernel, CL2DFlex_Config_t *pConfig,
                      OpenclSrv *pOpenclSrvObj,
                      std::vector<std::reference_wrapper<QCBufferDescriptorBase>> &buffers );

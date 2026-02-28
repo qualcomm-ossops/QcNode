@@ -1,0 +1,34 @@
+# This builds the skel library
+BUILD_LIBS += libFadasIface_skel
+BUILD_DLLS = libFadasIface_skel
+
+# .c files to build into the shared lib
+libFadasIface_skel_C_SRCS += $(V)/FadasIface_skel
+libFadasIface_skel_QAICIDLS += ../src/FadasIface
+libFadasIface_skel_CPP_SRCS += ../src/FadasIfaceCore
+
+INCDIRS+=./include
+INCDIRS+=$(FADAS_INC_DIR)/
+
+ifeq ($(V_ARCH),v68)
+INCDIRS+=$(HEXAGON_SDK_ROOT)/rtos/qurt/computev68/include/qurt
+endif
+ifeq ($(V_ARCH),v73)
+INCDIRS+=$(HEXAGON_SDK_ROOT)/rtos/qurt/computev73/include/qurt
+endif
+ifeq ($(V_ARCH),v75)
+INCDIRS+=$(HEXAGON_SDK_ROOT)/rtos/qurt/computev75/include/qurt
+endif
+ifeq ($(V_ARCH),v81)
+INCDIRS+=$(HEXAGON_SDK_ROOT)/rtos/qurt/computev81/include/qurt
+endif
+
+
+libFadasIface_skel_DLLS += libfadasNsp libworker_pool
+
+# copy final build products to the ship directory
+BUILD_COPIES = \
+   $(DLLS) \
+   $(EXES) \
+   $(LIBS) \
+   $(SHIP_DIR)/ ;

@@ -1,24 +1,22 @@
 *Menu*:
 - [1. Introduction](#1-introduction)
-- [2. Video Decoder Configuraion](#2-video-decoder-configuraion)
-  - [2.1 Video Decoder Node Configuraion](#21-video-decoder-node-configuraion)
-- [3. QC VideoDecoder Data Structures](#2-qc-videodecoder-data-structures)
-  - [3.1 The details of VideoDecoder_Config_t](#21-the-details-of-videodecoder_config_t)
-  - [3.2 The details of VideoDecoder_InputFrame_t](#22-the-details-of-videodecoder_inputframe_t)
-  - [3.3 The details of VideoDecoder_OutputFrame_t](#23-the-details-of-videodecoder_outputframe_t)
-- [4. QC VideoDecoder APIs](#3-qc-videodecoder-apis)
-- [5. Typical Use Case](#4-typical-use-case)
-  - [5.1 Typical use case of dynamic mode](#41-typical-use-case-of-dynamic-mode)
+- [2. Video Decoder Configuration](#2-video-decoder-configuration)
+  - [2.1 Video Decoder Node Configuration](#21-video-decoder-node-configuration)
+- [3. QC VideoDecoder Data Structures](#3-qc-videodecoder-data-structures)
+  - [3.1 The details of VideoFrameDescriptor\_t](#31-the-details-of-videoframedescriptor_t)
+- [4. QC VideoDecoder APIs](#4-qc-videodecoder-apis)
+- [5. Typical Use Case](#5-typical-use-case)
+  - [5.1 Typical use case of dynamic mode](#51-typical-use-case-of-dynamic-mode)
 
 # 1. Introduction
 The QC VideoDecoder node provides APIs for video decoding. It calls vidc library to process video frames based on video hardware. 
 This node supports QNX and HGY Linux/Ubuntu platforms.
 
-# 2. Video Decoder Configuraion
+# 2. Video Decoder Configuration
 
-## 2.1 Video Decoder Node Configuraion
+## 2.1 Video Decoder Node Configuration
 | Parameter            | Required  | Type        | Default | Description            |
-|----------------------|-----------|-------------|------------------------|
+|----------------------|-----------|-------------|---------|------------------------|
 | `name`               | true      | string      |         | The Node unique name.  |
 | `id`                 | true      | uint32_t    |         | The Node unique ID.    |
 | `width`              | true      | uint32_t    |         | Video frame width.     |
@@ -28,8 +26,8 @@ This node supports QNX and HGY Linux/Ubuntu platforms.
 | `output_format`      | false     | string      | nv12    | The output image format, options from [h264, h265] |
 | `bInputDynamicMode`  | false     | bool        | true    | Input frame dynamic mode |
 | `bOutputDynamicMode` | false     | bool        | false   | Output frame dynamic mode |
-| `numInputBufferReq`  | false     | uint32_t    | 4      | Number of input buffers |
-| `numOutputBufferReq` | false     | uint32_t    | 4      | Number of output buffers |
+| `numInputBufferReq`  | false     | uint32_t    | 4       | Number of input buffers |
+| `numOutputBufferReq` | false     | uint32_t    | 4       | Number of output buffers |
 
 - Example Configurations
 ```json
@@ -48,7 +46,7 @@ This node supports QNX and HGY Linux/Ubuntu platforms.
         "numInputBufferReq": 4,
     }
 }
-
+```
 # 3. QC VideoDecoder Data Structures
 - [VideoFrameDescriptor_t](../include/QC/Infras/Memory/VideoFrameDescriptor.hpp#L50)
 
@@ -84,7 +82,7 @@ vidcDecoderConfig.bOutputDynamicMode = true;
 vidcDecoderConfig.numInputBuffer = bufferNum;
 vidcDecoderConfig.numOutputBuffer = bufferNum;
 
-QCImageProps_t inputImgProps;
+ImageProps_t inputImgProps;
 inputImgProps.batchSize = 1;
 inputImgProps.width = 1920;
 inputImgProps.height = 1024;
@@ -101,9 +99,7 @@ vidcDecoderConfig.pInputBufferList = nullptr;
 vidcDecoderConfig.pOutputBufferList = nullptr;
 
 // Define callback:
-void VdInputDoneCb( VideoFrameDescriptor_t &inFrameDesc, void *pPrivData ) {}
-void VdOutputDoneCb( VideoFrameDescriptor_t &inFrameDesc, void *pPrivData ) {}
-void VdEventCb( conVideoCodec_EventType_e eventId, const void *pEvent, void *pPrivData ) {}
+void OnDoneCb( conVideoCodec_EventType_e eventId, const void *pEvent, void *pPrivData ) {}
 ```
 
 - Step 2: Allocate buffers
@@ -170,7 +166,3 @@ for ( auto &input : inputs )
     ASSERT_EQ( QC_STATUS_OK, ret );
 }
 ```
-
-Reference: 
-- [gtest_VideoDecoder](../tests/unit_test/Node/VideoDecoder/gtest_VideoDecoder.cpp)
-- [SampleVideoDecoder](../tests/sample/source/SampleVideoDecoder.cpp)

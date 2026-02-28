@@ -76,23 +76,86 @@ private:
         uint8_t reserved[120];
     };
 
+    struct DataImageProps
+    {
+        QCImageFormat_e format;
+        uint32_t batchSize;
+        uint32_t width;
+        uint32_t height;
+        uint32_t stride[QC_NUM_IMAGE_PLANES];
+        uint32_t actualHeight[QC_NUM_IMAGE_PLANES];
+        uint32_t planeBufSize[QC_NUM_IMAGE_PLANES];
+        uint32_t numPlanes;
+
+        DataImageProps &operator=( const ImageProps_t &other )
+        {
+            this->format = other.format;
+            this->batchSize = other.batchSize;
+            this->width = other.width;
+            this->height = other.height;
+            uint32_t numPlanes = std::min( other.numPlanes, (uint32_t) QC_NUM_IMAGE_PLANES );
+            std::copy( other.stride, other.stride + numPlanes, this->stride );
+            std::copy( other.actualHeight, other.actualHeight + numPlanes, this->actualHeight );
+            std::copy( other.planeBufSize, other.planeBufSize + numPlanes, this->planeBufSize );
+            this->numPlanes = numPlanes;
+            return *this;
+        }
+
+        void To( ImageProps_t &other )
+        {
+            other.format = this->format;
+            other.batchSize = this->batchSize;
+            other.width = this->width;
+            other.height = this->height;
+            uint32_t numPlanes = std::min( this->numPlanes, (uint32_t) QC_NUM_IMAGE_PLANES );
+            std::copy( this->stride, this->stride + numPlanes, other.stride );
+            std::copy( this->actualHeight, this->actualHeight + numPlanes, other.actualHeight );
+            std::copy( this->planeBufSize, this->planeBufSize + numPlanes, other.planeBufSize );
+            other.numPlanes = numPlanes;
+        }
+    };
+
     struct DataImageMeta
     {
         QCBufferType_e dataType;
         uint32_t size;
-        QCImageProps_t imageProps;
-        uint8_t reserved[120 - sizeof( QCImageProps_t )];
+        DataImageProps imageProps;
+        uint8_t reserved[120 - sizeof( DataImageProps )];
+    };
+
+    struct DataTensorProps
+    {
+        QCTensorType_e tensorType;
+        uint32_t dims[QC_NUM_TENSOR_DIMS];
+        uint32_t numDims;
+
+        DataTensorProps &operator=( const TensorProps_t &other )
+        {
+            this->tensorType = other.tensorType;
+            uint32_t numDims = std::min( other.numDims, (uint32_t) QC_NUM_TENSOR_DIMS );
+            std::copy( other.dims, other.dims + numDims, this->dims );
+            this->numDims = numDims;
+            return *this;
+        }
+
+        void To( TensorProps_t &other )
+        {
+            other.tensorType = this->tensorType;
+            uint32_t numDims = std::min( this->numDims, (uint32_t) QC_NUM_TENSOR_DIMS );
+            std::copy( this->dims, this->dims + numDims, other.dims );
+            other.numDims = numDims;
+        }
     };
 
     struct DataTensorMeta
     {
         QCBufferType_e dataType;
         uint32_t size;
-        QCTensorProps_t tensorProps;
+        DataTensorProps tensorProps;
         float quantScale;
         int32_t quantOffset;
         char name[64];
-        uint8_t reserved[48 - sizeof( QCTensorProps_t )];
+        uint8_t reserved[48 - sizeof( DataTensorProps )];
     };
 
 private:

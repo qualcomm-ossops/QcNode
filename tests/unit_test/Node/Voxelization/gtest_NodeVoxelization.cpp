@@ -16,8 +16,6 @@ using namespace QC::sample;
 
 #define EXPAND_JSON( ... ) #__VA_ARGS__
 
-extern const size_t VOXELIZATION_PILLAR_COORDS_DIM;
-
 std::string g_Config_XYZR = EXPAND_JSON( {
     "static": {
         "name": "voxelization",
@@ -114,8 +112,8 @@ static void LoadRaw( void *pData, uint32_t length, const char *rawFile )
     fclose( pFile );
 }
 
-static void SANITY_Voxelization( std::string &jsonStr, std::string &processorType,
-                                 std::string &inputMode, const char *pcdFile = nullptr )
+static void SANITY_Voxelization( std::string jsonStr, std::string processorType,
+                                 std::string inputMode, const char *pcdFile = nullptr )
 {
     QCStatus_e ret;
     DataTree dt;
@@ -202,7 +200,6 @@ static void SANITY_Voxelization( std::string &jsonStr, std::string &processorTyp
     if ( QC_STATUS_OK == ret )
     {
         config = { dt.Dump() };
-        std::cout << "config: " << config.config << std::endl;
     }
 
     if ( inputMode == "xyzr" )
@@ -262,37 +259,30 @@ static void SANITY_Voxelization( std::string &jsonStr, std::string &processorTyp
         coordToPlrIdxTensorProp.dims[1] = 0;
         coordToPlrIdxTensorProp.numDims = 1;
     }
-
-    const uint32_t inputBufferNum = 4;
     const uint32_t outputPlrBufferNum = outputPlrBufferIds.size();
     const uint32_t outputFeatureBufferNum = outputFeatureBufferIds.size();
 
-    TensorDescriptor_t inputTensors[inputBufferNum];
+    TensorDescriptor_t inputTensors;
     TensorDescriptor_t outputPlrTensors[outputPlrBufferNum];
     TensorDescriptor_t outputFeatureTensors[outputFeatureBufferNum];
 
     NodeFrameDescriptor frameDesc( 3 );
 
-    for ( uint32_t i = 0; i < inputBufferNum; i++ )
-    {
-        ret = bufMgr.Allocate( inputTensorProp, inputTensors[i] );
-        ASSERT_EQ( QC_STATUS_OK, ret );
+    ret = bufMgr.Allocate( inputTensorProp, inputTensors );
+    ASSERT_EQ( QC_STATUS_OK, ret );
 
-        uint32_t numPts = 0;
-        if ( nullptr == pcdFile )
-        {
-            if ( nullptr == pcdFile )
-            {
-                std::cout << "point cloud file is not provided " << std::endl;
-            }
-        }
-        else
-        {
-            LoadPoints( inputTensors[i].pBuf, inputTensors[i].size, numPts, pcdFile );
-            std::cout << "using point cloud file: " << pcdFile << std::endl;
-        }
-        inputTensors[i].dims[0] = numPts;
+    uint32_t numPts = 0;
+    if ( nullptr == pcdFile )
+    {
+        numPts = ( maxPointNum / 3 ) + ( rand() % ( 2 * maxPointNum / 3 ) );
+        RandomGenPoints( (float *) inputTensors.pBuf, numPts );
     }
+    else
+    {
+        LoadPoints( inputTensors.pBuf, inputTensors.size, numPts, pcdFile );
+        std::cout << "using point cloud file: " << pcdFile << std::endl;
+    }
+    inputTensors.dims[0] = numPts;
 
     for ( uint32_t i = 0; i < outputPlrBufferNum; i++ )
     {
@@ -322,7 +312,7 @@ static void SANITY_Voxelization( std::string &jsonStr, std::string &processorTyp
         config.buffers.push_back( coordToPlrIdxTensor );
     }
 
-    ret = frameDesc.SetBuffer( 0, inputTensors[0] );
+    ret = frameDesc.SetBuffer( 0, inputTensors );
     ASSERT_EQ( QC_STATUS_OK, ret );
 
     ret = frameDesc.SetBuffer( 1, outputPlrTensors[0] );
@@ -346,11 +336,9 @@ static void SANITY_Voxelization( std::string &jsonStr, std::string &processorTyp
     ret = voxel.DeInitialize();
     ASSERT_EQ( QC_STATUS_OK, ret );
 
-    for ( uint32_t i = 0; i < inputBufferNum; i++ )
-    {
-        ret = bufMgr.Free( inputTensors[i] );
-        ASSERT_EQ( QC_STATUS_OK, ret );
-    }
+    ret = bufMgr.Free( inputTensors );
+    ASSERT_EQ( QC_STATUS_OK, ret );
+
 
     for ( uint32_t i = 0; i < outputPlrBufferNum; i++ )
     {
@@ -382,12 +370,42 @@ TEST( FadasPlr, SANITY_VoxelizationCPU_XYZR )
     SANITY_Voxelization( g_Config_XYZR, processorType, inputMode, pcdFile );
 }
 
+TEST( FadasPlr, Stress_VoxelizationCPU_XYZR )
+{
+    uint32_t loopNumber = 100;
+    const char *envValue = getenv( "VOXEL_TEST_LOOP_NUMBER" );
+    if ( nullptr != envValue )
+    {
+        loopNumber = (uint32_t) atoi( envValue );
+    }
+    for ( int i = 0; i < loopNumber; i++ )
+    {
+        printf( "InitDeinit Stress_VoxelizationCPU_XYZR %d times\n", i );
+        SANITY_Voxelization( g_Config_XYZR, "cpu", "xyzr", nullptr );
+    }
+}
+
 TEST( FadasPlr, SANITY_VoxelizationGPU_XYZR )
 {
     std::string processorType = "gpu";
     std::string inputMode = "xyzr";
     const char *pcdFile = "./data/test/voxelization/pointcloud.bin";
     SANITY_Voxelization( g_Config_XYZR, processorType, inputMode, pcdFile );
+}
+
+TEST( FadasPlr, Stress_VoxelizationGPU_XYZR )
+{
+    uint32_t loopNumber = 100;
+    const char *envValue = getenv( "VOXEL_TEST_LOOP_NUMBER" );
+    if ( nullptr != envValue )
+    {
+        loopNumber = (uint32_t) atoi( envValue );
+    }
+    for ( int i = 0; i < loopNumber; i++ )
+    {
+        printf( "InitDeinit Stress_VoxelizationGPU_XYZR %d times\n", i );
+        SANITY_Voxelization( g_Config_XYZR, "gpu", "xyzr", nullptr );
+    }
 }
 
 TEST( FadasPlr, SANITY_VoxelizationGPU_XYZRT )
@@ -398,21 +416,54 @@ TEST( FadasPlr, SANITY_VoxelizationGPU_XYZRT )
     SANITY_Voxelization( g_Config_XYZRT, processorType, inputMode, pcdFile );
 }
 
+TEST( FadasPlr, Stress_VoxelizationGPU_XYZRT )
+{
+    uint32_t loopNumber = 100;
+    const char *envValue = getenv( "VOXEL_TEST_LOOP_NUMBER" );
+    if ( nullptr != envValue )
+    {
+        loopNumber = (uint32_t) atoi( envValue );
+    }
+    for ( int i = 0; i < loopNumber; i++ )
+    {
+        printf( "InitDeinit Stress_VoxelizationGPU_XYZRT %d times\n", i );
+        SANITY_Voxelization( g_Config_XYZRT, "gpu", "xyzrt", nullptr );
+    }
+}
+
 TEST( FadasPlr, SANITY_VoxelizationHTP0_XYZR )
 {
     std::string processorType = "htp0";
     std::string inputMode = "xyzr";
     const char *pcdFile = "./data/test/voxelization/pointcloud.bin";
-    // SANITY_Voxelization( g_Config_XYZR, processorType, inputMode, pcdFile );
+    SANITY_Voxelization( g_Config_XYZR, processorType, inputMode, pcdFile );
 }
 
+TEST( FadasPlr, Stress_VoxelizationHTP0_XYZR )
+{
+    uint32_t loopNumber = 100;
+    const char *envValue = getenv( "VOXEL_TEST_LOOP_NUMBER" );
+    if ( nullptr != envValue )
+    {
+        loopNumber = (uint32_t) atoi( envValue );
+    }
+
+    for ( int i = 0; i < loopNumber; i++ )
+    {
+        printf( "InitDeinit Stress_VoxelizationHTP0_XYZR %d times\n", i );
+        SANITY_Voxelization( g_Config_XYZR, "htp0", "xyzr", nullptr );
+    }
+}
+
+#if ( QC_TARGET_SOC == 8650 )
 TEST( FadasPlr, SANITY_VoxelizationHTP1_XYZR )
 {
     std::string processorType = "htp1";
     std::string inputMode = "xyzr";
     const char *pcdFile = "./data/test/voxelization/pointcloud.bin";
-    // SANITY_Voxelization( g_Config_XYZR, processorType, inputMode, pcdFile );
+    SANITY_Voxelization( g_Config_XYZR, processorType, inputMode, pcdFile );
 }
+#endif
 
 #ifndef GTEST_QCNODE
 #if __CTC__
@@ -428,4 +479,3 @@ int main( int argc, char **argv )
     return nVal;
 }
 #endif
-

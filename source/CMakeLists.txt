@@ -1,7 +1,6 @@
 
 add_subdirectory(Common)
 add_subdirectory(Infras)
-add_subdirectory(components)
 add_subdirectory(Library)
 add_subdirectory(Node)
 
@@ -37,7 +36,6 @@ endif()
 
 if ( ENABLE_RADAR AND NOT CMAKE_SYSTEM_NAME STREQUAL "Linux" )
   list( APPEND TARGET_LIBRARIES
-            QCNodeRadar
             QCNodeNodeRadar
   )
 endif()

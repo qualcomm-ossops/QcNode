@@ -17,10 +17,8 @@
 #include "QC/Infras/Log/Logger.hpp"
 #include "QC/Infras/Memory/BufferDescriptor.hpp"
 #include "QC/Infras/Memory/Ifs/QCBufferDescriptorBase.hpp"
-#include "QC/Infras/Memory/CameraFrameDescriptor.hpp"
 #include "QC/Infras/Memory/Ifs/QCMemoryDefs.hpp"
 #include "QC/Infras/Memory/ImageDescriptor.hpp"
-#include "QC/Infras/Memory/SharedBuffer.hpp"
 #include "QC/Infras/Memory/TensorDescriptor.hpp"
 #include "QC/Node/Ifs/QCFrameDescriptorNodeIfs.hpp"
 #include "QC/Node/Ifs/QCNodeDefs.hpp"
@@ -35,20 +33,6 @@ namespace Node
 {
 
 using namespace QC::Memory;
-
-/**
- * @brief QCNode Shared Buffer Descriptor
- * @param buffer The QC shared buffer.
- */
-typedef struct QCSharedBufferDescriptor : public QCBufferDescriptorBase_t
-{
-
-public:
-    QCSharedBufferDescriptor() = default;
-    virtual ~QCSharedBufferDescriptor() = default;
-
-    QCSharedBuffer_t buffer;
-} QCSharedBufferDescriptor_t;
 
 class NodeBase : public QCNodeIfs
 {

@@ -176,6 +176,31 @@ private:
     const QCMemoryAllocatorConfig_t m_configuration;
 };
 
+class DummyAllocator : public QCMemoryAllocatorIfs
+{
+public:
+    DummyAllocator() : QCMemoryAllocatorIfs( { "Dummy Allocator" }, QC_MEMORY_ALLOCATOR_LAST ) {}
+
+    virtual ~DummyAllocator() = default;
+
+    /**
+     * @brief Always fails with QC_STATUS_UNSUPPORTED.
+     */
+    virtual QCStatus_e Allocate( const QCBufferPropBase_t &request,
+                                 QCBufferDescriptorBase_t &response ) override
+    {
+        return QC_STATUS_UNSUPPORTED;
+    }
+
+    /**
+     * @brief Always fails with QC_STATUS_UNSUPPORTED.
+     */
+    virtual QCStatus_e Free( const QCBufferDescriptorBase_t &buff ) override
+    {
+        return QC_STATUS_UNSUPPORTED;
+    }
+};
+
 }   // namespace Memory
 }   // namespace QC
 

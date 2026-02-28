@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 # Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
 # SPDX-License-Identifier: BSD-3-Clause-Clear
 
@@ -30,6 +30,10 @@ export QCNODE_INSTALL_DIR=$destdir
 
 # Package name
 pkgname=$topdir/qcnode-$target.tar.gz
+
+if [ -f ${QCNODR_DIR}/build_option ] ; then
+  source ${QCNODR_DIR}/build_option
+fi
 
 if ! [[ -v QC_TARGET_SOC ]] ; then
   export QC_TARGET_SOC=8797
@@ -123,9 +127,22 @@ if ! [[ -v ENABLE_GENIE ]] ; then
   export ENABLE_GENIE=OFF
 fi
 
+if ! [[ -v ENABLE_RESMON ]] ; then
+  if [[ "${QC_TARGET_SOC}" == "8797" ]] ; then
+    export ENABLE_RESMON=OFF
+  else
+    export ENABLE_RESMON=OFF
+  fi
+fi
+
+if ! [[ -v ENABLE_RADAR ]] ; then
+  export ENABLE_RADAR=OFF
+fi
+
+
 # Get dependent packages
 export THIRD_PARTY_DIR=$topdir/third_party
-sh $topdir/scripts/build/toolchain/get-3rd-party.sh
+$topdir/scripts/build/toolchain/get-3rd-party.sh
 
 # Get QC Toolchain path
 export QC_TOOLCHAIN_PATH=/opt/toolchain
@@ -170,7 +187,7 @@ setup_env_qnx() {
     fi
 
     setup_qnn_sdk
-    sh $homedir/toolchain/build-3rd-party-aarch64-qnx.sh $workdir $destdir
+    $homedir/toolchain/build-3rd-party-aarch64-qnx.sh $workdir $destdir
 }
 
 setup_env_linux() {
@@ -242,7 +259,7 @@ setup_env_linux() {
     fi
 
     setup_qnn_sdk
-    sh $homedir/toolchain/build-3rd-party-aarch64-linux.sh $workdir $destdir
+    $homedir/toolchain/build-3rd-party-aarch64-linux.sh $workdir $destdir
 }
 
 setup_env_ubuntu() {
@@ -304,7 +321,7 @@ setup_env_ubuntu() {
     fi
 
     setup_qnn_sdk
-    sh $homedir/toolchain/build-3rd-party-aarch64-ubuntu.sh $workdir $destdir
+    $homedir/toolchain/build-3rd-party-aarch64-ubuntu.sh $workdir $destdir
 }
 
 setup_qnn_sdk() {
@@ -314,7 +331,7 @@ setup_qnn_sdk() {
                 ln -sf $QC_TOOLCHAIN_PATH/qnn_sdk /opt/qnn_sdk
             else
                 echo "qnn_sdk not fould under $QC_TOOLCHAIN_PATH"
-                exit -1
+                return
             fi
         fi
         source /opt/qnn_sdk/bin/envsetup.sh
@@ -324,7 +341,7 @@ setup_qnn_sdk() {
     MODEL_FILE=$topdir/tests/unit_test/Node/QNN/Mock/QnnAddModelMock.cpp
     case $target in
     aarch64-qnx)
-        if [[ "${QC_TARGET_SOC}" == "8797" ]] ; then
+        if [[ "${ENABLE_SDP8}" == "ON" ]] ; then
           qnx_target_arch=aarch64-qnx800
         else
           qnx_target_arch=aarch64-qnx
@@ -439,6 +456,8 @@ cmake \
     -DENABLE_C2C=${ENABLE_C2C} \
     -DENABLE_TRACE=${ENABLE_TRACE} \
     -DENABLE_GENIE=${ENABLE_GENIE} \
+    -DENABLE_RESMON=${ENABLE_RESMON} \
+    -DENABLE_RADAR=${ENABLE_RADAR} \
     -DQC_TARGET_SOC=${QC_TARGET_SOC} \
     .. || exit -1
 ${CTC_BUILD_PREFIX} make -j 16 || exit -1
@@ -458,7 +477,7 @@ fi
 
 case $target in
 aarch64-qnx)
-    if [[ "${QC_TARGET_SOC}" == "8797" ]] ; then
+    if [[ "${ENABLE_SDP8}" == "ON" ]] ; then
       QNX_VARIANT=aarch64-qnx800
     else
       QNX_VARIANT=aarch64-qnx
@@ -481,6 +500,7 @@ esac
 fi
 
 mkdir -p $destdir/opt/qcnode/lib/runtime
+if [ "$ENABLE_TINYVIZ" == "ON" ] ; then
 if [ -f /opt/toolchain/LiberationSans-Regular.ttf ]; then
     cp -v /opt/toolchain/LiberationSans-Regular.ttf $destdir/opt/qcnode/lib/runtime
 else
@@ -489,13 +509,16 @@ else
     fi
     cp -v LiberationSans-Regular.ttf $destdir/opt/qcnode/lib/runtime
 fi
+fi
 
-if [[ "${QC_TARGET_SOC}" == "8797" ]] && [[ "${target}" == "aarch64-qnx" ]] ; then
+if [[ "${ENABLE_SDP8}" == "ON" ]] && [[ "${target}" == "aarch64-qnx" ]] ; then
     SSL_LIB=/opt/qnx/target/qnx/aarch64le/usr/lib/libssl.so.3
     if [ ! -f $SSL_LIB ]; then
         SSL_LIB=$BSP_ROOT/qnx_bins/prebuilt_SDP800/target/qnx/aarch64le/usr/lib/libssl.so.3
     fi
-    cp -v $SSL_LIB $destdir/opt/qcnode/lib/runtime
+    if [ -f $SSL_LIB ]; then
+        cp -v $SSL_LIB $destdir/opt/qcnode/lib/runtime
+    fi
 fi
 
 if [ -d $QNN_SDK_ROOT/model ]; then

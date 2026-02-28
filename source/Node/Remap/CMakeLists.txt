@@ -25,3 +25,5 @@ target_include_directories( QCNodeRemap PUBLIC ${HEADERS_DIR} )
 target_link_libraries( QCNodeRemap PUBLIC ${TARGET_LIBRARIES} )
 
 install( FILES ${QC_NODE_REMAP_HEADERS} DESTINATION include/QC/Node )
+
+target_compile_options( QCNodeRemap PRIVATE -Wall )

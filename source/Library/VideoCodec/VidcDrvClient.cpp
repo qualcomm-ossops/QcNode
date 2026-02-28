@@ -278,7 +278,7 @@ QCStatus_e VidcDrvClient::LoadResources()
     QC_DEBUG( "Loading vidc resources" );
     InitCmdCompleted();
     rc = device_ioctl( m_pIoHandle, VIDC_IOCTL_LOAD_RESOURCES, nullptr, 0, nullptr, 0 );
-    if ( VIDC_ERR_NONE != rc )
+    if ( static_cast<int32_t>(VIDC_ERR_NONE) != rc )
     {
         QC_ERROR( "Loading vidc resources failed! rc=0x%x, %s", rc,
                   VidcErrToStr( vidc_status_type( rc ) ) );
@@ -307,7 +307,7 @@ QCStatus_e VidcDrvClient::ReleaseResources()
     QC_DEBUG( "release vidc resources" );
     InitCmdCompleted();
     rc = device_ioctl( m_pIoHandle, VIDC_IOCTL_RELEASE_RESOURCES, nullptr, 0, nullptr, 0 );
-    if ( VIDC_ERR_NONE != rc )
+    if ( static_cast<int32_t>(VIDC_ERR_NONE) != rc )
     {
         QC_ERROR( "release vidc resources failed! rc=0x%x, %s", rc,
                   VidcErrToStr( vidc_status_type( rc ) ) );
@@ -478,7 +478,7 @@ QCStatus_e VidcDrvClient::StartDriver( VideoCodec_StartType_e type )
         rc = device_ioctl( m_pIoHandle, VIDC_IOCTL_START, nullptr, 0, nullptr, 0 );
     }
 
-    if ( VIDC_ERR_NONE != rc )
+    if (static_cast<int32_t>(VIDC_ERR_NONE) != rc )
     {
         QC_ERROR( "Starting vidc failed! rc=0x%x %s", rc, VidcErrToStr( vidc_status_type( rc ) ) );
         ret = QC_STATUS_FAIL;
@@ -531,10 +531,11 @@ QCStatus_e VidcDrvClient::SetBuffer( VideoCodec_BufType_e bufferType,
         buf_info.buf_handle = (pmem_handle_t) buf.dmaHandle;
 #else
         buf_info.buf_handle = (int)( buf.dmaHandle );
+        buf_info.pid = buf.pid;
 #endif
         buf_info.buf_type = vidcBufType;
         buf_info.contiguous = true;
-        buf_info.buf_size = buf.size;
+        buf_info.buf_size = static_cast<uint32>(buf.size);
         // register it before lookup in future for local allocation
         QC_DEBUG( "set-buffer to driver [%" PRId32 "]: buf_addr = 0x%x, buf_handle = 0x%x, "
                  "type:%d, buf_size:%d",
@@ -543,7 +544,7 @@ QCStatus_e VidcDrvClient::SetBuffer( VideoCodec_BufType_e bufferType,
         rc = device_ioctl( m_pIoHandle, VIDC_IOCTL_SET_BUFFER, (uint8_t*) (&buf_info),
                            sizeof(vidc_buffer_info_type),
                            nullptr, 0 );
-        if (VIDC_ERR_NONE != rc)
+        if (static_cast<int32_t>(VIDC_ERR_NONE) != rc)
         {
             QC_ERROR( "set-buffer VIDC_IOCTL_SET_BUFFER failed. Index=%" PRId32 " rc=0x%x", i,
                             rc );
@@ -579,7 +580,7 @@ QCStatus_e VidcDrvClient::SetBuffer( VideoCodec_BufType_e bufferType,
 QCStatus_e VidcDrvClient::FreeBuffers( VideoCodec_BufType_e bufferType,
                                        const std::vector<std::reference_wrapper<VideoFrameDescriptor_t>> &buffers )
 {
-    int32_t i, rc = 0;
+    int32_t i = 0, rc = 0;
     QCStatus_e ret = QC_STATUS_OK;
     vidc_buffer_type vidcBufType;
 
@@ -604,12 +605,12 @@ QCStatus_e VidcDrvClient::FreeBuffers( VideoCodec_BufType_e bufferType,
 #endif
         buf_info.buf_type = vidcBufType;
         buf_info.contiguous = true;
-        buf_info.buf_size = buf.size;
+        buf_info.buf_size = static_cast<uint32>(buf.size);
 
         QC_DEBUG( "FREE_BUFFER, i:%d, size:%d", i, buf_info.buf_size );
         rc = device_ioctl( m_pIoHandle, VIDC_IOCTL_FREE_BUFFER, (uint8_t *) ( &buf_info ),
                            sizeof( vidc_buffer_info_type ), nullptr, 0 );
-        if ( VIDC_ERR_NONE != rc )
+        if ( static_cast<int32_t>(VIDC_ERR_NONE) != rc )
         {
             ret = QC_STATUS_FAIL;
             QC_ERROR( "VIDC_IOCTL_FREE_BUFFER index=%" PRIu32 ", type:%" PRIu32
@@ -639,12 +640,14 @@ QCStatus_e VidcDrvClient::EmptyBuffer( VideoFrameDescriptor &frameDesc )
     frameData.buf_type = VIDC_BUFFER_INPUT;
     frameData.frame_addr = static_cast<uint8_t *>( frameDesc.pBuf );
     frameData.alloc_len = frameDesc.size;
+    frameData.offset = frameDesc.offset;
 #if defined( __QNXNTO__ )
     frameData.frame_handle = (pmem_handle_t) handle;
 #else
     frameData.frame_handle = (int) reinterpret_cast<uint64_t>( handle );
+    frameData.pid = frameDesc.pid;
 #endif
-    frameData.data_len = frameDesc.size;
+    frameData.data_len = frameDesc.validSize;
     frameData.timestamp = timestampUs;
     frameData.mark_data = (unsigned long) appMarkData;
 
@@ -705,7 +708,7 @@ QCStatus_e VidcDrvClient::EmptyBuffer( VideoFrameDescriptor &frameDesc )
     {
         rc = device_ioctl( m_pIoHandle, VIDC_IOCTL_EMPTY_INPUT_BUFFER, (uint8_t *) ( &frameData ),
                            sizeof( frameData ), nullptr, 0 );
-        if ( VIDC_ERR_NONE == rc )
+        if ( static_cast<int32_t>(VIDC_ERR_NONE) == rc )
         {
             QC_DEBUG( "SubmitInputFrame VIDC_IOCTL_EMPTY_INPUT_BUFFER succeeded. frameTs: %" PRIu64
                       " inputMapSsize: %zu", timestampUs, m_inputMap.size() );
@@ -789,12 +792,15 @@ QCStatus_e VidcDrvClient::FillBuffer( VideoFrameDescriptor &frameDesc )
         frameData.buf_type = VIDC_BUFFER_OUTPUT;
         frameData.frame_addr = (uint8_t *) frameDesc.pBuf;
         frameData.alloc_len = frameDesc.size;
+        frameData.offset = frameDesc.offset;
 #if defined( __QNXNTO__ )
         frameData.frame_handle = (pmem_handle_t) handle;
 #else
         frameData.frame_handle = (int) reinterpret_cast<uint64_t>( handle );
+        frameData.pid = frameDesc.pid;
 #endif
         frameData.frm_clnt_data = handle;
+        frameData.data_len = frameDesc.size;
 
         QC_DEBUG( "FillBuffer: frame_handle=0x%x , frameData.frame_addr=0x%x "
                   "frameData.alloc_len %" PRIu32 " frameData.data_len=%" PRIu32,
@@ -802,7 +808,7 @@ QCStatus_e VidcDrvClient::FillBuffer( VideoFrameDescriptor &frameDesc )
 
         rc = device_ioctl( m_pIoHandle, VIDC_IOCTL_FILL_OUTPUT_BUFFER, (uint8_t *) ( &frameData ),
                            sizeof( frameData ), nullptr, 0 );
-        if ( VIDC_ERR_NONE != rc )
+        if ( static_cast<int32_t>(VIDC_ERR_NONE) != rc )
         {
             QC_ERROR( "FillBuffer 0x%x failed rc 0x%x", handle, rc );
             m_outputMap[handle].bUsedFlag = false;
@@ -831,7 +837,7 @@ QCStatus_e VidcDrvClient::StopDecoder()
     InitCmdCompleted();
     m_bCmdDrainReceived = false;
     rc = device_ioctl( m_pIoHandle, VIDC_IOCTL_DRAIN, nullptr, 0, nullptr, 0 );
-    if ( VIDC_ERR_NONE != rc )
+    if ( static_cast<int32_t>(VIDC_ERR_NONE) != rc )
     {
         QC_ERROR( "Stop vidc failed! rc=0x%x", rc );
         ret = QC_STATUS_FAIL;
@@ -853,7 +859,7 @@ QCStatus_e VidcDrvClient::StopDecoder()
         stop_mode = VIDC_STOP_INPUT;
         rc = device_ioctl( m_pIoHandle, VIDC_IOCTL_STOP, (uint8 *) &stop_mode,
                            sizeof( vidc_stop_mode_type ), nullptr, 0 );
-        if ( VIDC_ERR_NONE != rc )
+        if ( static_cast<int32_t>(VIDC_ERR_NONE) != rc )
         {
             QC_ERROR( "vidc stop input failed! rc=0x%x", rc );
             ret = QC_STATUS_FAIL;
@@ -875,7 +881,7 @@ QCStatus_e VidcDrvClient::StopDecoder()
         stop_mode = VIDC_STOP_OUTPUT;
         rc = device_ioctl( m_pIoHandle, VIDC_IOCTL_STOP, (uint8 *) &stop_mode,
                            sizeof( vidc_stop_mode_type ), nullptr, 0 );
-        if ( VIDC_ERR_NONE != rc )
+        if ( static_cast<int32_t>(VIDC_ERR_NONE) != rc )
         {
             QC_ERROR( "vidc stop output failed! rc=0x%x", rc );
             ret = QC_STATUS_FAIL;
@@ -900,7 +906,7 @@ QCStatus_e VidcDrvClient::StopEncoder()
 
     InitCmdCompleted();
     int32_t rc = device_ioctl( m_pIoHandle, VIDC_IOCTL_STOP, nullptr, 0, nullptr, 0 );
-    if ( VIDC_ERR_NONE != rc )
+    if ( static_cast<int32_t>(VIDC_ERR_NONE) != rc )
     {
         QC_ERROR( "Stop vidc failed! rc=0x%x", rc );
         ret = QC_STATUS_FAIL;
@@ -1034,7 +1040,7 @@ int VidcDrvClient::DeviceCbHandler( uint8_t *pMsg, uint32_t length )
                 }
             }
 
-            if ( ( pFrameData->flags & VIDC_FRAME_FLAG_EOS ) > 0 )
+            if ( ( pFrameData->flags & static_cast<unsigned int>(VIDC_FRAME_FLAG_EOS) ) > 0 )
             {
                 QC_WARN( "detected VIDC_FRAME_FLAG_EOS -- not possible for camera streaming" );
             }
@@ -1157,7 +1163,7 @@ QCStatus_e VidcDrvClient::GetDrvProperty( uint32_t id, uint32_t nPktSize, const 
     QCStatus_e ret = QC_STATUS_OK;
     uint8_t dev_cmd_buffer[VIDEO_MAX_DEV_CMD_BUFFER_SIZE] = { 0 };
     vidc_drv_property_type *pProp = (vidc_drv_property_type *) dev_cmd_buffer;
-    uint32_t nMsgSize = sizeof( vidc_property_hdr_type ) + nPktSize;
+    uint32_t nMsgSize = static_cast<uint32_t>(sizeof( vidc_property_hdr_type ) + nPktSize);
     vidc_property_id_type propId = (vidc_property_id_type) id;
 
     // pProp->payload buffer is more than 1 byte as the struct defined;
@@ -1174,9 +1180,9 @@ QCStatus_e VidcDrvClient::GetDrvProperty( uint32_t id, uint32_t nPktSize, const 
         pProp->prop_hdr.size = nPktSize;
         pProp->prop_hdr.prop_id = propId;
 
-        rc = device_ioctl( m_pIoHandle, VIDC_IOCTL_GET_PROPERTY, dev_cmd_buffer, (int32_t) nMsgSize,
+        rc = device_ioctl( m_pIoHandle, VIDC_IOCTL_GET_PROPERTY, dev_cmd_buffer, static_cast<uint32_t>(nMsgSize),
                            (uint8_t*) &pkt, nPktSize );
-        if ( VIDC_ERR_NONE != rc )
+        if ( static_cast<int32_t>(VIDC_ERR_NONE) != rc )
         {
             printf( "GetDrvProperty propId=0x%x failed! rc=0x%x\n", propId, rc );
             ret = QC_STATUS_FAIL;
@@ -1192,7 +1198,7 @@ QCStatus_e VidcDrvClient::SetDrvProperty( uint32_t id, uint32_t nPktSize, const 
     QCStatus_e ret = QC_STATUS_OK;
     uint8_t dev_cmd_buffer[VIDEO_MAX_DEV_CMD_BUFFER_SIZE] = { 0 };
     vidc_drv_property_type *pProp = (vidc_drv_property_type *) dev_cmd_buffer;
-    uint32_t nMsgSize = sizeof( vidc_property_hdr_type ) + nPktSize;
+    uint32_t nMsgSize = static_cast<uint32_t>(sizeof( vidc_property_hdr_type ) + nPktSize);
     vidc_property_id_type propId = (vidc_property_id_type) id;
 
     // pProp->payload buffer is more than 1 byte as the struct defined;
@@ -1210,9 +1216,9 @@ QCStatus_e VidcDrvClient::SetDrvProperty( uint32_t id, uint32_t nPktSize, const 
         pProp->prop_hdr.size = nPktSize;
         pProp->prop_hdr.prop_id = propId;
 
-        rc = device_ioctl( m_pIoHandle, VIDC_IOCTL_SET_PROPERTY, dev_cmd_buffer, (int32_t) nMsgSize,
+        rc = device_ioctl( m_pIoHandle, VIDC_IOCTL_SET_PROPERTY, dev_cmd_buffer, static_cast<uint32_t>(nMsgSize),
                            nullptr, 0 );
-        if ( VIDC_ERR_NONE != rc )
+        if ( static_cast<int32_t>(VIDC_ERR_NONE) != rc )
         {
             QC_ERROR( "SetDrvProperty propId=0x%x failed! rc=0x%x, %s", propId, rc,
                       VidcErrToStr( vidc_status_type( rc ) ) );

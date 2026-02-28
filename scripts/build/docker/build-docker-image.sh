@@ -1,3 +1,4 @@
 #!/bin/bash
 
-sudo docker build -t qcnode-toolchain-base:v1.0 .
+DOCKER_TAG=qcnode-toolchain-base:v1.0
+docker build --build-arg DOCKER_REGISTRY=$DOCKER_REGISTRY -t $DOCKER_TAG .

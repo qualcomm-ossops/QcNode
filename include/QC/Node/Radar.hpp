@@ -4,14 +4,39 @@
 #ifndef QC_NODE_RADAR_HPP
 #define QC_NODE_RADAR_HPP
 
+#include "QC/Infras/Memory/TensorDescriptor.hpp"
 #include "QC/Node/NodeBase.hpp"
-#include "QC/component/Radar.hpp"
+#include "RadarIface.hpp"
+
+#include <cinttypes>
+#include <cmath>
+#include <inttypes.h>
+#include <memory>
+#include <string>
+#include <unordered_map>
+
+#include <memory>
 
 namespace QC
 {
 namespace Node
 {
-using namespace QC::component;
+
+/** @brief Radar Processing Service Configuration */
+typedef struct
+{
+    std::string serviceName;    /**< Name of the processing service */
+    uint32_t timeoutMs;         /**< Timeout for processing in milliseconds */
+    bool bEnablePerformanceLog; /**< Enable performance logging */
+} Radar_ServiceConfig_t;
+
+/** @brief Radar Node Initialization Configuration */
+typedef struct
+{
+    uint32_t maxInputBufferSize;         /**< Maximum expected input buffer size */
+    uint32_t maxOutputBufferSize;        /**< Maximum expected output buffer size */
+    Radar_ServiceConfig_t serviceConfig; /**< Processing service configuration */
+} Radar_Config_t;
 
 /**
  * @brief Radar Node Configuration Data Structure
@@ -27,6 +52,8 @@ typedef struct RadarConfig : public QCNodeConfigBase_t
 {
     Radar_Config_t params;
     std::vector<uint32_t> bufferIds;
+    std::vector<uint32_t> inputBufferIds;
+    std::vector<uint32_t> outputBufferIds;
     std::vector<QCNodeBufferMapEntry_t> globalBufferIdMap;
     bool bDeRegisterAllBuffersWhenStop;
 } RadarConfig_t;
@@ -40,7 +67,7 @@ public:
      * @param[in] radar A reference to the QC Radar component to be used by RadarConfigIfs.
      * @return None
      */
-    RadarConfigIfs( Logger &logger, Radar &radar ) : NodeConfigIfs( logger ), m_radar( radar ) {}
+    RadarConfigIfs( Logger &logger ) : NodeConfigIfs( logger ) {}
 
     /**
      * @brief RadarConfigIfs Destructor
@@ -95,7 +122,6 @@ private:
     QCStatus_e ParseStaticConfig( DataTree &dt, std::string &errors );
 
 private:
-    Radar &m_radar;
     std::string m_options;
 
 public:
@@ -139,7 +165,7 @@ public:
      * @brief Radar Constructor
      * @return None
      */
-    Radar() : m_configIfs( m_logger, m_radar ){};
+    Radar() : m_configIfs( m_logger ){};
 
     /**
      * @brief Radar Destructor
@@ -198,17 +224,20 @@ public:
      * @brief Get the current state of the Node Radar
      * @return The current state of the Node Radar
      */
-    virtual QCObjectState_e GetState()
-    {
-        return static_cast<QCObjectState_e>( m_radar.GetState() );
-    }
+    virtual QCObjectState_e GetState() { return m_state; }
 
 private:
     QCStatus_e SetupGlobalBufferIdMap( const RadarConfig_t &cfg );
-    void NotifyEvent( QCFrameDescriptorNodeIfs &frameDesc, QCStatus_e status );
+    QCStatus_e ValidateBuffer( const QCBufferDescriptorBase_t *pBuffer, bool isInput );
+    QCStatus_e Execute( const QCBufferDescriptorBase_t *pInput,
+                        const QCBufferDescriptorBase_t *pOutput );
 
 private:
-    QC::component::Radar m_radar;
+    Radar_Config_t m_config;
+    QC::Library::RadarIface m_radarIface; /**< Radar processing interface */
+    std::unordered_map<void *, uint64_t> m_registeredInputBuffers;
+    std::unordered_map<void *, uint64_t> m_registeredOutputBuffers;
+
     RadarConfigIfs m_configIfs;
     RadarMonitoringIfs m_monitorIfs;
     bool m_bDeRegisterAllBuffersWhenStop = false;
@@ -216,8 +245,9 @@ private:
     uint32_t m_inputNum = 1;
     uint32_t m_outputNum = 1;
 
+    QCObjectState_e m_state;
+
     std::vector<QCNodeBufferMapEntry_t> m_globalBufferIdMap;
-    QCNodeEventCallBack_t m_eventCallback;
 };
 
 }   // namespace Node

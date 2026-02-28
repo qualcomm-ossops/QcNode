@@ -45,5 +45,5 @@ target_compile_definitions( QCNodeQNN PRIVATE DISABLE_QC_LOG )
 endif()
 
 target_link_libraries( QCNodeQNN PUBLIC ${TARGET_LIBRARIES} )
-
+target_compile_options( QCNodeQNN PRIVATE -Wall )
 install( FILES ${QC_NODE_QNN_HEADERS} DESTINATION include/QC/Node )

@@ -82,15 +82,15 @@ QCStatus_e SampleVideoDemuxer::Init( std::string name, SampleConfig_t &config )
 
     if ( QC_STATUS_OK == ret )
     {
-        QCImageProps_t imgProps;
+        ImageProps_t imgProps;
         imgProps.batchSize = 1;
         imgProps.width = m_videoInfo.frameWidth;
         imgProps.height = m_videoInfo.frameHeight;
         imgProps.numPlanes = 1;
         imgProps.planeBufSize[0] = m_videoInfo.maxFrameSize;
         imgProps.format = m_videoInfo.format;
-        ret = m_framePool.Init( name, m_nodeId, LOGGER_LEVEL_INFO, m_poolSize, imgProps,
-            QC_MEMORY_ALLOCATOR_DMA );
+        imgProps.allocatorType = QC_MEMORY_ALLOCATOR_DMA;
+        ret = m_framePool.Init( name, m_nodeId, LOGGER_LEVEL_INFO, m_poolSize, imgProps );
     }
 
     if ( QC_STATUS_OK == ret )

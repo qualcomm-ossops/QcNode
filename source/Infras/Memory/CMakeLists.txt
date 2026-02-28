@@ -5,7 +5,7 @@ set( MEMORY_HEADERS
         ${HEADERS_DIR}/QC/Infras/Memory/BufferDescriptor.hpp
         ${HEADERS_DIR}/QC/Infras/Memory/ImageDescriptor.hpp
         ${HEADERS_DIR}/QC/Infras/Memory/TensorDescriptor.hpp
-        ${HEADERS_DIR}/QC/Infras/Memory/CameraFrameDescriptor.hpp
+        ${HEADERS_DIR}/QC/Infras/Memory/CameraBufferDescriptor.hpp
         ${HEADERS_DIR}/QC/Infras/Memory/Ifs/QCMemoryAllocatorIfs.hpp
         ${HEADERS_DIR}/QC/Infras/Memory/Ifs/QCMemoryDefs.hpp
         ${HEADERS_DIR}/QC/Infras/Memory/Ifs/QCMemoryManagerIfs.hpp
@@ -21,7 +21,7 @@ set( MEMORY_SOURCES
     BufferDescriptor.cpp
     ImageDescriptor.cpp
     TensorDescriptor.cpp
-    CameraFrameDescriptor.cpp
+    CameraBufferDescriptor.cpp
     ManagerLocal.cpp
     HeapAllocator.cpp
     UtilsBase.cpp
@@ -52,12 +52,14 @@ else()
     )
 endif()
 
-set( TARGET_LIBRARIES QCNodeCommon )
+set( TARGET_LIBRARIES QCNodeCommon apdf aosal )
 
 if( "${CMAKE_SYSTEM_NAME}" STREQUAL "Linux" AND "${CMAKE_SYSTEM_PROCESSOR}" STREQUAL "aarch64" )
-    list( APPEND TARGET_LIBRARIES kiumd apdf aosal )
+    list( APPEND TARGET_LIBRARIES kiumd )
     list( APPEND HEADERS_DIR ${CMAKE_SYSROOT}/usr/include/WF )
     list( APPEND HEADERS_DIR ${CMAKE_SYSROOT}/usr/include/linux-ark )
+else()
+    list( APPEND TARGET_LIBRARIES pmem_client pmemext fastrpc_pmem mmap_peer OSAbstraction )
 endif()
 
 add_library( QCNodeMemory OBJECT ${MEMORY_SOURCES} )
@@ -68,6 +70,8 @@ set_property( TARGET QCNodeMemory PROPERTY POSITION_INDEPENDENT_CODE ON )
 target_include_directories( QCNodeMemory PUBLIC ${HEADERS_DIR} )
 
 target_link_libraries( QCNodeMemory PUBLIC ${TARGET_LIBRARIES} )
+
+target_compile_options( QCNodeMemory PRIVATE -Wall )
 
 install( FILES ${MEMORY_HEADERS} DESTINATION include/QC/Infras/Memory )
 

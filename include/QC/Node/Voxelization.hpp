@@ -14,11 +14,16 @@ namespace Node
 /** @brief The QCNode Voxelization Version */
 #define QCNODE_VOXELIZATION_VERSION_MAJOR 2U
 #define QCNODE_VOXELIZATION_VERSION_MINOR 0U
-#define QCNODE_VOXELIZATION_VERSION_PATCH 0U
+#define QCNODE_VOXELIZATION_VERSION_PATCH 1U
 
 #define QCNODE_VOXELIZATION_VERSION                                                                \
     ( ( QCNODE_VOXELIZATION_VERSION_MAJOR << 16U ) | ( QCNODE_VOXELIZATION_VERSION_MINOR << 8U ) | \
       QCNODE_VOXELIZATION_VERSION_PATCH )
+
+/**
+ * @brief Represents the Voxelization implementation used by NodeVoxelization
+ */
+#define VOXELIZATION_PILLAR_COORDS_DIM 4u
 
 /**
  * @brief Represents the Voxelization implementation used by NodeVoxelization
@@ -91,6 +96,8 @@ public:
      *                       options: [xyzr, xyzrt], default: xyzr",
      *         "outputFeatureDimNum": "Number of features for each point in output point pillars,
      *                                 type: uint32_t",
+     *         "inputPcdBufferIds": "[ A list of uint32_t values representing the indices of input
+     *                                pointcloud buffers in QCNodeInit::buffers ]",
      *         "outputPlrBufferIds": "[ A list of uint32_t values representing the indices of output
      *                                pillar buffers in QCNodeInit::buffers ]",
      *         "outputFeatureBufferIds": "[ A list of uint32_t values representing the indices of
@@ -111,7 +118,7 @@ public:
      * }
      * @endcode
      *
-     * @note: 
+     * @note:
      * plrPointsBufferId and coordToPlrIdxBufferId is only needed while the processorType is gpu.
      * globalBufferIdMap is optional. If not set, this config will be set to default.
      */
@@ -157,8 +164,8 @@ public:
      * used by VoxelizationMonitor.
      */
     VoxelizationMonitor( Logger &logger, VoxelizationImpl *pVoxelImpl )
-        : m_logger( logger ),
-          m_pVoxelImpl( pVoxelImpl )
+        : m_pVoxelImpl( pVoxelImpl ),
+          m_logger( logger )
     {}
 
     /**
@@ -301,4 +308,3 @@ private:
 }   // namespace QC
 
 #endif   // QC_NODE_VOXELIZATION_HPP
-

@@ -23,8 +23,6 @@ DMABUFFUtils::~DMABUFFUtils()
 QCStatus_e DMABUFFUtils::MemoryMap( const QCBufferDescriptorBase_t &orig,
                                     QCBufferDescriptorBase_t &mapped )
 {
-    heap_type heapType = ID_DMA_BUF_HEAP_UNCACHED;
-    int devFd = -1;
     QCStatus_e status = QC_STATUS_OK;
 
     mapped = orig;

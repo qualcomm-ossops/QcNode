@@ -99,22 +99,21 @@ QCStatus_e SampleOpticalFlowEvaAuto::Init( std::string name, SampleConfig_t &con
 
     if ( QC_STATUS_OK == ret )
     {
-        QCTensorProps_t mvMapTsProp = { QC_TENSOR_TYPE_UINT_16,
-                                        { 1, ALIGN_S( height, 8 ), ALIGN_S( width * 2, 128 ), 1 },
-                                        4 };
+        TensorProps_t mvMapTsProp( QC_TENSOR_TYPE_UINT_16,
+                                   { 1, ALIGN_S( height, 8 ), ALIGN_S( width * 2, 128 ), 1 },
+                                   QC_MEMORY_ALLOCATOR_DMA_EVA );
 
-        ret = m_mvPool.Init( name + ".mv", m_nodeId, LOGGER_LEVEL_INFO, m_poolSize, mvMapTsProp,
-                             QC_MEMORY_ALLOCATOR_DMA_EVA );
+        ret = m_mvPool.Init( name + ".mv", m_nodeId, LOGGER_LEVEL_INFO, m_poolSize, mvMapTsProp );
     }
 
     if ( QC_STATUS_OK == ret )
     {
-        QCTensorProps_t mvConfTsProp = { QC_TENSOR_TYPE_UINT_8,
-                                         { 1, ALIGN_S( height, 8 ), ALIGN_S( width, 128 ), 1 },
-                                         4 };
+        TensorProps_t mvConfTsProp( QC_TENSOR_TYPE_UINT_8,
+                                    { 1, ALIGN_S( height, 8 ), ALIGN_S( width, 128 ), 1 },
+                                    QC_MEMORY_ALLOCATOR_DMA_EVA );
 
         ret = m_mvConfPool.Init( name + ".mvConf", m_nodeId, LOGGER_LEVEL_INFO, m_poolSize,
-                                 mvConfTsProp, QC_MEMORY_ALLOCATOR_DMA_EVA );
+                                 mvConfTsProp );
     }
 
     if ( QC_STATUS_OK == ret )

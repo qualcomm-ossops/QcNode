@@ -5,8 +5,8 @@ set( QC_NODE_RADAR_HEADERS
 )
 
 set( TARGET_LIBRARIES
+    QCNodeRadarIface
     QCNodeBase
-    QCNodeRadar
 )
 
 set( QC_NODE_RADAR_SOURCES
@@ -19,6 +19,7 @@ set_property( TARGET QCNodeNodeRadar PROPERTY LINKER_LANGUAGE CXX )
 set_property( TARGET QCNodeNodeRadar PROPERTY POSITION_INDEPENDENT_CODE ON )
 
 target_include_directories( QCNodeNodeRadar PUBLIC ${HEADERS_DIR} )
+target_include_directories( QCNodeNodeRadar PUBLIC ${PROJECT_SOURCE_DIR}/source/Library/RadarIface )
 
 target_link_libraries( QCNodeNodeRadar PUBLIC ${TARGET_LIBRARIES} )
 

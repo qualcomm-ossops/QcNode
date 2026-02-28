@@ -109,7 +109,7 @@ QCStatus_e SampleQnn::ParseConfig( SampleConfig_t &config )
                 break;
             }
             QC_INFO( "opPackage params %d, udoLibPath: %s, interfaceProvider: %s\n", i,
-                     opPackage[0], opPackage[1] );
+                     opPackage[0].c_str(), opPackage[1].c_str() );
             dt.Set<std::string>( "udoLibPath", opPackage[0].c_str() );
             dt.Set<std::string>( "interfaceProvider", opPackage[1].c_str() );
             udoPkgs.push_back( dt );
@@ -156,8 +156,8 @@ QCStatus_e SampleQnn::ConvertDtToInfo( DataTree &dt, TensorInfo_t &info )
         ret = QC_STATUS_BAD_ARGUMENTS;
     }
 
-    info.properties.type = dt.GetTensorType( "type", QC_TENSOR_TYPE_MAX );
-    if ( QC_TENSOR_TYPE_MAX == info.properties.type )
+    info.properties.tensorType = dt.GetTensorType( "type", QC_TENSOR_TYPE_MAX );
+    if ( QC_TENSOR_TYPE_MAX == info.properties.tensorType )
     {
         ret = QC_STATUS_BAD_ARGUMENTS;
     }
@@ -250,9 +250,9 @@ QCStatus_e SampleQnn::Init( std::string name, SampleConfig_t &config )
         size_t index = 0;
         for ( int i = 0; i < outputNum; ++i )
         {
-            ret = m_tensorPools[index].Init(
-                    "Qnn." + name + "." + std::to_string( index ), m_nodeId, LOGGER_LEVEL_INFO,
-                    m_poolSize, m_outputsInfo[i].properties, QC_MEMORY_ALLOCATOR_DMA_HTP );
+            ret = m_tensorPools[index].Init( "Qnn." + name + "." + std::to_string( index ),
+                                             m_nodeId, LOGGER_LEVEL_INFO, m_poolSize,
+                                             m_outputsInfo[i].properties );
             index += 1;
             if ( QC_STATUS_OK != ret )
             {
@@ -363,7 +363,7 @@ void SampleQnn::ThreadMain()
                                         QC_ERROR( "QNN FrameDesc SetBuffer failed: ret=%d", ret );
                                     }
                                 }
-                                if ( SAMPLE_QNN_IMAGE_CONVERT_GRAY == m_imageConvertType )
+                                else if ( SAMPLE_QNN_IMAGE_CONVERT_GRAY == m_imageConvertType )
                                 {
                                     ret = frameDesc.SetBuffer( globalIdx, sbuf->luma );
                                     globalIdx++;

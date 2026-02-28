@@ -16,19 +16,13 @@ DMABUFFAllocator::DMABUFFAllocator( const QCMemoryAllocatorConfigInit_t &config,
 {
     (void) QC_LOGGER_INIT( GetConfiguration().name.c_str(), LOGGER_LEVEL_VERBOSE );
     m_dmaBufDevFdCached = dmabufheap_init( ID_DMA_BUF_HEAP_CACHED );
-    if ( m_dmaBufDevFdCached < 0 )
-    {
-        QC_ERROR( " dmaBufDevFdCached < 0, dmabufheap_init(ID_DMA_BUF_HEAP_CACHED) " );
-    }
+    QC_DEBUG( " dmabufheap_init(ID_DMA_BUF_HEAP_CACHED) = %d ", m_dmaBufDevFdCached );
 }
 
 DMABUFFAllocator::~DMABUFFAllocator()
 {
-    if ( m_dmaBufDevFdCached >= 0 )
-    {
-        dmabufheap_release( m_dmaBufDevFdCached );
-        m_dmaBufDevFdCached = -1;
-    }
+    dmabufheap_release( m_dmaBufDevFdCached );
+    m_dmaBufDevFdCached = DMABUF_HEAP_ALLOCATOR_DEFAULT_FD_CACHED;
     (void) QC_LOGGER_DEINIT();
 }
 
@@ -38,7 +32,7 @@ QCStatus_e DMABUFFAllocator::Allocate( const QCBufferPropBase_t &request,
 {
     QCStatus_e status = QC_STATUS_OK;
     response.pBuf = nullptr;
-    int fd = -1;
+    int fd = DMABUF_HEAP_ALLOCATOR_DEFAULT_FD_CACHED;
 
     if ( request.cache != QC_CACHEABLE )
     {

@@ -52,36 +52,6 @@ TensorDescriptor &TensorDescriptor::operator=( const QCBufferDescriptorBase_t &o
     return *this;
 }
 
-TensorDescriptor &TensorDescriptor::operator=( const QCSharedBuffer_t &other )
-{
-    static const QCMemoryAllocator_e s_Usage2Allocator[] = {
-            QC_MEMORY_ALLOCATOR_DMA,        /* QC_BUFFER_USAGE_DEFAULT */
-            QC_MEMORY_ALLOCATOR_DMA_CAMERA, /* QC_BUFFER_USAGE_CAMERA */
-            QC_MEMORY_ALLOCATOR_DMA_GPU,    /* QC_BUFFER_USAGE_GPU */
-            QC_MEMORY_ALLOCATOR_DMA_VPU,    /* QC_BUFFER_USAGE_VPU */
-            QC_MEMORY_ALLOCATOR_DMA_EVA,    /* QC_BUFFER_USAGE_EVA */
-            QC_MEMORY_ALLOCATOR_DMA_HTP,    /* QC_BUFFER_USAGE_HTP */
-    };
-    this->pBuf = other.buffer.pData;
-    this->validSize = other.size;
-    this->type = QC_BUFFER_TYPE_TENSOR;
-    this->dmaHandle = other.buffer.dmaHandle;
-    this->size = other.buffer.size;
-    this->offset = other.offset;
-    this->id = other.buffer.id;
-    this->pid = other.buffer.pid;
-    this->allocatorType = s_Usage2Allocator[other.buffer.usage];
-    this->cache = QC_CACHEABLE;
-    this->tensorType = other.tensorProps.type;
-    std::copy( other.tensorProps.dims, other.tensorProps.dims + other.tensorProps.numDims,
-               this->dims );
-    this->numDims = other.tensorProps.numDims;
-
-    QC_LOG_DEBUG( "Tensor %s = %u [%u %u %u %u]", this->name.c_str(), this->numDims, this->dims[0],
-                  this->dims[1], this->dims[2], this->dims[3] );
-    return *this;
-}
-
 }   // namespace Memory
 
 }   // namespace QC

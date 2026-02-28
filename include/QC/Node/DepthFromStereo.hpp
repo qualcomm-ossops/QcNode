@@ -377,11 +377,11 @@ private:
     PixelFormat GetInputImageFormat( QCImageFormat_e imageFormat );
     PixelFormat GetDisparityMapFormat( DisparityFormat_e disparityFormat );
     void UpdateIconfig( StereoDisparity::ConfigMap &configMap,
-                        DepthFromStereo_Config_t configuration );
+                        const DepthFromStereo_Config_t &configuration );
     QCStatus_e ValidateImageDesc( const ImageDescriptor_t &imgDesc,
                                   const DepthFromStereo_Config_t &config );
     void SetInitialFrameConfig( StereoDisparity::ConfigMap &configMapFrame,
-                                DepthFromStereo_Config_t configuration );
+                                const DepthFromStereo_Config_t &configuration );
     QCStatus_e RegisterMemory( const BufferDescriptor_t &bufferDesc, Buffer &pBuff );
 };
 

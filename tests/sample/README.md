@@ -30,6 +30,7 @@
     - [2.26 QCNode Temporal Sample](#226-qcnode-temporal-sample)
     - [2.27 QCNode ResMon Sample](#227-qcnode-resmon-sample)
     - [2.28 QCNode Genie Sample](#228-qcnode-genie-sample)
+    - [2.29 QCNode ComputeLidarCoord Sample](#229-qcnode-computelidarcoord-sample)
   - [3. Typical QCNode Sample Application pipelines](#3-typical-qcnode-sample-application-pipelines)
     - [3.1 4 DataReader based QNN perception pipelines](#31-4-datareader-based-qnn-perception-pipelines)
     - [3.2 1 DataReader and 1 Camera AR231 based QNN perception pipelines](#32-1-datareader-and-1-camera-ar231-based-qnn-perception-pipelines)
@@ -62,7 +63,7 @@ Note: the "-n componentX_name -t componentX_type" must be in the begin for each 
 | parameter | required | type      | comments |
 |-----------|----------|-----------|----------|
 | -n        | true     | string    | The unique component name |
-| -t        | true     | string    | The component type name, options from [DataReader, Camera, Remap, Qnn, C2D, PostProcCenternet, TinyViz, VideoEncoder, VideoDecoder, Recorder, PlrPre, PlrPost, DataOnline, CL2DFlex, GL2DFlex, SharedRing, FpsAdapter, OpticalFlow, OpticalFlowViz, FrameSync, DepthFromStereo, DepthFromStereoViz, Radar, C2C, Temporal] |
+| -t        | true     | string    | The component type name, options from [DataReader, Camera, Remap, Qnn, C2D, PostProcCenternet, TinyViz, VideoEncoder, VideoDecoder, Recorder, PlrPre, PlrPost, DataOnline, CL2DFlex, GL2DFlex, SharedRing, FpsAdapter, OpticalFlow, OpticalFlowViz, FrameSync, DepthFromStereo, DepthFromStereoViz, Radar, C2C, Temporal, ComputeLidarCoord] |
 | -k        | true     | string    | The unique component attribute name |
 | -v        | true     | string    | The attribute value for the previous attribute name |
 | -d        | false    |   -       | Direct the QCNode log to stdout |
@@ -141,6 +142,7 @@ Refer [DataReader Utils](../../scripts/utils/data_reader/README.md#L38) for how 
 | frame_drop_period | false | int  | 0       | The frame drop period defined by qcarcam |
 | isp_use_case | false | int       | 3       | The ISP use case |
 | op_mode   | false    | int       | 2       | The input operation mode, 1: Inline ISP, 2: Injection to ISP. |
+| multi_stream_frame_ready   | false    | bool       | false       | Flag to set multiple streams frame ready event in one callback. |
 | ignore_error | false | bool      | false   | Ignore the error of Camera Init&Start |
 | immediate_release | false | bool | false   | Perform an immediate camera frame release in the camera frame ready callback if true. Be cautious, as this approach does not provide life cycle management for the camera buffer, and data consistency is not guaranteed. |
 | topic     | true     | string    | -       | The output topic name |
@@ -156,23 +158,31 @@ Note: "X" is value from 1 to number-1, thus the attribute with suffix "X" is rep
 
 The command line template example:
 
+- Basic request mode:
 ```sh
   -n CAM0 -t Camera -k input_id -v 0 \
     -k width -v 1928 -k height -v 1208 \
-    -k request_mode -v false \
+    -k request_mode -v true \
     -k topic -v /sensor/camera/CAM0/raw \
 ```
 
+- Multi-stream mode with request pattern:
 ```sh
-  -n IMX728_0 -t Camera -k input_id -v 0 -k number -v 2 \
-    -k stream_id -v 0 -k width -v 1920 -k height -v 1080 -k format -v nv12_ubwc \
-    -k stream_id1 -v 1 -k width1 -v 3840 -k height1 -v 2160 -k format1 -v nv12_ubwc \
-    -k submit_request_pattern1 -v 3 \
-    -k isp_use_case -v 135 \
-    -k request_mode -v true -k pool_size -v 4 \
-    -k topic -v /sensor/camera/IMX728_0/raw \
-    -k topic1 -v /sensor/camera/IMX728_0_S1/raw \
+-n CAM0 -t Camera -k input_id -v 8 -k number -v 2 \
+    -k isp_use_case -v 65 -k request_mode -v true \
+    -k multi_stream_frame_ready -v true \
+    -k stream_id -v 1 \
+    -k submit_request_pattern -v 1 \
+    -k width -v 3840 -k height -v 2160 \
+    -k pool_size -v 4 \
+    -k topic -v /sensor/camera/CAM0_0/raw \
+    -k stream_id1 -v 5 \
+    -k submit_request_pattern1 -v 0 \
+    -k width1 -v 3840 -k height1 -v 2160 \
+    -k pool_size1 -v 4 \
+    -k topic1 -v /sensor/camera/CAM0_1/raw
 ```
+
 
 ### 2.3 QCNode C2D Sample
 
@@ -213,6 +223,7 @@ The command line template example:
 | attribute     | required | type      | default | comments |
 |---------------|----------|-----------|---------|----------|
 | processor     | false    | string    | "htp0"  | The processor type, options from [htp0, htp1, cpu, gpu] |
+| core_id        | false    | int     | 0  | The processor core ID, currently only used for nordy dsp, options from [0,1,2,3] |
 | rsm_priority  | false     | int    | 0       | the RSM request priority, options [0,1,2,3], 0 is the lowest and 3 is highest priority. |
 | output_width  | false    | int       | 1152    | The output image width |
 | output_height | false    | int       | 800     | The output image height |
@@ -348,10 +359,13 @@ The command line template example for Lidar pipeline:
 | pool_size          | false    | int       | 4           | The image memory pool size |
 | bitrate            | false    | int       | 8000000     | The encoding bitrate |
 | fps                | false    | int       | 30          | The frame rate per second |
+| buffer_size        | false    | int       | 2\*width\*height     | The image buffer size |
 | input_topic        | true     | string    | -           | the input topic name |
 | output_topic       | true     | string    | -           | the output topic name |
 | format             | false    | string    | "nv12"      | The image format, options from [nv12, nv12_ubwc] |
 | output_format      | false    | string    | h265        | The output image format, options from [h264, h265] |
+| profile | false    | string    | HEVC_MAIN for h265 or H264_MAIN for h264 | The video encoder profile, options from [H264_BASELINE, H264_HIGH, H264_MAIN, HEVC_MAIN, HEVC_MAIN10] |
+| gop        | false    | int       | 20     | No of P-Pictures between 2 I-Frames |
 | numInputBufferReq  | false    | int       | $pool_size  | Number of input buffers |
 | numOutputBufferReq | false    | int       | $pool_size  | Number of output buffers |
 
@@ -489,6 +503,7 @@ The command line template example:
 | input_widthX  | false    | int       | 1920    | The input X image width |
 | input_heightX | false    | int       | 1024    | The input X image height|
 | input_formatX | false    | string    | nv12    | The input X image format, options from [uyvy, nv12, rgb, nv12_ubwc]|
+| deviceId      | false    | int       | 0       | The OpenCL device id  |
 | output_width  | false    | int       | 1920    | The output image width  |
 | output_height | false    | int       | 1024    | The output image height |
 | output_format | false    | string    | rgb     | The output image format, options from [rgb, nv12]|
@@ -510,6 +525,7 @@ The command line template example:
 
 ```sh
   -n CL2D -t CL2DFlex \
+    -k deviceId -v 0 \
     -k input_width0 -v 1920 -k input_height0 -v 1024 -k input_format0 -v nv12 \
     -k batch_size -v 1 -k work_mode0 -v letterbox_nearest \
     -k roi_x0 -v 960 -k roi_y0 -v 512 -k roi_width0 -v 960 -k roi_height0 -v 512 \
@@ -979,6 +995,41 @@ The command line template example:
     -k embedding_table -v embedding_weights_152064x3584_ssd.bin \
     -k input_topic -v /sensor/genie/embeding/raw \
     -k output_topic -v /sensor/genie/decoder/text \
+```
+
+### 2.29 QCNode ComputeLidarCoord Sample
+
+The Sample ComputeLidarCoord is used for lidar raw data preprocessing, it computes points cloud coordinates from distance and azimuth angle, also do correction according to firetime matrix and angle correction matrix.
+The input topic should contain 3 float tensors with following dimensions:
+- raw data which contains distance, intensity, azimuth, motor information: [cols, blocks*2+2]
+- firetime correction matrix: [cols]
+- azimuth correction matrix: [cols]
+
+The command line template example:
+
+
+| attribute            | required | type      | default       | comments |
+|----------------------|----------|-----------|---------------|----------|
+| cols                 | false    | int       | 1000          | The lidar raw data colums number in vertical direction |
+| blocks               | false    | int       | 100           | The lidar raw data blocks number in horizontal direction |
+| pool_size            | false    | int       | 4             | The image memory pool size |
+| cache                | false    | bool      | true          | use cached memory or not for the image memory |
+| input_topic          | true     | string    |      -        | the input topic name |
+| output_topic         | true     | string    |      -        | the output topic name |
+
+The command line template example:
+
+```sh
+-n LIDAR0 -t DataReader \
+  -k number -v 3 \
+  -k type0 -v tensor -k dims0 -v "1000,202" \
+  -k type1 -v tensor -k dims1 -v "1000" \
+  -k type2 -v tensor -k dims2 -v "1000" \
+  -k topic -v /sensor/lidar/LIDAR0/input \
+-n LIDARPRE -t ComputeLidarCoord \
+  -k cols -v 1000 -k blocks -v 100 \
+  -k input_topic -v /sensor/lidar/LIDAR0/input \
+  -k output_topic -v /sensor/lidar/LIDAR1/output \
 ```
 
 ## 3. Typical QCNode Sample Application pipelines

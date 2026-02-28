@@ -22,6 +22,7 @@ set( QCNODE_SAMPLE_SOURCES
     SysTrace.cpp
     SampleGL2DFlex.cpp
     SampleTemporal.cpp
+    SampleComputeLidarCoord.cpp
 )
 
 if ( ENABLE_EVA )
@@ -107,20 +108,29 @@ else()
 endif()
 
 if ( ENABLE_RSM_V2 )
+list( APPEND QCNODE_SAMPLE_DEFINITIONS WITH_RSM_V2 )
 if( "${CMAKE_SYSTEM_NAME}" STREQUAL "Linux" )
-  list( APPEND QCNODE_SAMPLE_DEFINITIONS WITH_RSM_V2 )
   list( APPEND TARGET_LIBRARIES rsm )
+else()
+  list( APPEND TARGET_LIBRARIES rsm_client )
 endif()
 endif()
 
 if ( ENABLE_C2C )
   list( APPEND QCNODE_SAMPLE_SOURCES SampleC2C.cpp )
   list( APPEND TARGET_LIBRARIES c2c )
+  if( DEFINED QC_C2C_EXTRA_LIBS )
+    list( APPEND TARGET_LIBRARIES ${QC_C2C_EXTRA_LIBS} )
+  endif()
 endif()
 
 if ( ENABLE_RESMON )
   list( APPEND QCNODE_SAMPLE_SOURCES SampleResMon.cpp )
   list( APPEND TARGET_LIBRARIES ResMonitor )
+endif()
+
+if ( "${CMAKE_SYSTEM_NAME}" STREQUAL "QNX" )
+  list( APPEND TARGET_LIBRARIES socket )
 endif()
 
 add_library( QCNodeSample SHARED ${QCNODE_SAMPLE_SOURCES} )

@@ -12,6 +12,9 @@ set( QC_NODE_CAMERA_SOURCES
 )
 
 set( TARGET_LIBRARIES QCNodeBase qcxclient qcxosal )
+if( DEFINED QC_CAMERA_EXTRA_LIBS )
+    list( APPEND TARGET_LIBRARIES ${QC_CAMERA_EXTRA_LIBS} )
+endif()
 
 if( "${CMAKE_SYSTEM_NAME}" STREQUAL "Linux" )
     list( APPEND TARGET_LIBRARIES qcxplatform cutils )

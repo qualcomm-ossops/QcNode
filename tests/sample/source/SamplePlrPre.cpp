@@ -3,8 +3,6 @@
 
 #include "QC/sample/SamplePlrPre.hpp"
 
-extern const size_t VOXELIZATION_PILLAR_COORDS_DIM;
-
 namespace QC
 {
 namespace sample
@@ -110,9 +108,9 @@ QCStatus_e SamplePlrPre::Init( std::string name, SampleConfig_t &config )
     uint32_t inputFeatureDimNum = 0;
     uint32_t outputFeatureDimNum = 0;
 
-    QCTensorProps_t inputTensorProp;
-    QCTensorProps_t outputPlrTensorProp;
-    QCTensorProps_t outputFeatureTensorProp;
+    TensorProps_t inputTensorProp;
+    TensorProps_t outputPlrTensorProp;
+    TensorProps_t outputFeatureTensorProp;
     TensorProps_t plrPointsTensorProp;
     TensorProps_t coordToPlrIdxTensorProp;
 
@@ -201,7 +199,7 @@ QCStatus_e SamplePlrPre::Init( std::string name, SampleConfig_t &config )
     {
         if ( inputMode == "xyzr" )
         {
-            outputPlrTensorProp.type = QC_TENSOR_TYPE_FLOAT_32;
+            outputPlrTensorProp.tensorType = QC_TENSOR_TYPE_FLOAT_32;
             outputPlrTensorProp.dims[0] = maxPlrNum;
             outputPlrTensorProp.dims[1] = (uint32_t) VOXELIZATION_PILLAR_COORDS_DIM;
             outputPlrTensorProp.dims[2] = 0;
@@ -209,14 +207,15 @@ QCStatus_e SamplePlrPre::Init( std::string name, SampleConfig_t &config )
         }
         else if ( inputMode == "xyzrt" )
         {
-            outputPlrTensorProp.type = QC_TENSOR_TYPE_INT_32;
+            outputPlrTensorProp.tensorType = QC_TENSOR_TYPE_INT_32;
             outputPlrTensorProp.dims[0] = maxPlrNum;
             outputPlrTensorProp.dims[1] = 2;
             outputPlrTensorProp.dims[2] = 0;
             outputPlrTensorProp.numDims = 2;
         }
+        outputPlrTensorProp.allocatorType = QC_MEMORY_ALLOCATOR_DMA_HTP;
         ret = m_outputPlrBufferPool.Init( name + ".plrs", m_nodeId, LOGGER_LEVEL_INFO, m_poolSize,
-                                          outputPlrTensorProp, QC_MEMORY_ALLOCATOR_DMA_HTP );
+                                          outputPlrTensorProp );
         if ( QC_STATUS_OK != ret )
         {
             QC_ERROR( "Failed to init buffer pool for output pillar buffers" );
@@ -234,15 +233,15 @@ QCStatus_e SamplePlrPre::Init( std::string name, SampleConfig_t &config )
 
     if ( QC_STATUS_OK == ret )
     {
-        outputFeatureTensorProp.type = QC_TENSOR_TYPE_FLOAT_32;
+        outputFeatureTensorProp.tensorType = QC_TENSOR_TYPE_FLOAT_32;
         outputFeatureTensorProp.dims[0] = maxPlrNum;
         outputFeatureTensorProp.dims[1] = maxPointNumPerPlr;
         outputFeatureTensorProp.dims[2] = outputFeatureDimNum;
         outputFeatureTensorProp.dims[3] = 0;
         outputFeatureTensorProp.numDims = 3;
+        outputFeatureTensorProp.allocatorType = QC_MEMORY_ALLOCATOR_DMA_HTP;
         ret = m_outputFeatureBufferPool.Init( name + ".features", m_nodeId, LOGGER_LEVEL_INFO,
-                                              m_poolSize, outputFeatureTensorProp,
-                                              QC_MEMORY_ALLOCATOR_DMA_HTP );
+                                              m_poolSize, outputFeatureTensorProp );
         if ( QC_STATUS_OK != ret )
         {
             QC_ERROR( "Failed to init buffer pool for output feature buffers" );
@@ -447,4 +446,3 @@ REGISTER_SAMPLE( PlrPre, SamplePlrPre );
 
 }   // namespace sample
 }   // namespace QC
-

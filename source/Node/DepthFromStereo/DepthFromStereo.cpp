@@ -484,7 +484,7 @@ PixelFormat DepthFromStereo::GetDisparityMapFormat( DisparityFormat_e disparityF
 }
 
 void DepthFromStereo::UpdateIconfig( StereoDisparity::ConfigMap &configMap,
-                                     DepthFromStereo_Config_t configuration )
+                                     const DepthFromStereo_Config_t &configuration )
 {
 
     configMap.Set( StereoDisparity::ConfigId::AVERAGE_FPS,
@@ -554,7 +554,7 @@ QCStatus_e DepthFromStereo::ValidateImageDesc( const ImageDescriptor_t &imgDesc,
 
 
 void DepthFromStereo::SetInitialFrameConfig( StereoDisparity::ConfigMap &configMapFrame,
-                                             DepthFromStereo_Config_t configuration )
+                                             const DepthFromStereo_Config_t &configuration )
 {
     noiseToleranceOffset.nOffsetPri = configuration.noiseOffsetPri;
     noiseToleranceOffset.nOffsetAux = configuration.noiseOffsetAux;

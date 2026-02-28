@@ -61,7 +61,6 @@ CL2DFlexImpl::Initialize( std::vector<std::reference_wrapper<QCBufferDescriptorB
 {
     QCStatus_e status = QC_STATUS_OK;
 
-
     QC_TRACE_INIT( [&]() {
         std::ostringstream oss;
         oss << "{";
@@ -328,6 +327,7 @@ QCStatus_e CL2DFlexImpl::ProcessFrameDescriptor( QCFrameDescriptorNodeIfs &frame
 
 QCObjectState_e CL2DFlexImpl::GetState()
 {
+
     return m_state;
 }
 
@@ -349,7 +349,7 @@ QCStatus_e CL2DFlexImpl::SetupGlobalBufferIdMap()
     }
     else
     { /* create a default global buffer index map */
-        m_config.globalBufferIdMap.resize( m_inputNum + m_outputNum );
+        m_config.globalBufferIdMap.resize( static_cast<size_t>( m_inputNum + m_outputNum ) );
         uint32_t globalBufferId = 0;
         for ( uint32_t i = 0; i < m_inputNum; i++ )
         {

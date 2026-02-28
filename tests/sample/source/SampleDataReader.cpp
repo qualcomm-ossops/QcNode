@@ -64,6 +64,16 @@ QCStatus_e SampleDataReader::ParseConfig( SampleConfig_t &config )
         m_configs.reserve( m_numOfDataReaders );
     }
 
+    bool bCache = Get( config, "cache", true );
+    if ( false == bCache )
+    {
+        m_bufferCache = QC_CACHEABLE_NON;
+    }
+    else
+    {
+        m_bufferCache = QC_CACHEABLE;
+    }
+
     for ( uint32_t i = 0; ( i < m_numOfDataReaders ) && ( QC_STATUS_OK == ret ); i++ )
     {
         DataReaderConfig_t cfg;
@@ -98,10 +108,10 @@ QCStatus_e SampleDataReader::ParseConfig( SampleConfig_t &config )
         {
             cfg.type = DATA_READER_TYPE_TENSOR;
 
-            cfg.tensorProps.type =
+            cfg.tensorProps.tensorType =
                     Get( config, "tensor_type" + std::to_string( i ), QC_TENSOR_TYPE_FLOAT_32 );
 
-            if ( QC_TENSOR_TYPE_MAX == cfg.tensorProps.type )
+            if ( QC_TENSOR_TYPE_MAX == cfg.tensorProps.tensorType )
             {
                 QC_ERROR( "invalid tensor_type%u\n", i );
                 ret = QC_STATUS_BAD_ARGUMENTS;
@@ -118,6 +128,8 @@ QCStatus_e SampleDataReader::ParseConfig( SampleConfig_t &config )
             {
                 cfg.tensorProps.dims[i] = dims[i];
             }
+            cfg.tensorProps.allocatorType = QC_MEMORY_ALLOCATOR_DMA_HTP;
+            cfg.tensorProps.cache = m_bufferCache;
         }
         else
         {
@@ -142,16 +154,6 @@ QCStatus_e SampleDataReader::ParseConfig( SampleConfig_t &config )
     }
 
     m_offset = Get( config, "offset", 0 );
-
-    bool bCache = Get( config, "cache", true );
-    if ( false == bCache )
-    {
-        m_bufferCache = QC_CACHEABLE_NON;
-    }
-    else
-    {
-        m_bufferCache = QC_CACHEABLE;
-    }
 
     m_topicName = Get( config, "topic", "" );
     if ( "" == m_topicName )
@@ -195,9 +197,9 @@ QCStatus_e SampleDataReader::Init( std::string name, SampleConfig_t &config )
             }
             else
             {
-                ret = m_bufferPools[i].Init(
-                        name + std::to_string( i ), m_nodeId, LOGGER_LEVEL_INFO, m_poolSize,
-                        m_configs[i].tensorProps, QC_MEMORY_ALLOCATOR_DMA_HTP, m_bufferCache );
+                ret = m_bufferPools[i].Init( name + std::to_string( i ), m_nodeId,
+                                             LOGGER_LEVEL_INFO, m_poolSize,
+                                             m_configs[i].tensorProps );
             }
         }
     }

@@ -32,6 +32,7 @@ CL2DPipelineLetterbox::Init( uint32_t inputId, cl_kernel *pKernel, CL2DFlex_Conf
     }
     else
     {
+        m_pipeline = CL2DFLEX_PIPELINE_MAX;
         QC_ERROR( "Invalid CL2DFlex letterbox pipeline for inputId=%d!", m_inputId );
         ret = QC_STATUS_BAD_ARGUMENTS;
     }
@@ -72,7 +73,7 @@ QCStatus_e CL2DPipelineLetterbox::Execute( ImageDescriptor_t &input, ImageDescri
         }
         else
         {
-            uint32_t srcOffset = input.offset;
+            uint32_t srcOffset = (uint32_t) input.offset;
             uint32_t sizeOne = (uint32_t) ( output.size ) / ( output.batchSize );
             uint32_t dstOffset = (uint32_t) ( output.offset ) + m_inputId * sizeOne;
 

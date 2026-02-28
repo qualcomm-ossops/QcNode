@@ -233,6 +233,8 @@ public:
     {}
     ~CL2DFlexMonitoring() {}
 
+    CL2DFlexMonitoring( const CL2DFlexMonitoring &other ) = delete;
+
     virtual QCStatus_e VerifyAndSet( const std::string config, std::string &errors )
     {
         return QC_STATUS_UNSUPPORTED;
@@ -249,8 +251,8 @@ public:
     virtual QCStatus_e Place( void *ptr, uint32_t &size ) { return QC_STATUS_UNSUPPORTED; }
 
 private:
-    CL2DFlexImpl *m_pCL2DFlexImpl;
     Logger &m_logger;
+    CL2DFlexImpl *m_pCL2DFlexImpl;
     std::string m_options;
     CL2DFlexMonitorConfig_t m_monitorConfig;
 };

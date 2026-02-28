@@ -57,7 +57,77 @@ void ProcessDoneCb( const QCNodeEventInfo_t &eventInfo )
     }
 }
 
-static void SANITY_Camera( DataTree &dt )
+static void AllocateFrameBuffers( DataTree &staticCfg, QCNodeInit_t &config )
+{
+    QCStatus_e ret = QC_STATUS_OK;
+    std::vector<DataTree> streamConfigs;
+    std::string name = staticCfg.Get<std::string>( "name", "" );
+
+    QCNodeID_t nodeId;
+    nodeId.name = name;
+    nodeId.type = QC_NODE_TYPE_QCX;
+    nodeId.id = staticCfg.Get<uint32_t>( "id", UINT32_MAX );
+    ASSERT_EQ( nodeId.id, 0 );
+
+    ret = staticCfg.Get( "streamConfigs", streamConfigs );
+    ASSERT_EQ( QC_STATUS_OK, ret );
+
+    DataTree streamConfig;
+    ImageProps_t imgProp;
+    uint32_t streamId = 0;
+    uint32_t bufferId = 0;
+    uint32_t streamNum = streamConfigs.size();
+    uint32_t bufferNum = 0;
+    g_bufferPools.resize( streamNum );
+
+    for ( uint32_t i = 0; i < streamNum; i++ )
+    {
+        std::string bufPoolName = name + std::to_string( i );
+        streamConfig = streamConfigs[i];
+        streamId = streamConfig.Get<uint32_t>( "streamId", UINT32_MAX );
+        std::vector<uint32_t> bufferIds =
+                streamConfig.Get<uint32_t>( "bufferIds", std::vector<uint32_t>{} );
+        bufferNum = bufferIds.size();
+        imgProp.format = streamConfig.GetImageFormat( "format", QC_IMAGE_FORMAT_MAX );
+        imgProp.width = streamConfig.Get<uint32_t>( "width", UINT32_MAX );
+        imgProp.height = streamConfig.Get<uint32_t>( "height", UINT32_MAX );
+
+        if ( ( QC_IMAGE_FORMAT_RGB888 == imgProp.format ) ||
+             ( QC_IMAGE_FORMAT_BGR888 == imgProp.format ) )
+        {
+            imgProp.batchSize = 1;
+            imgProp.stride[0] = QC_ALIGN_SIZE( imgProp.width * 3, 16 );
+            imgProp.actualHeight[0] = imgProp.height;
+            imgProp.numPlanes = 1;
+            imgProp.planeBufSize[0] = 0;
+
+            ret = g_bufferPools[i].Init( bufPoolName, nodeId, LOGGER_LEVEL_ERROR, bufferNum,
+                                         imgProp );
+            ASSERT_EQ( QC_STATUS_OK, ret );
+        }
+        else
+        {
+            ret = g_bufferPools[i].Init( bufPoolName, nodeId, LOGGER_LEVEL_ERROR, bufferNum,
+                                         imgProp.width, imgProp.height, imgProp.format );
+            ASSERT_EQ( QC_STATUS_OK, ret );
+        }
+
+        ret = g_bufferPools[i].GetBuffers( config.buffers );
+        ASSERT_EQ( QC_STATUS_OK, ret );
+    }
+}
+
+void DeinitBuffers()
+{
+    QCStatus_e ret = QC_STATUS_OK;
+    for ( uint32_t i = 0; i < g_bufferPools.size(); i++ )
+    {
+        ret = g_bufferPools[i].Deinit();
+        ASSERT_EQ( QC_STATUS_OK, ret );
+    }
+}
+
+void SANITY_Test( DataTree &dt )
 {
     QCStatus_e ret;
     DataTree staticCfg;
@@ -73,60 +143,8 @@ static void SANITY_Camera( DataTree &dt )
     ASSERT_EQ( QC_STATUS_OK, ret );
 
     std::string name = staticCfg.Get<std::string>( "name", "" );
-    ASSERT_EQ( name, "camera" );
 
-    QCNodeID_t nodeId;
-    nodeId.name = name;
-    nodeId.type = QC_NODE_TYPE_QCX;
-    nodeId.id = staticCfg.Get<uint32_t>( "id", UINT32_MAX );
-    ASSERT_EQ( nodeId.id, 0 );
-
-    ret = staticCfg.Get( "streamConfigs", streamConfigs );
-    ASSERT_EQ( QC_STATUS_OK, ret );
-
-    // Allocate buffers
-    DataTree streamConfig;
-    QCImageProps_t imgProp;
-    uint32_t streamId = 0;
-    uint32_t bufCnt = 0;
-    uint32_t bufferId = 0;
-    uint32_t numStream = streamConfigs.size();
-    g_bufferPools.resize( numStream );
-
-    for ( uint32_t i = 0; i < numStream; i++ )
-    {
-        std::string bufPoolName = name + std::to_string( i );
-        streamConfig = streamConfigs[i];
-        streamId = streamConfig.Get<uint32_t>( "streamId", UINT32_MAX );
-        bufCnt = streamConfig.Get<uint32_t>( "bufCnt", UINT32_MAX );
-        imgProp.format = streamConfig.GetImageFormat( "format", QC_IMAGE_FORMAT_MAX );
-        imgProp.width = streamConfig.Get<uint32_t>( "width", UINT32_MAX );
-        imgProp.height = streamConfig.Get<uint32_t>( "height", UINT32_MAX );
-
-        if ( ( QC_IMAGE_FORMAT_RGB888 == imgProp.format ) ||
-             ( QC_IMAGE_FORMAT_BGR888 == imgProp.format ) )
-        {
-            imgProp.batchSize = 1;
-            imgProp.stride[0] = QC_ALIGN_SIZE( imgProp.width * 3, 16 );
-            imgProp.actualHeight[0] = imgProp.height;
-            imgProp.numPlanes = 1;
-            imgProp.planeBufSize[0] = 0;
-
-            ret = g_bufferPools[i].Init( bufPoolName, nodeId, LOGGER_LEVEL_ERROR, bufCnt, imgProp,
-                                         QC_MEMORY_ALLOCATOR_DMA_CAMERA, QC_CACHEABLE );
-            ASSERT_EQ( QC_STATUS_OK, ret );
-        }
-        else
-        {
-            ret = g_bufferPools[i].Init( bufPoolName, nodeId, LOGGER_LEVEL_ERROR, bufCnt,
-                                         imgProp.width, imgProp.height, imgProp.format,
-                                         QC_MEMORY_ALLOCATOR_DMA_CAMERA, QC_CACHEABLE );
-            ASSERT_EQ( QC_STATUS_OK, ret );
-        }
-
-        ret = g_bufferPools[i].GetBuffers( config.buffers );
-        ASSERT_EQ( QC_STATUS_OK, ret );
-    }
+    AllocateFrameBuffers( staticCfg, config );
 
     ret = g_camera.Initialize( config );
     ASSERT_EQ( QC_STATUS_OK, ret );
@@ -142,21 +160,107 @@ static void SANITY_Camera( DataTree &dt )
     ret = g_camera.DeInitialize();
     ASSERT_EQ( QC_STATUS_OK, ret );
 
-    for ( uint32_t i = 0; i < numStream; i++ )
-    {
-        ret = g_bufferPools[i].Deinit();
-        ASSERT_EQ( QC_STATUS_OK, ret );
-    }
+    DeinitBuffers();
 }
 
-TEST( Camera, SANITY_Camera_IMX728_RequestMode )
+void Set_U32_StaticConfig( DataTree &srcCfg, DataTree &dstCfg, QCNodeInit_t &config,
+                           const std::string &key, uint32_t val )
+{
+    dstCfg.Set( "static", srcCfg );
+    dstCfg.Set<uint32_t>( key, val );
+    config = { dstCfg.Dump() };
+}
+
+void Exception_Test_EmptyConfig( DataTree &dt )
+{
+    QCStatus_e ret;
+    DataTree staticCfg;
+    DataTree errorCfg;
+    std::vector<DataTree> streamConfigs;
+    QCNodeInit_t config;
+
+    ret = dt.Get( "static", staticCfg );
+    ASSERT_EQ( QC_STATUS_OK, ret );
+
+    // empty name
+    errorCfg.Set( "static", staticCfg );
+    errorCfg.Set<std::string>( "static.name", "" );
+    config = { errorCfg.Dump() };
+
+    ret = g_camera.Initialize( config );
+    ASSERT_EQ( QC_STATUS_BAD_ARGUMENTS, ret );
+
+    // empty nodeId
+    Set_U32_StaticConfig( staticCfg, errorCfg, config, "static.id", UINT32_MAX );
+    ret = g_camera.Initialize( config );
+    ASSERT_EQ( QC_STATUS_BAD_ARGUMENTS, ret );
+
+    // empty inputId
+    Set_U32_StaticConfig( staticCfg, errorCfg, config, "static.inputId", UINT32_MAX );
+    ret = g_camera.Initialize( config );
+    ASSERT_EQ( QC_STATUS_BAD_ARGUMENTS, ret );
+
+    // empty srcId
+    Set_U32_StaticConfig( staticCfg, errorCfg, config, "static.srcId", UINT32_MAX );
+    ret = g_camera.Initialize( config );
+    ASSERT_EQ( QC_STATUS_BAD_ARGUMENTS, ret );
+
+    // empty clientId
+    Set_U32_StaticConfig( staticCfg, errorCfg, config, "static.clientId", UINT32_MAX );
+    ret = g_camera.Initialize( config );
+    ASSERT_EQ( QC_STATUS_BAD_ARGUMENTS, ret );
+
+    // empty inputMode
+    Set_U32_StaticConfig( staticCfg, errorCfg, config, "static.inputMode", UINT32_MAX );
+    ret = g_camera.Initialize( config );
+    ASSERT_EQ( QC_STATUS_BAD_ARGUMENTS, ret );
+
+    // empty ispUseCase
+    Set_U32_StaticConfig( staticCfg, errorCfg, config, "static.ispUseCase", UINT32_MAX );
+    ret = g_camera.Initialize( config );
+    ASSERT_EQ( QC_STATUS_BAD_ARGUMENTS, ret );
+
+    // empty camFrameDropPattern
+    Set_U32_StaticConfig( staticCfg, errorCfg, config, "static.camFrameDropPattern", UINT32_MAX );
+    ret = g_camera.Initialize( config );
+    ASSERT_EQ( QC_STATUS_BAD_ARGUMENTS, ret );
+
+    // empty camFrameDropPattern
+    Set_U32_StaticConfig( staticCfg, errorCfg, config, "static.camFrameDropPeriod", UINT32_MAX );
+    ret = g_camera.Initialize( config );
+    ASSERT_EQ( QC_STATUS_BAD_ARGUMENTS, ret );
+
+    // empty opMode
+    Set_U32_StaticConfig( staticCfg, errorCfg, config, "static.opMode", UINT32_MAX );
+    ret = g_camera.Initialize( config );
+    ASSERT_EQ( QC_STATUS_BAD_ARGUMENTS, ret );
+}
+
+void Exception_Test_ErrorConfig( DataTree &dt )
+{
+    QCStatus_e ret;
+    DataTree staticCfg;
+    DataTree errorCfg;
+    std::vector<DataTree> streamConfigs;
+    QCNodeInit_t config;
+
+    ret = dt.Get( "static", staticCfg );
+    ASSERT_EQ( QC_STATUS_OK, ret );
+
+    // error inputId
+    Set_U32_StaticConfig( staticCfg, errorCfg, config, "static.inputId", 20 );
+    ret = g_camera.Initialize( config );
+    ASSERT_EQ( QC_STATUS_BAD_ARGUMENTS, ret );
+}
+
+TEST( Camera, SANITY_Test_IMX728_RequestMode )
 {
     QCStatus_e ret;
     DataTree dt;
     DataTree staticCfg;
     nlohmann::json jsonData;
     std::string errors;
-    std::string filePath = "./data/test/camera/camera_config.json";
+    std::string filePath = "./data/test/camera/camera_config_imx728_request.json";
 
     ReadJsonFile( filePath, jsonData );
     std::string jsonStr = jsonData.dump();
@@ -164,10 +268,10 @@ TEST( Camera, SANITY_Camera_IMX728_RequestMode )
     ret = dt.Load( jsonStr, errors );
     ASSERT_EQ( QC_STATUS_OK, ret );
 
-    SANITY_Camera( dt );
+    SANITY_Test( dt );
 }
 
-TEST( Camera, SANITY_Camera_OV3F_RequestMode )
+TEST( Camera, SANITY_Test_OV3F_RequestMode )
 {
     QCStatus_e ret;
     DataTree dt;
@@ -175,7 +279,7 @@ TEST( Camera, SANITY_Camera_OV3F_RequestMode )
     std::vector<DataTree> streamConfigs;
     nlohmann::json jsonData;
     std::string errors;
-    std::string filePath = "./data/test/camera/camera_config.json";
+    std::string filePath = "./data/test/camera/camera_config_ov3f_request.json";
 
     ReadJsonFile( filePath, jsonData );
     std::string jsonStr = jsonData.dump();
@@ -183,24 +287,100 @@ TEST( Camera, SANITY_Camera_OV3F_RequestMode )
     ret = dt.Load( jsonStr, errors );
     ASSERT_EQ( QC_STATUS_OK, ret );
 
-    ret = dt.Get( "static", staticCfg );
+    SANITY_Test( dt );
+}
+
+TEST( Camera, SANITY_Test_IMX728_ReleaseMode )
+{
+    QCStatus_e ret;
+    DataTree dt;
+    DataTree staticCfg;
+    nlohmann::json jsonData;
+    std::string errors;
+    std::string filePath = "./data/test/camera/camera_config_imx728_release.json";
+
+    ReadJsonFile( filePath, jsonData );
+    std::string jsonStr = jsonData.dump();
+
+    ret = dt.Load( jsonStr, errors );
     ASSERT_EQ( QC_STATUS_OK, ret );
 
-    ret = staticCfg.Get( "streamConfigs", streamConfigs );
+    SANITY_Test( dt );
+}
+
+TEST( Camera, SANITY_Test_OV3F_ReleaseMode )
+{
+    QCStatus_e ret;
+    DataTree dt;
+    DataTree staticCfg;
+    std::vector<DataTree> streamConfigs;
+    nlohmann::json jsonData;
+    std::string errors;
+    std::string filePath = "./data/test/camera/camera_config_ov3f_release.json";
+
+    ReadJsonFile( filePath, jsonData );
+    std::string jsonStr = jsonData.dump();
+
+    ret = dt.Load( jsonStr, errors );
     ASSERT_EQ( QC_STATUS_OK, ret );
 
-    staticCfg.Set<uint32_t>( "inputId", 4 );
+    SANITY_Test( dt );
+}
 
-    for ( uint32_t i = 0; i < streamConfigs.size(); i++ )
-    {
-        streamConfigs[i].Set<uint32_t>( "width", 1824 );
-        streamConfigs[i].Set<uint32_t>( "height", 1536 );
-        DataTree streamConfig = streamConfigs[i];
-    }
-    staticCfg.Set( "streamConfigs", streamConfigs );
-    dt.Set( "static", staticCfg );
 
-    SANITY_Camera( dt );
+TEST( Camera, SANITY_Test_IMX728_MultiStream )
+{
+    QCStatus_e ret;
+    DataTree dt;
+    DataTree staticCfg;
+    std::vector<DataTree> streamConfigs;
+    nlohmann::json jsonData;
+    std::string errors;
+    std::string filePath = "./data/test/camera/camera_config_imx728_2stream.json";
+
+    ReadJsonFile( filePath, jsonData );
+    std::string jsonStr = jsonData.dump();
+
+    ret = dt.Load( jsonStr, errors );
+    ASSERT_EQ( QC_STATUS_OK, ret );
+
+    SANITY_Test( dt );
+}
+
+TEST( Camera, EXCEPTION_Test_EmptyConfig )
+{
+    QCStatus_e ret;
+    DataTree dt;
+    DataTree staticCfg;
+    nlohmann::json jsonData;
+    std::string errors;
+    std::string filePath = "./data/test/camera/camera_config_imx728_request.json";
+
+    ReadJsonFile( filePath, jsonData );
+    std::string jsonStr = jsonData.dump();
+
+    ret = dt.Load( jsonStr, errors );
+    ASSERT_EQ( QC_STATUS_OK, ret );
+
+    Exception_Test_EmptyConfig( dt );
+}
+
+TEST( Camera, EXCEPTION_Test_ErrorConfig )
+{
+    QCStatus_e ret;
+    DataTree dt;
+    DataTree staticCfg;
+    nlohmann::json jsonData;
+    std::string errors;
+    std::string filePath = "./data/test/camera/camera_config_imx728_request.json";
+
+    ReadJsonFile( filePath, jsonData );
+    std::string jsonStr = jsonData.dump();
+
+    ret = dt.Load( jsonStr, errors );
+    ASSERT_EQ( QC_STATUS_OK, ret );
+
+    Exception_Test_ErrorConfig( dt );
 }
 
 #ifndef GTEST_QCNODE
@@ -217,4 +397,3 @@ int main( int argc, char **argv )
     return nVal;
 }
 #endif
-

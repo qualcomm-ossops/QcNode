@@ -88,6 +88,7 @@ private:
     uint32_t m_width;
     uint32_t m_height;
     uint32_t m_poolSize;
+    uint32_t m_bufSize;
     QCImageFormat_e m_inFormat;  /**< uncompressed type */
     QCImageFormat_e m_outFormat; /**< compressed type */
     uint32_t m_numInputBufferReq;

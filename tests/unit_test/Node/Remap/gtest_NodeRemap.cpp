@@ -108,6 +108,7 @@ void SetConfigRemap( Remap_Config_t *pRemapConfig, DataTree *pdt )
     pdt->SetProcessorType( "static.processorType", pRemapConfig->processor );
     pdt->Set<bool>( "static.bEnableUndistortion", pRemapConfig->bEnableUndistortion );
     pdt->Set<bool>( "static.bEnableNormalize", pRemapConfig->bEnableNormalize );
+    pdt->Set<uint32_t>( "static.coreId", pRemapConfig->coreId );
 
     if ( true == pRemapConfig->bEnableNormalize )
     {
@@ -174,6 +175,7 @@ void SanityRemap()
     RemapConfig.processor = QC_PROCESSOR_HTP0;
     RemapConfig.bEnableUndistortion = false;
     RemapConfig.bEnableNormalize = false;
+    RemapConfig.coreId = 0;
 
     DataTree dt;
     dt.Set<std::string>( "static.name", "Remap" );
@@ -297,7 +299,8 @@ void AccuracyRemap( uint32_t inputNumberTest, QCProcessorType_e processorTest,
                     QCImageFormat_e inputFormatTest, QCImageFormat_e outputFormatTest,
                     uint32_t inputWidthTest, uint32_t inputHeightTest, uint32_t outputWidthTest,
                     uint32_t outputHeightTest, bool normalizationTest, bool undistortionTest,
-                    std::string pathTest, std::string goldenPath, bool saveOutput )
+                    std::string pathTest, std::string goldenPath, bool saveOutput,
+                    uint32_t coreIdTest )
 {
     QCStatus_e ret;
     std::string errors;
@@ -328,6 +331,7 @@ void AccuracyRemap( uint32_t inputNumberTest, QCProcessorType_e processorTest,
     RemapConfig.processor = processorTest;
     RemapConfig.bEnableUndistortion = undistortionTest;
     RemapConfig.bEnableNormalize = normalizationTest;
+    RemapConfig.coreId = coreIdTest;
 
     if ( true == RemapConfig.bEnableNormalize )
     {
@@ -601,20 +605,29 @@ TEST( NodeRemap, AccuracyHTP )
 {
     AccuracyRemap( 2, QC_PROCESSOR_HTP0, QC_IMAGE_FORMAT_UYVY, QC_IMAGE_FORMAT_RGB888, 1920, 1024,
                    1152, 800, true, false, "./data/test/remap/0.uyvy",
-                   "./data/test/remap/golden_dsp.rgb", false );
+                   "./data/test/remap/golden_dsp.rgb", false, 0 );
 }
 TEST( NodeRemap, AccuracyCPU )
 {
     AccuracyRemap( 2, QC_PROCESSOR_CPU, QC_IMAGE_FORMAT_UYVY, QC_IMAGE_FORMAT_RGB888, 1920, 1024,
                    1152, 800, true, false, "./data/test/remap/0.uyvy",
-                   "./data/test/remap/golden_cpu.rgb", false );
+                   "./data/test/remap/golden_cpu.rgb", false, 0 );
 }
 #if defined( USE_ENG_FADAS_GPU )
 TEST( NodeRemap, AccuracyGPU )
 {
     AccuracyRemap( 2, QC_PROCESSOR_GPU, QC_IMAGE_FORMAT_UYVY, QC_IMAGE_FORMAT_RGB888, 1920, 1024,
                    1152, 800, true, false, "./data/test/remap/0.uyvy",
-                   "./data/test/remap/golden_gpu.rgb", false );
+                   "./data/test/remap/golden_gpu.rgb", false, 0 );
+}
+#endif
+
+#if ( QC_TARGET_SOC == 8797 )
+TEST( NodeRemap, AccuracyHTP0CORE3 )
+{
+    AccuracyRemap( 2, QC_PROCESSOR_HTP0, QC_IMAGE_FORMAT_UYVY, QC_IMAGE_FORMAT_RGB888, 1920, 1024,
+                   1152, 800, true, false, "./data/test/remap/0.uyvy",
+                   "./data/test/remap/golden_dsp.rgb", false, 3 );
 }
 #endif
 

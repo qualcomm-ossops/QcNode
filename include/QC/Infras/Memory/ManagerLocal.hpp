@@ -9,6 +9,7 @@
 #include "QC/Infras/Memory/Ifs/QCMemoryManagerIfs.hpp"
 #include <functional>
 #include <map>
+#include <set>
 #include <vector>
 
 namespace QC
@@ -27,6 +28,21 @@ class ManagerLocal : public QCMemoryManagerIfs
 {
 
 public:
+    /**
+     * @brief Deleted copy constructor operator.
+     * This operator is deleted to prevent copy constructor of ManagerLocal objects.
+     * @param The object to assign from.
+     * @return A reference to the current object.
+     */
+    ManagerLocal( const ManagerLocal & ) = delete;
+    /**
+     * @brief Deleted assignment operator.
+     * This operator is deleted to prevent assignment of ManagerLocal objects.
+     * @param The object to assign from.
+     * @return A reference to the current object.
+     */
+    ManagerLocal &operator=( const ManagerLocal & ) = delete;
+
     /**
      * @brief Default constructor.
      * This constructor Intilizes members which do not require external parameters
@@ -50,14 +66,6 @@ public:
      * @return The status of the deinitialization operation.
      */
     virtual QCStatus_e DeInitialize();
-
-    /**
-     * @brief Deleted assignment operator.
-     * This operator is deleted to prevent assignment of ManagerLocal objects.
-     * @param other The object to assign from.
-     * @return A reference to the current object.
-     */
-    ManagerLocal &operator=( const ManagerLocal & ) = delete;
 
     /**
      * @brief Destructor for the ManagerLocal class.
@@ -99,37 +107,31 @@ public:
     /**
      * @brief Destroys a memory pool.
      * This method destroys a memory pool using the provided handle and pool handle.
-     * @param handle The handle of the node that owns the pool.
      * @param poolHandle The handle of the pool to destroy.
      * @return The status of the pool destruction operation.
      */
-    virtual QCStatus_e DestroyPool( const QCMemoryHandle_t &handle,
-                                    const QCMemoryPoolHandle_t &poolHandle );
+    virtual QCStatus_e DestroyPool( const QCMemoryPoolHandle_t &poolHandle );
 
     /**
      * @brief Allocates a buffer from a memory pool.
      * This method allocates a buffer from a memory pool using the provided memory handle, pool
      * handle, and returns a buffer descriptor.
-     * @param memoryHandle The handle of the node that owns the pool.
      * @param poolHandle The handle of the pool to allocate from.
      * @param buff The buffer descriptor that will be used to store the allocated buffer.
      * @return The status of the buffer allocation operation.
      */
-    virtual QCStatus_e AllocateBufferFromPool( const QCMemoryHandle_t &memoryHandle,
-                                               const QCMemoryPoolHandle_t &poolHandle,
+    virtual QCStatus_e AllocateBufferFromPool( const QCMemoryPoolHandle_t &poolHandle,
                                                QCBufferDescriptorBase_t &buff );
 
     /**
      * @brief Puts a buffer back into a memory pool.
      * This method returns a buffer to a memory pool using the provided memory handle, pool handle,
      * and buffer descriptor.
-     * @param memoryHandle The handle of the node that owns the pool.
      * @param poolHandle The handle of the pool to put the buffer back into.
      * @param buff The buffer descriptor of the buffer to put back into the pool.
      * @return The status of the buffer put operation.
      */
-    virtual QCStatus_e PutBufferToPool( const QCMemoryHandle_t &memoryHandle,
-                                        const QCMemoryPoolHandle_t &poolHandle,
+    virtual QCStatus_e PutBufferToPool( const QCMemoryPoolHandle_t &poolHandle,
                                         const QCBufferDescriptorBase_t &buff );
 
     /**
@@ -165,6 +167,11 @@ public:
      */
     virtual QCStatus_e ReclaimResources( const QCMemoryHandle_t &handle );
 
+#define IS_IN_DB_STATUS( dataBase, element )                                                       \
+    ( ( ( dataBase ).find( element ) != ( dataBase ).end() ) ? QC_STATUS_OK : QC_STATUS_FAIL )
+#define IS_NOT_IN_DB_STATUS( dataBase, element )                                                   \
+    ( ( ( dataBase ).find( element ) == ( dataBase ).end() ) ? QC_STATUS_OK : QC_STATUS_FAIL )
+
 private:
     /**
      * @var m_handleToNodeIdInVector
@@ -180,16 +187,9 @@ private:
 
     /**
      * @var m_allocations
-     * @brief A vector of length of nodes containing map of allocated buffers and allocators.
+     * @brief A vector of length of nodes containing set of allocated buffer descriptors.
      */
-    std::vector<std::map<QCBufferDescriptorBase_t, QCMemoryAllocator_e>> m_allocations;
-
-    /**
-     * @var m_allocators
-     * @brief An array of allocators.
-     */
-    // std::array<std::reference_wrapper<QCMemoryAllocatorIfs>, QC_MEMORY_ALLOCATOR_LAST>*
-    // m_allocators;
+    std::vector<std::set<QCBufferDescriptorBase_t>> m_allocations;
 
     /**
      * @brief Checks if a handle is legal.
@@ -203,28 +203,12 @@ private:
                                           std::map<QCMemoryHandle_t, uint32_t>::iterator &it );
 
     /**
-     * @brief Gets the number of registered nodes of the same type.
-     * This method gets the number of registered nodes of the same type as the provided node.
-     * @param node The node to get the number of registered nodes for.
-     * @return The number of registered nodes of the same type.
-     */
-    inline uint64_t GetRegisteredNodesFromTheSameType( const QCNodeID_t &node );
-
-    /**
-     * @brief Gets the number of registered pools for a node.
-     * This method gets the number of registered pools for a node using the provided handle.
-     * @param handle The handle of the node to get the number of registered pools for.
-     * @return The number of registered pools for the node.
-     */
-    inline uint64_t GetRegisteredPoolsCountForANode( const QCMemoryHandle_t &handle );
-
-    /**
      * @brief Checks if a allocator is legal.
      * This method checks if allocatoe enum is legal.
      * @param allocator The allocator enaum to check.
      * @return True if the allocator is legal, false otherwise
      */
-    inline bool IsAllocatorLeagal( const QCMemoryAllocator_e allocator );
+    inline bool IsAllocatorLegal( const QCMemoryAllocator_e allocator );
 
     /**
      * @brief Checks if a node index is unique.
@@ -261,7 +245,7 @@ private:
      * @var m_config
      * @brief Initial configuration passed by user.
      */
-    QCMemoryManagerInit_t *m_config;
+    QCMemoryManagerInit_t m_config;
 };
 
 }   // namespace Memory
