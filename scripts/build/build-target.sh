@@ -136,7 +136,11 @@ if ! [[ -v ENABLE_RESMON ]] ; then
 fi
 
 if ! [[ -v ENABLE_RADAR ]] ; then
-  export ENABLE_RADAR=OFF
+  if [[ "${QC_TARGET_SOC}" == "8797" ]] ; then
+    export ENABLE_RADAR=ON
+  else
+    export ENABLE_RADAR=OFF
+  fi
 fi
 
 
@@ -557,5 +561,4 @@ tar -C $topdir --xform="s/run/pkg/" --exclude="*.a" \
     --exclude="*.la" --exclude="include" --exclude="share" \
     --exclude="cmake" \
     --use-compress-program=pigz -cf $pkgname run-$target
-
 
