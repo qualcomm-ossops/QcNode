@@ -31,6 +31,8 @@
   - [6.1 ASIL](#61-asil)
   - [6.2 Assumptions of Use (SWAOU)](#62-assumptions-of-use-swaou)
     - [QCNODE-CAMERA-SWAOU-1](#qcnode-camera-swaou-1)
+    - [QCNODE-CAMERA-SWAOU-2](#qcnode-camera-swaou-2)
+    - [QCNODE-CAMERA-SWAOU-3](#qcnode-camera-swaou-3)
 
 
 # 1. Introduction
@@ -569,7 +571,7 @@ Example configuration for subscriber (non-primary) session:
 
 ### 4.9.5 Camera frame drop pattern and period
 
-The option `camFrameDropPattern` and c`amFrameDropPeriod` can be used to drop camera frames to reduce camera FPS.
+The option `camFrameDropPattern` and `camFrameDropPeriod` can be used to drop camera frames to reduce camera FPS.
 Below is the frame drop pattern and period has been tested.
 
 | FPS    | pattern | period |
@@ -607,3 +609,25 @@ This section provides an overview of QCNode Camera usage for functional safety u
 
 - **SW AoU Rationale:**  
   Discrepancies between header definitions and library implementations can cause mismatches in data structure layouts, leading to memory corruption, segmentation faults, or incorrect parameter interpretation. Ensuring version synchronization guarantees that the client and server communicate using the same interface contract, preventing undefined behavior and ensuring system stability required for safety-critical applications.
+
+### QCNODE-CAMERA-SWAOU-2
+
+- **Assumption:**  
+  The system integrator **should** increase the camera buffer pool size allocated to QCNode Camera to reduce the likelihood of buffer exhaustion.
+
+- **Sample of "How AoU can be met?":**  
+  Configure the camera stream with a sufficiently large number of buffers to accommodate peak traffic and consumer latency.
+
+- **SW AoU Rationale:**  
+  A larger buffer pool mitigates the risk of full buffer occupancy during short‑term burst traffic or temporary slowdowns in downstream consumers, thereby reducing the probability of frame blocking, frame drops, or delayed delivery.
+
+### QCNODE-CAMERA-SWAOU-3
+
+- **Assumption:**  
+  The system integration ensures proper QCarCam driver and stream configuration, including validated combinations of resolution, frame rate, and ISP features that stay within the supported ISP performance envelope.
+
+- **Sample of "How AoU can be met?":**  
+  Validate the camera configuration against the hardware specifications and ISP bandwidth limits. Ensure that the sum of pixel rates and processing requirements for all active streams does not exceed the maximum supported capacity of the ISP.
+
+- **SW AoU Rationale:**  
+  Configuring the camera beyond the ISP's performance envelope can lead to frame drops, image artifacts, or system instability, which violates safety requirements for reliable video stream delivery.

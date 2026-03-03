@@ -11,6 +11,10 @@
   - [4.3 Voxelization execution](#43-voxelization-execution)
   - [4.4 Buffer Free](#44-buffer-free)
 - [5. References](#5-references)
+- [6. Functional Safety](#6-functional-safety)
+  - [6.1 ASIL](#61-asil)
+  - [6.2 Assumptions of Use (SWAOU)](#62-assumptions-of-use-swaou)
+    - [QCNODE-VOXELIZATION-SWAOU-1](#qcnode-voxelization-swaou-1)
 
 # 1. Voxelization overview
 
@@ -436,3 +440,25 @@ if ( QC_PROCESSOR_GPU == processor )
 # 5. References
 - [gtest Voxelization](../tests/unit_test/Node/Voxelization/gtest_NodeVoxelization.cpp).
 - [Sample Voxelization](../tests/sample/source/SamplePlrPre.cpp).
+
+# 6. Functional Safety
+
+## 6.1 ASIL
+
+| Node  | ASIL (or equivalent) | Supported Platforms |
+|-------|----------------------|---------------------|
+| Voxelization   | ASIL B               |      SA8797         |
+
+## 6.2 Assumptions of Use (SWAOU)
+**SWAOU:** Software Assumption of Use.
+
+### QCNODE-VOXELIZATION-SWAOU-1
+
+- **Assumption:**  
+  The user shall ensure that QCNode Voxelization is built, linked, and executed using FastADAS header files and libraries that are fully version‑aligned and compatible with the target FastADAS runtime environment, in order to prevent ABI mismatches, unresolved symbols, or undefined behavior during initialization and execution.
+
+- **Sample of "How AoU can be met?":**  
+  The user shall verify that the FastADAS header files used during compilation match the FastADAS libraries linked and loaded at runtime.
+
+- **SW AoU Rationale:**  
+  Prevents ABI mismatches, unresolved symbols, or undefined behavior that could compromise the integrity and stability of the Voxelization node.
