@@ -163,7 +163,8 @@ VoxelizationImpl::Initialize( QCNodeEventCallBack_t callback,
             }
             else
             {
-                ret = m_plrPre.Init( m_processor, m_nodeId.name.c_str(), m_logger.GetLevel() );
+                ret = m_plrPre.Init( m_processor, m_nodeId.name.c_str(), m_logger.GetLevel(),
+                                     m_config.voxelConfig.coreId );
                 if ( QC_STATUS_OK != ret )
                 {
                     QC_ERROR( "Failed to init FadasPlrPre" );

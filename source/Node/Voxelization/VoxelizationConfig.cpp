@@ -30,6 +30,16 @@ QCStatus_e VoxelizationConfig::VerifyStaticConfig( DataTree &dt, std::string &er
         }
     }
 
+    if ( ( QC_STATUS_OK == ret ) && ( dt.Exists( "coreId" ) ) )
+    {
+        uint32_t coreId = dt.Get<uint32_t>( "coreId", UINT32_MAX );
+        if ( NSP_CORES_ID_MAX < coreId )
+        {
+            errors += "coreId invalid, ";
+            ret = QC_STATUS_BAD_ARGUMENTS;
+        }
+    }
+
     if ( QC_STATUS_OK == ret )
     {
         uint32_t maxPointNum = dt.Get<uint32_t>( "maxPointNum", 0 );
@@ -230,6 +240,7 @@ QCStatus_e VoxelizationConfig::ParseStaticConfig( DataTree &dt, std::string &err
         config.nodeId.name = dt.Get<std::string>( "name", "" );
         config.nodeId.id = dt.Get<uint32_t>( "id", UINT32_MAX );
         config.voxelConfig.processor = dt.GetProcessorType( "processorType", QC_PROCESSOR_HTP0 );
+        config.voxelConfig.coreId = dt.Get<uint32_t>( "coreId", 0 );
         config.voxelConfig.pillarXSize = dt.Get<float>( "Xsize", 0.0f );
         config.voxelConfig.pillarYSize = dt.Get<float>( "Ysize", 0.0f );
         config.voxelConfig.pillarZSize = dt.Get<float>( "Zsize", 0.0f );
