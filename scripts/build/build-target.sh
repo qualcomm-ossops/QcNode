@@ -143,6 +143,10 @@ if ! [[ -v ENABLE_RADAR ]] ; then
   fi
 fi
 
+if ! [[ -v ENABLE_HS ]] ; then
+  export ENABLE_HS=OFF
+fi
+
 
 # Get dependent packages
 export THIRD_PARTY_DIR=$topdir/third_party
@@ -462,6 +466,7 @@ cmake \
     -DENABLE_GENIE=${ENABLE_GENIE} \
     -DENABLE_RESMON=${ENABLE_RESMON} \
     -DENABLE_RADAR=${ENABLE_RADAR} \
+    -DENABLE_HS=${ENABLE_HS} \
     -DQC_TARGET_SOC=${QC_TARGET_SOC} \
     .. || exit -1
 ${CTC_BUILD_PREFIX} make -j 16 || exit -1
