@@ -27,6 +27,7 @@ And this Component Voxelization is based on [FastADAS FadasVM library](https://d
 | `name`     | true      | string      | The Node unique name.  |
 | `id`       | true      | uint32_t    | The Node unique ID.    |
 | `processorType` | false | string     | The processor type. <br> Options: `htp0`, `htp1`, `cpu`, `gpu` <br> Default: `htp0` |
+| `coreId`       | false      | uint32_t    | The core ID of processor. <br> Default: `0`|
 | `Xsize`    | true      | float       | Pillar size in X direction in meters.    |
 | `Ysize`    | true      | float       | Pillar size in Y direction in meters.    |
 | `Zsize`    | true      | float       | Pillar size in Z direction in meters.    |

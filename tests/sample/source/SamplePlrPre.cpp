@@ -18,6 +18,7 @@ QCStatus_e SamplePlrPre::ParseConfig( SampleConfig_t &config )
     m_config.Set<std::string>( "name", m_name );
     m_config.Set<uint32_t>( "id", 0 );
     m_config.Set<std::string>( "processorType", Get( config, "processor", "cpu" ) );
+    m_config.Set<uint32_t>( "coreId", Get( config, "core_id", 0 ) );
     m_config.Set<float>( "Xsize", Get( config, "pillar_size_x", 0.16f ) );
     m_config.Set<float>( "Ysize", Get( config, "pillar_size_y", 0.16f ) );
     m_config.Set<float>( "Zsize", Get( config, "pillar_size_z", 4.0f ) );
