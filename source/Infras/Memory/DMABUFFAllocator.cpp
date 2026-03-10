@@ -89,7 +89,7 @@ QCStatus_e DMABUFFAllocator::Allocate( const QCBufferPropBase_t &request,
         {
             QC_ERROR( "mmap failed to mmap: %d", errno );
             status = QC_STATUS_FAIL;
-            close( fd );
+            (void) dmabufheap_free( fd );
         }
     }
 

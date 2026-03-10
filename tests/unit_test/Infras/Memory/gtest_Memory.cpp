@@ -1,5 +1,9 @@
 // Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
 // SPDX-License-Identifier: BSD-3-Clause-Clear
+#include "QC/Infras/Memory/BufferDescriptor.hpp"
+#include "QC/Infras/Memory/CameraBufferDescriptor.hpp"
+#include "QC/Infras/Memory/TensorDescriptor.hpp"
+#include "QC/Infras/Memory/VideoFrameDescriptor.hpp"
 #include "QC/sample/BufferManager.hpp"
 #include "gtest/gtest.h"
 #include <algorithm>
@@ -999,6 +1003,301 @@ TEST( Memory, L2_Tensor )
 
         status = bufMgr.Allocate( tensorProp, tsDesc );
         ASSERT_EQ( QC_STATUS_BAD_ARGUMENTS, status );
+    }
+}
+
+struct MockBufferDescriptor : public QCBufferDescriptorBase_t
+{
+};
+
+TEST( Memory, ImageDescriptorAssignmentCoverage )
+{
+    ImageDescriptor_t target;
+
+    // Case 1: operator=( const QCBufferDescriptorBase_t &other ) with ImageDescriptor
+    {
+        ImageDescriptor_t source;
+        source.width = 100;
+        source.height = 200;
+        source.format = QC_IMAGE_FORMAT_RGB888;
+        QCBufferDescriptorBase_t &ref = source;
+
+        target = ref;
+
+        ASSERT_EQ( target.width, 100 );
+        ASSERT_EQ( target.height, 200 );
+        ASSERT_EQ( target.format, QC_IMAGE_FORMAT_RGB888 );
+        ASSERT_EQ( target.type, QC_BUFFER_TYPE_IMAGE );
+    }
+
+    // Case 2: operator=( const QCBufferDescriptorBase_t &other ) with BufferDescriptor
+    {
+        BufferDescriptor_t source;
+        source.size = 12345;
+        source.type = QC_BUFFER_TYPE_RAW;
+        QCBufferDescriptorBase_t &ref = source;
+
+        target = ref;
+
+        ASSERT_EQ( target.size, 12345 );
+        ASSERT_EQ( target.type, QC_BUFFER_TYPE_IMAGE );
+    }
+
+    // Case 3: operator=( const QCBufferDescriptorBase_t &other ) with generic
+    // QCBufferDescriptorBase_t
+    {
+        MockBufferDescriptor source;
+        source.size = 67890;
+        source.pid = 999;
+        source.type = QC_BUFFER_TYPE_LAST;
+        QCBufferDescriptorBase_t &ref = source;
+
+        target = ref;
+
+        ASSERT_EQ( target.size, 67890 );
+        ASSERT_EQ( target.pid, 999 );
+        ASSERT_EQ( target.type, QC_BUFFER_TYPE_LAST );
+    }
+
+    // Case 4: operator=( const BufferDescriptor &other ) direct call
+    {
+        BufferDescriptor_t source;
+        source.size = 55555;
+        source.type = QC_BUFFER_TYPE_RAW;
+
+        target = source;
+
+        ASSERT_EQ( target.size, 55555 );
+        ASSERT_EQ( target.type, QC_BUFFER_TYPE_IMAGE );
+    }
+
+    // Case 5: Self assignment (true branch of this != &other)
+    {
+        QCBufferDescriptorBase_t &ref = target;
+        target = ref;
+        ASSERT_EQ( target.size, 55555 );
+    }
+
+    // Case 6: Self assignment (true branch of this != &other)
+    {
+        ImageDescriptor_t &ref = target;
+        target = ref;
+        ASSERT_EQ( target.size, 55555 );
+    }
+}
+
+TEST( Memory, VideoFrameDescriptorAssignmentCoverage )
+{
+    VideoFrameDescriptor_t target;
+
+    // Case 1: Assign from VideoFrameDescriptor (full copy)
+    {
+        VideoFrameDescriptor_t source;
+        source.width = 100;
+        source.timestampNs = 123456789;
+        source.frameType = (vidc_frame_type) 1;
+        QCBufferDescriptorBase_t &ref = source;
+
+        target = ref;
+
+        ASSERT_EQ( target.width, 100 );
+        ASSERT_EQ( target.timestampNs, 123456789 );
+        ASSERT_EQ( target.frameType, (vidc_frame_type) 1 );
+    }
+
+    // Case 2: Assign from ImageDescriptor (partial copy)
+    {
+        ImageDescriptor_t source;
+        source.width = 200;
+        QCBufferDescriptorBase_t &ref = source;
+
+        // Reset target specific fields
+        target.timestampNs = 0;
+
+        target = ref;
+
+        ASSERT_EQ( target.width, 200 );
+        ASSERT_EQ( target.timestampNs, 0 );
+    }
+
+    // Case 3: Self assignment
+    {
+        QCBufferDescriptorBase_t &ref = target;
+        target = ref;
+        ASSERT_EQ( target.width, 200 );
+    }
+
+    // Case 4: buffer descriptor
+    {
+        BufferDescriptor_t source;
+        target = source;
+    }
+}
+
+TEST( Memory, CameraBufferDescriptorAssignmentCoverage )
+{
+    CameraFrameDescriptor_t target;
+
+    // Case 1: Assign from CameraFrameDescriptor
+    {
+        CameraFrameDescriptor_t source;
+        source.width = 300;
+        source.timestamp = 987654321;
+        QCBufferDescriptorBase_t &ref = source;
+
+        // Set target timestamp to something else
+        target.timestamp = 0;
+
+        target = ref;
+
+        ASSERT_EQ( target.width, 300 );
+        ASSERT_EQ( target.timestamp, 0 );
+        ASSERT_EQ( target.type, QC_BUFFER_TYPE_IMAGE );
+    }
+
+    // Case 2: Assign from BufferDescriptor
+    {
+        BufferDescriptor_t source;
+        source.size = 500;
+        source.allocatorType = QC_MEMORY_ALLOCATOR_DMA;
+        QCBufferDescriptorBase_t &ref = source;
+
+        target = ref;
+
+        ASSERT_EQ( target.size, 500 );
+        ASSERT_EQ( target.allocatorType, QC_MEMORY_ALLOCATOR_DMA );
+        ASSERT_EQ( target.type, QC_BUFFER_TYPE_IMAGE );
+    }
+
+    // Case 3: Self assignment
+    {
+        QCBufferDescriptorBase_t &ref = target;
+        target = ref;
+        ASSERT_EQ( target.size, 500 );
+    }
+}
+
+TEST( Memory, TensorDescriptorAssignmentCoverage )
+{
+    TensorDescriptor_t target;
+
+    // Case 1: Assign from BufferDescriptor (operator=(const BufferDescriptor&))
+    {
+        BufferDescriptor_t source;
+        source.size = 1000;
+
+        target = source;
+
+        ASSERT_EQ( target.size, 1000 );
+        ASSERT_EQ( target.type, QC_BUFFER_TYPE_TENSOR );
+    }
+
+    // Case 2: Assign from TensorDescriptor (operator=(const TensorDescriptor&))
+    {
+        TensorDescriptor_t source;
+        source.size = 2000;
+        source.numDims = 2;
+        source.dims[0] = 10;
+        source.dims[1] = 20;
+
+        target = source;
+
+        ASSERT_EQ( target.size, 2000 );
+        ASSERT_EQ( target.type, QC_BUFFER_TYPE_TENSOR );
+        ASSERT_EQ( target.numDims, 2 );
+        ASSERT_EQ( target.dims[0], 10 );
+    }
+
+    // Case 3: Assign from QCBufferDescriptorBase_t (as TensorDescriptor)
+    {
+        TensorDescriptor_t source;
+        source.size = 3000;
+        source.numDims = 3;
+        QCBufferDescriptorBase_t &ref = source;
+
+        target = ref;
+
+        ASSERT_EQ( target.size, 3000 );
+        ASSERT_EQ( target.numDims, 3 );
+    }
+
+    // Case 4: Assign from QCBufferDescriptorBase_t (as BufferDescriptor)
+    {
+        BufferDescriptor_t source;
+        source.size = 4000;
+        QCBufferDescriptorBase_t &ref = source;
+
+        target = ref;
+
+        ASSERT_EQ( target.size, 4000 );
+        ASSERT_EQ( target.type, QC_BUFFER_TYPE_TENSOR );
+    }
+
+    // Case 5: Assign from generic QCBufferDescriptorBase_t
+    {
+        MockBufferDescriptor source;
+        source.size = 5000;
+        QCBufferDescriptorBase_t &ref = source;
+
+        target = ref;
+
+        ASSERT_EQ( target.size, 5000 );
+    }
+
+    // Case 6: Self assignment
+    {
+        QCBufferDescriptorBase_t &ref = target;
+        target = ref;
+        ASSERT_EQ( target.size, 5000 );
+    }
+
+    // Case 7: Self assignment (operator=(const TensorDescriptor&))
+    {
+        target = target;
+        ASSERT_EQ( target.size, 5000 );
+    }
+}
+
+TEST( Memory, BufferDescriptorAssignmentCoverage )
+{
+    BufferDescriptor_t target;
+
+    // Case 1: operator=(const BufferDescriptor&)
+    {
+        BufferDescriptor_t source;
+        source.size = 111;
+
+        target = source;
+
+        ASSERT_EQ( target.size, 111 );
+    }
+
+    // Case 2: operator=(const QCBufferDescriptorBase_t&)
+    {
+        MockBufferDescriptor source;
+        source.size = 222;
+        source.type = QC_BUFFER_TYPE_RAW;
+        QCBufferDescriptorBase_t &ref = source;
+
+        target = ref;
+
+        ASSERT_EQ( target.size, 222 );
+        ASSERT_EQ( target.validSize, 222 );
+        ASSERT_EQ( target.offset, 0 );
+        ASSERT_EQ( target.id, UINT64_MAX );
+    }
+
+    // Case 3: Self assignment
+    {
+        QCBufferDescriptorBase_t &ref = target;
+        target = ref;
+        ASSERT_EQ( target.size, 222 );
+    }
+
+    // Case 4: Self assignment (BufferDescriptor&)
+    {
+        target = target;
+        ASSERT_EQ( target.size, 222 );
     }
 }
 
