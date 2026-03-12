@@ -1221,7 +1221,6 @@ TEST( NodeVideoEncoder, SANITY_VideoEncoder_Resolution )
     dt.Set<uint32_t>( "width", 3840 );
     dt.Set<uint32_t>( "height", 2160 );
     dt.Set<uint32_t>( "bitrate", 20000000 );
-    dt.Set<std::string>( "inputImageFormat", "p010" );
     dataTree.Set( "static", dt );
     config.config = dataTree.Dump();
     config.callback = OnDoneCb;

@@ -27,6 +27,7 @@ namespace Node
 
 static constexpr uint16_t VIDEO_MAX_DEV_CMD_BUFFER_SIZE = 256;
 static constexpr int WAIT_TIMEOUT_10_MSEC = 10;
+static constexpr int WAIT_TIMEOUT_100_MSEC = 100;
 
 static const char *VidcErrToStr( vidc_status_type err )
 {
@@ -223,6 +224,11 @@ QCStatus_e VidcDrvClient::InitDriver( const VidcCodecMeta_t &meta )
         QC_DEBUG( "Setting output FRAME_SIZE %ux%u", vidcFrameSize.width, vidcFrameSize.height );
         ret = SetDrvProperty( VIDC_I_FRAME_SIZE, sizeof( vidc_frame_size_type ),
                               (uint8_t &) vidcFrameSize );
+    }
+
+    if ( QC_STATUS_OK == ret )
+    {
+        QC_DEBUG( "Video driver client settings done." );
     }
 
     return ret;
@@ -910,15 +916,18 @@ QCStatus_e VidcDrvClient::StopEncoder()
     }
     else
     {
-        ret = WaitForCmdCompleted( VIDEO_CODEC_COMMAND_STOP, WAIT_TIMEOUT_10_MSEC );
+        ret = WaitForCmdCompleted( VIDEO_CODEC_COMMAND_STOP, WAIT_TIMEOUT_100_MSEC );
         if ( QC_STATUS_OK != ret )
         {
             QC_ERROR( "WaitFor stop output timeout" );
             ret = QC_STATUS_FAIL;
         }
+        else
+        {
+            QC_DEBUG( "enc: Stop vidc done" );
+        }
     }
 
-    QC_DEBUG( "enc: Stop vidc done" );
     return ret;
 }
 
