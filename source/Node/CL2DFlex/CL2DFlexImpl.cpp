@@ -44,7 +44,14 @@ QCStatus_e CL2DFlexImpl::Stop()
     QC_TRACE_BEGIN( "Stop", {} );
     if ( QC_OBJECT_STATE_RUNNING == m_state )
     {
-        m_state = QC_OBJECT_STATE_READY;
+        if ( true == m_config.bDeRegisterAllBuffersWhenStop )
+        {
+            status = m_OpenclSrvObj.DeregAllBuffers();
+        }
+        if ( QC_STATUS_OK == status )
+        {
+            m_state = QC_OBJECT_STATE_READY;
+        }
     }
     else
     {

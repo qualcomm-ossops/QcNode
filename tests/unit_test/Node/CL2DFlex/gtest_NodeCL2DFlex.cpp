@@ -208,7 +208,6 @@ void Sanity()
     SetConfigCL2D( &CL2DFlexConfig, &dt );
 
     QCNodeInit_t config = { dt.Dump() };
-    printf( "config: %s\n", config.config.c_str() );
 
     ImageProps_t imgPropInputs[CL2DFlexConfig.numOfInputs];
     for ( int i = 0; i < CL2DFlexConfig.numOfInputs; i++ )
@@ -1389,6 +1388,9 @@ void Coverage3()
     ret = OpenclSrvObj.Deinit();   // deinit without init
     EXPECT_EQ( QC_STATUS_BAD_STATE, ret );
 
+    ret = OpenclSrvObj.DeregAllBuffers();   // DeregAllBuffers without init
+    EXPECT_EQ( QC_STATUS_BAD_STATE, ret );
+
     ret = OpenclSrvObj.LoadFromSource( nullptr );   // create program without init
     EXPECT_EQ( QC_STATUS_BAD_STATE, ret );
 
@@ -1704,6 +1706,20 @@ void Coverage4()
 TEST( NodeCL2D, Sanity )
 {
     Sanity();
+}
+
+TEST( NodeCL2D, Stress )
+{
+    uint32_t loopNumber = 100;
+    const char *envValue = getenv( "CL2DFLEX_TEST_LOOP_NUMBER" );
+    if ( nullptr != envValue )
+    {
+        loopNumber = (uint32_t) atoi( envValue );
+    }
+    for ( uint32_t l = 0; l < loopNumber; l++ )
+    {
+        Sanity();
+    }
 }
 
 #if defined( ENABLE_COVERAGE_TEST )

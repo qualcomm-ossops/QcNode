@@ -671,6 +671,54 @@ QCStatus_e OpenclSrv::Execute( const cl_kernel *pKernel, const OpenclIfcae_Arg_t
     return ret;
 }
 
+QCStatus_e OpenclSrv::DeregAllBuffers()
+{
+    QCStatus_e ret = QC_STATUS_OK;
+
+    if ( true == m_initialized )
+    {
+        for ( auto &it : m_bufferMap )
+        {
+            cl_int retCL = clReleaseMemObject( it.second.clMem );
+            if ( CL_SUCCESS != retCL )
+            {
+                ret = QC_STATUS_FAIL;
+                QC_ERROR( "Failed to release buffer memory object, retCL = %d", retCL );
+            }
+        }
+        m_bufferMap.clear();
+
+        for ( auto &it : m_imageMap )
+        {
+            cl_int retCL = clReleaseMemObject( it.second.clMem );
+            if ( CL_SUCCESS != retCL )
+            {
+                ret = QC_STATUS_FAIL;
+                QC_ERROR( "Failed to release image memory object, retCL = %d", retCL );
+            }
+        }
+        m_imageMap.clear();
+
+        for ( auto &it : m_planeMap )
+        {
+            cl_int retCL = clReleaseMemObject( it.second.clMem );
+            if ( CL_SUCCESS != retCL )
+            {
+                ret = QC_STATUS_FAIL;
+                QC_ERROR( "Failed to release plane memory object, retCL = %d", retCL );
+            }
+        }
+        m_planeMap.clear();
+    }
+    else
+    {
+        QC_ERROR( "OpenCL Iface not initialized!" );
+        ret = QC_STATUS_BAD_STATE;
+    }
+
+    return ret;
+}
+
 }   // namespace OpenclIface
 }   // namespace libs
 }   // namespace QC
