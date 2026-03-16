@@ -7,8 +7,6 @@ if [ ! -d $THIRD_PARTY_DIR ]; then
 fi
 cd $THIRD_PARTY_DIR
 
-LOCAL_CACHE_1=/prj/cv2x/sandiego/qride/release/qcnode/third_party
-
 qcdownload() {
   url=$1
   file=$2
@@ -16,8 +14,8 @@ qcdownload() {
   if [ ! -f $file ]; then
     counter=1
     while [ $counter -le 10 ]; do
-      if [ -f $LOCAL_CACHE_1/$file ]; then
-        cp $LOCAL_CACHE_1/$file .
+      if [ ! -z $THIRD_PARTY_CACHE ] && [ -f $THIRD_PARTY_CACHE/$file ]; then
+        cp $THIRD_PARTY_CACHE/$file .
       else
         wget $url -O $file --no-check-certificate
       fi
