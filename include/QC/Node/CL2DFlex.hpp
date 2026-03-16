@@ -14,7 +14,7 @@ namespace Node
 
 /** @brief The QCNode CL2DFLEX Version */
 #define QCNODE_CL2DFLEX_VERSION_MAJOR 2U
-#define QCNODE_CL2DFLEX_VERSION_MINOR 0U
+#define QCNODE_CL2DFLEX_VERSION_MINOR 1U
 #define QCNODE_CL2DFLEX_VERSION_PATCH 0U
 
 #define QCNODE_CL2DFLEX_VERSION                                                                    \
