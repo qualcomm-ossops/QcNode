@@ -334,6 +334,8 @@ QCStatus_e DepthFromStereoConfigIfs::ParseStaticConfig( DataTree &dt, std::strin
 
     if ( QC_STATUS_OK == status )
     {
+        m_config.nodeId.name = dt.Get<std::string>( "name", "" );
+        m_config.nodeId.id = dt.Get<uint8_t>( "id", UINT8_MAX );
 
         m_config.imageFormat = dt.GetImageFormat( "format", QC_IMAGE_FORMAT_NV12 );
         m_config.disparityFormat = static_cast<DisparityFormat_e>(

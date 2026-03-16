@@ -625,6 +625,8 @@ QCStatus_e VoxelizationImpl::DeInitialize()
                 status = ret;
             }
         }
+
+        m_state = QC_OBJECT_STATE_INITIAL;
     }
 
     QC_TRACE_END( "DeInit", {} );
