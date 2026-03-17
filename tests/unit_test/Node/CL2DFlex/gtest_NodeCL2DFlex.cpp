@@ -1718,6 +1718,7 @@ TEST( NodeCL2D, Stress )
     }
     for ( uint32_t l = 0; l < loopNumber; l++ )
     {
+        printf( "\nloopNumber = %d", l );
         Sanity();
     }
 }
