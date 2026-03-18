@@ -239,6 +239,7 @@ QCStatus_e CL2DFlexImpl::DeInitialize()
                 delete m_pCL2DPipeline[inputId];
             }
         }
+        m_state = QC_OBJECT_STATE_INITIAL;
     }
     QC_TRACE_END( "DeInit", {} );
 
