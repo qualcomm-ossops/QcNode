@@ -297,6 +297,9 @@ QCStatus_e OpticalFlowConfigIfs::ParseStaticConfig( DataTree &dt, std::string &e
 
     if ( QC_STATUS_OK == status )
     {
+        m_config.nodeId.name = dt.Get<std::string>( "name", "" );
+        m_config.nodeId.id = dt.Get<uint8_t>( "id", UINT8_MAX );
+
         m_config.imageFormat = dt.GetImageFormat( "format", QC_IMAGE_FORMAT_NV12 );
         m_config.motionMapFormat = static_cast<MotionMapFormat_e>(
                 dt.Get<uint8_t>( "motionMapFormat", MOTION_FORMAT_12_LA ) );

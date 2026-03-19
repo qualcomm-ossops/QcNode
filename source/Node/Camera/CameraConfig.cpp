@@ -340,7 +340,7 @@ QCStatus_e CameraConfig::ParseStaticConfig( DataTree &dt, std::string &errors )
     if ( QC_STATUS_OK == status )
     {
         config.nodeId.name = dt.Get<std::string>( "name", "" );
-        config.nodeId.id = dt.Get<uint32_t>( "id", UINT32_MAX );
+        config.nodeId.id = dt.Get<uint8_t>( "id", UINT8_MAX );
         config.inputId = dt.Get<uint32_t>( "inputId", UINT32_MAX );
         config.clientId = dt.Get<uint32_t>( "clientId", UINT32_MAX );
         config.srcId = dt.Get<uint32_t>( "srcId", UINT32_MAX );
