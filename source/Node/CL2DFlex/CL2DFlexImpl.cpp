@@ -306,19 +306,10 @@ QCStatus_e CL2DFlexImpl::ProcessFrameDescriptor( QCFrameDescriptorNodeIfs &frame
                     }
                     else
                     {
-                        if ( nullptr == m_pCL2DPipeline[inputId] )
-                        {
-                            QC_ERROR( "Pipeline not setup for inputId=%d!", inputId );
-                            status = QC_STATUS_FAIL;
-                        }
-                        else
-                        {
-                            QC_TRACE_BEGIN( "Execute",
-                                            { QCNodeTraceArg( "frameId", inputBufDesc.id ) } );
-                            status = m_pCL2DPipeline[inputId]->Execute( inputBufDesc,
-                                                                        outputBufDesc );
-                            QC_TRACE_END( "Execute", {} );
-                        }
+                        QC_TRACE_BEGIN( "Execute",
+                                        { QCNodeTraceArg( "frameId", inputBufDesc.id ) } );
+                        status = m_pCL2DPipeline[inputId]->Execute( inputBufDesc, outputBufDesc );
+                        QC_TRACE_END( "Execute", {} );
                     }
                     if ( QC_STATUS_OK != status )
                     {
