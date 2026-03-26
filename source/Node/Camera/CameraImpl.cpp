@@ -1236,9 +1236,12 @@ QCStatus_e CameraImpl::SetMetaDataBuffers(
                 }
             }
 
-            QC_INFO( "Set metadata buffer index %u: memHndl: %llu, va: %p, size: %u", bufferIdx,
-                     pQcarCamBuf->planes[0].memHndl, pCamMetaDataBuf->pBuf,
-                     pQcarCamBuf->planes[0].size );
+            if ( QC_STATUS_OK == ret )
+            {
+                QC_INFO( "Set metadata buffer index %u: memHndl: %llu, va: %p, size: %u", bufferIdx,
+                         pQcarCamBuf->planes[0].memHndl, pCamMetaDataBuf->pBuf,
+                         pQcarCamBuf->planes[0].size );
+            }
 
             if ( QCARCAM_RET_OK == status )
             {
