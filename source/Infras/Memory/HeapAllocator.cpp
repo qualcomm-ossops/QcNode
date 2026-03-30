@@ -16,7 +16,7 @@ namespace Memory
 HeapAllocator::HeapAllocator()
     : QCMemoryAllocatorIfs( { "Heap Allocator" }, QC_MEMORY_ALLOCATOR_HEAP )
 {
-    (void) QC_LOGGER_INIT( GetConfiguration().name.c_str(), LOGGER_LEVEL_VERBOSE );
+    (void) QC_LOGGER_INIT( GetConfiguration().name.c_str(), LOGGER_LEVEL_ERROR );
 }
 
 HeapAllocator::~HeapAllocator()
