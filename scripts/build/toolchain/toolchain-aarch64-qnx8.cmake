@@ -122,6 +122,7 @@ endif()
 # common header files and libraries
 if( DEFINED ENV{BSP_ROOT} )
 include_directories( $ENV{BSP_ROOT}/install/usr/include )
+include_directories( $ENV{BSP_ROOT}/install/usr/include/amss )
 include_directories( $ENV{BSP_ROOT}/install/aarch64le/usr/include )
 add_link_options( "-L$ENV{BSP_ROOT}/install/aarch64le/lib" )
 add_link_options( "-L$ENV{BSP_ROOT}/install/aarch64le/usr/lib" )

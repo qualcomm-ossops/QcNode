@@ -59,10 +59,11 @@ set( QC_LIB_PATHS
     ${CMAKE_SYSROOT}/usr/lib
 )
 
-# pmem
+# common header files
 if( DEFINED ENV{BSP_ROOT} )
 include_directories( $ENV{BSP_ROOT}/AMSS/inc )
 include_directories( $ENV{BSP_ROOT}/install/usr/include )
+include_directories( $ENV{BSP_ROOT}/install/usr/include/amss )
 endif()
 
 # apdf
