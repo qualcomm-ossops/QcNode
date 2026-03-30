@@ -153,6 +153,20 @@ TEST_F( Test_DMABUFFAllocator, SANITY_7 )
     ASSERT_EQ( QC_STATUS_NOMEM, status );
 }
 
+TEST_F( Test_DMABUFFAllocator, SANITY_8 )
+{
+
+    QCBufferDescriptorBase_t response;
+
+    response.size = 23;
+    response.cache = QC_CACHEABLE;
+    response.pBuf = (void *) 1000;
+    response.dmaHandle = 10000;
+    QCStatus_e status = allocatorIfs->Free( response );
+    ASSERT_EQ( QC_STATUS_FAIL, status );
+}
+
+
 TEST_F( Test_DMABUFFAllocator, SANITY_multiple_allocations_1 )
 {
     QCBufferPropBase_t request[4];

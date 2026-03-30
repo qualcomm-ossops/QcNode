@@ -242,6 +242,13 @@ TEST_F( Test_HeapAllocator, SANITY_multiple_allocations )
         status = allocatorIfsPtr->Allocate( badRequest, response[1] );
         ASSERT_EQ( QC_STATUS_BAD_ARGUMENTS, status );
 
+        QCBufferDescriptorBase_t buff;
+        buff.allocatorType = QC_MEMORY_ALLOCATOR_HEAP;
+        buff.size = 0;
+        status = allocatorIfsPtr->Free( buff );
+        ASSERT_EQ( status, QC_STATUS_BAD_ARGUMENTS );
+
+
         delete allocatorIfsPtr;
     }
 }

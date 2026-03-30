@@ -12,7 +12,7 @@ namespace Memory
 
 DMABUFFUtils::DMABUFFUtils()
 {
-    (void) QC_LOGGER_INIT( "DMABUFFUtils", LOGGER_LEVEL_VERBOSE );
+    (void) QC_LOGGER_INIT( "DMABUFFUtils", LOGGER_LEVEL_ERROR );
 }
 
 DMABUFFUtils::~DMABUFFUtils()
