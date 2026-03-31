@@ -13,21 +13,11 @@ QCStatus_e VoxelizationConfig::VerifyStaticConfig( DataTree &dt, std::string &er
     QCStatus_e ret = QC_STATUS_OK;
     QCStatus_e ret2 = QC_STATUS_OK;
 
-    std::string name = dt.Get<std::string>( "name", "" );
-    if ( "" == name )
+    uint32_t id = dt.Get<uint32_t>( "id", UINT32_MAX );
+    if ( UINT32_MAX == id )
     {
-        errors += "the name is empty, ";
+        errors += "the id is empty, ";
         ret = QC_STATUS_BAD_ARGUMENTS;
-    }
-
-    if ( QC_STATUS_OK == ret )
-    {
-        uint32_t id = dt.Get<uint32_t>( "id", UINT32_MAX );
-        if ( UINT32_MAX == id )
-        {
-            errors += "the id is empty, ";
-            ret = QC_STATUS_BAD_ARGUMENTS;
-        }
     }
 
     if ( ( QC_STATUS_OK == ret ) && ( dt.Exists( "coreId" ) ) )
@@ -255,21 +245,19 @@ QCStatus_e VoxelizationConfig::ParseStaticConfig( DataTree &dt, std::string &err
         config.voxelConfig.maxNumPtsPerPlr = dt.Get<uint32_t>( "maxPointNumPerPlr", UINT32_MAX );
         config.voxelConfig.numOutFeatureDim = dt.Get<uint32_t>( "outputFeatureDimNum", UINT32_MAX );
 
+        /*inputMode is being verified multiple times and no other mode reaches here
+          so validating only for xzyr & xzyrt */
         std::string inputMode = dt.Get<std::string>( "inputMode", "" );
         if ( "xyzr" == inputMode )
         {
             config.voxelConfig.inputMode = VOXELIZATION_INPUT_MODE_XYZR;
             config.voxelConfig.numInFeatureDim = 4;
         }
-        else if ( "xyzrt" == inputMode )
+
+        if ( "xyzrt" == inputMode )
         {
             config.voxelConfig.inputMode = VOXELIZATION_INPUT_MODE_XYZRT;
             config.voxelConfig.numInFeatureDim = 5;
-        }
-        else
-        {
-            QC_ERROR( "Error input mode" );
-            ret = QC_STATUS_BAD_ARGUMENTS;
         }
     }
 
