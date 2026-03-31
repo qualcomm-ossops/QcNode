@@ -69,6 +69,7 @@ QCStatus_e DMABUFFUtils::MemoryMap( const QCBufferDescriptorBase_t &orig,
         else
         {
             mapped.pBuf = pAddr;
+            mapped.size = orig.size;
         }
     }
 

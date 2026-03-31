@@ -5,6 +5,11 @@
 #include "QC/Infras/Memory/TensorDescriptor.hpp"
 #include "QC/Infras/Memory/VideoFrameDescriptor.hpp"
 #include "QC/sample/BufferManager.hpp"
+#if defined( __QNXNTO__ )
+#include "QC/Infras/Memory/PMEMUtils.hpp"
+#else
+#include "QC/Infras/Memory/DMABUFFUtils.hpp"
+#endif
 #include "gtest/gtest.h"
 #include <algorithm>
 #include <chrono>
@@ -12,6 +17,12 @@
 #include <queue>
 #include <stdio.h>
 #include <thread>
+
+#if defined( __QNXNTO__ )
+using MemUtils = QC::Memory::PMEMUtils;
+#else
+using MemUtils = QC::Memory::DMABUFFUtils;
+#endif
 
 using namespace QC;
 using namespace QC::Memory;
@@ -1486,6 +1497,133 @@ TEST( Memory, L2_Image2Tensor )
         ASSERT_EQ( QC_STATUS_OK, status );
     }
 }
+
+
+TEST( Memory, SanityImport )
+{
+    QCStatus_e status;
+    BufferManager bufMgr( { "IMAGE", QC_NODE_TYPE_CUSTOM_0, 0 } );
+    MemUtils memUtils;
+    ImageDescriptor_t imgDesc;
+    status = bufMgr.Allocate( ImageBasicProps_t( 1, 1920, 1024, QC_IMAGE_FORMAT_NV12 ), imgDesc );
+    ASSERT_EQ( QC_STATUS_OK, status );
+    uint32_t *pData = (uint32_t *) imgDesc.pBuf;
+    pData[0] = 1234;
+    int pid = fork();
+    if ( pid == 0 )
+    { /* child process */
+        MemUtils memUtilsI;
+        ImageDescriptor_t importedImgDesc;
+        uint32_t *pImportedData;
+        status = memUtilsI.MemoryMap( imgDesc, importedImgDesc );
+        ASSERT_EQ( QC_STATUS_OK, status );
+        pImportedData = (uint32_t *) importedImgDesc.pBuf;
+        ASSERT_EQ( 1234, pImportedData[0] );
+        pImportedData[0] = 5678;
+        status = memUtilsI.MemoryUnMap( importedImgDesc );
+        ASSERT_EQ( QC_STATUS_OK, status );
+        printf( "This is child process %" PRIi32 "\n", getpid() );
+        exit( 0 );
+    }
+    else
+    {
+        std::this_thread::sleep_for( 1000ms );
+        printf( "This is parent process %" PRIi32 "\n", getpid() );
+        ASSERT_EQ( 5678, pData[0] );
+        status = bufMgr.Free( imgDesc );
+        ASSERT_EQ( QC_STATUS_OK, status );
+    }
+}
+
+TEST( Memory, L2_Import )
+{
+    QCStatus_e status;
+    BufferManager bufMgr( { "IMAGE", QC_NODE_TYPE_CUSTOM_0, 0 } );
+    MemUtils memUtils;
+
+    ImageDescriptor_t imgDesc;
+    status = bufMgr.Allocate( ImageBasicProps_t( 1, 1920, 1024, QC_IMAGE_FORMAT_NV12 ), imgDesc );
+    ASSERT_EQ( QC_STATUS_OK, status );
+
+    /* Cover MemoryMap with size == 0 */
+    ImageDescriptor_t emptyImgDesc = imgDesc;
+    emptyImgDesc.size = 0;
+    ImageDescriptor_t importedEmptyImgDesc;
+    status = memUtils.MemoryMap( emptyImgDesc, importedEmptyImgDesc );
+    ASSERT_EQ( QC_STATUS_BAD_ARGUMENTS, status );
+
+#if defined( __QNXNTO__ )
+    /* Cover MemoryMap with dmaHandle == 0 */
+    emptyImgDesc = imgDesc;
+    emptyImgDesc.dmaHandle = 0;
+    importedEmptyImgDesc;
+    status = memUtils.MemoryMap( emptyImgDesc, importedEmptyImgDesc );
+    ASSERT_EQ( QC_STATUS_BAD_ARGUMENTS, status );
+
+    /* Cover MemoryMap with invalid allocatorType */
+    emptyImgDesc = imgDesc;
+    emptyImgDesc.cache = QC_CACHEABLE_WRITE_THROUGH;
+    emptyImgDesc.allocatorType = QC_MEMORY_ALLOCATOR_LAST;
+    importedEmptyImgDesc;
+    status = memUtils.MemoryMap( emptyImgDesc, importedEmptyImgDesc );
+    ASSERT_EQ( QC_STATUS_BAD_ARGUMENTS, status );
+
+    emptyImgDesc = imgDesc;
+    emptyImgDesc.cache = QC_CACHEABLE_WRITE_BACK;
+    emptyImgDesc.allocatorType = QC_MEMORY_ALLOCATOR_HEAP;
+    importedEmptyImgDesc;
+    status = memUtils.MemoryMap( emptyImgDesc, importedEmptyImgDesc );
+    ASSERT_EQ( QC_STATUS_BAD_ARGUMENTS, status );
+
+    emptyImgDesc = imgDesc;
+    emptyImgDesc.cache = QC_CACHEABLE_LAST;
+    emptyImgDesc.allocatorType = QC_MEMORY_ALLOCATOR_HEAP;
+    importedEmptyImgDesc;
+    status = memUtils.MemoryMap( emptyImgDesc, importedEmptyImgDesc );
+    ASSERT_EQ( QC_STATUS_BAD_ARGUMENTS, status );
+
+    uint32_t *pData = (uint32_t *) imgDesc.pBuf;
+    pData[0] = 1234;
+    ImageDescriptor_t importedImgDesc;
+    uint32_t *pImportedData;
+    status = memUtils.MemoryMap( imgDesc, importedImgDesc );
+    ASSERT_EQ( QC_STATUS_OK, status );
+    pImportedData = (uint32_t *) importedImgDesc.pBuf;
+    ASSERT_EQ( 1234, pImportedData[0] );
+    pImportedData[0] = 5678;
+    status = memUtils.MemoryUnMap( importedImgDesc );
+    ASSERT_EQ( QC_STATUS_OK, status );
+    ASSERT_EQ( 5678, pData[0] );
+
+    ImageDescriptor_t imgDescInvalidSize = imgDesc;
+    imgDesc.size *= 2;
+    status = memUtils.MemoryMap( imgDesc, importedImgDesc );
+    ASSERT_EQ( QC_STATUS_FAIL, status );
+#endif
+
+    /* Cover MemoryUnMap with pBuf == nullptr */
+    ImageDescriptor_t nullBufDesc = imgDesc;
+    nullBufDesc.pBuf = nullptr;
+    status = memUtils.MemoryUnMap( nullBufDesc );
+    ASSERT_EQ( QC_STATUS_BAD_ARGUMENTS, status );
+
+    /* Cover MemoryUnMap with invalid dmaHandle */
+    ImageDescriptor_t invalidFdDesc = imgDesc;
+    invalidFdDesc.dmaHandle = -1;
+    status = memUtils.MemoryUnMap( invalidFdDesc );
+    ASSERT_NE( QC_STATUS_OK, status );
+
+    status = memUtils.MemoryMap( invalidFdDesc, importedEmptyImgDesc );
+    ASSERT_EQ( QC_STATUS_FAIL, status );
+
+    /* Cover MemoryUnMap with size == 0 or dmaHandle = 0 */
+    ImageDescriptor_t zeroSizeDesc = imgDesc;
+    zeroSizeDesc.size = 0;
+    zeroSizeDesc.dmaHandle = 0;
+    status = memUtils.MemoryUnMap( zeroSizeDesc );
+    ASSERT_EQ( QC_STATUS_BAD_ARGUMENTS, status );
+}
+
 
 #ifndef GTEST_QCNODE
 #if __CTC__
