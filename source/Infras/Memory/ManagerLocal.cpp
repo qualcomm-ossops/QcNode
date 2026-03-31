@@ -740,8 +740,15 @@ QCStatus_e ManagerLocal::ReclaimResources( const QCMemoryHandle_t &handle )
 
     if ( state != QC_OBJECT_STATE_READY )
     {
-        QC_ERROR( "state != QC_OBJECT_STATE_READY" );
-        QC_ERROR( "GetState () == %d", state );
+        if ( state != QC_OBJECT_STATE_DEINITIALIZING )
+        {
+            QC_ERROR( "state != QC_OBJECT_STATE_READY" );
+            QC_ERROR( "GetState () == %d", state );
+        }
+        else
+        {
+            QC_DEBUG( "state == QC_OBJECT_STATE_DEINITIALIZING" );
+        }
         // changing temporally object state to allow call to
         // memory release methods which are blocked by wrong state
         SetState( QC_OBJECT_STATE_READY );
