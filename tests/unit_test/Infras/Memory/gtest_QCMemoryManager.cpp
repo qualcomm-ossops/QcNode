@@ -1,8 +1,8 @@
 // Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
 // SPDX-License-Identifier: BSD-3-Clause-Clear
 
-#include "QC/Infras/Memory/ManagerLocal.hpp"
 #include "QC/Infras/Memory/HeapAllocator.hpp"
+#include "QC/Infras/Memory/ManagerLocal.hpp"
 #include "QC/Infras/Memory/Pool.hpp"
 #include "gtest/gtest.h"
 
@@ -22,7 +22,7 @@ class FakeAllocator : public QCMemoryAllocatorIfs
 {
 public:
     FakeAllocator() : QCMemoryAllocatorIfs( { "Fake Allocator" }, QC_MEMORY_ALLOCATOR_HEAP ) {}
-    ~FakeAllocator(){};
+    ~FakeAllocator() {};
 
     virtual QCStatus_e Allocate( const QCBufferPropBase_t &request,
                                  QCBufferDescriptorBase_t &response )
@@ -38,7 +38,7 @@ class FakeAllocator2 : public QCMemoryAllocatorIfs
 {
 public:
     FakeAllocator2() : QCMemoryAllocatorIfs( { "Fake Allocator" }, QC_MEMORY_ALLOCATOR_HEAP ) {}
-    ~FakeAllocator2(){};
+    ~FakeAllocator2() {};
 
     virtual QCStatus_e Allocate( const QCBufferPropBase_t &request,
                                  QCBufferDescriptorBase_t &response )
@@ -1055,7 +1055,7 @@ TEST_P( Test_QCMemorymanager_Stress, ST_RegisterUnregister_Loop )
 
         ASSERT_EQ( QC_STATUS_OK, Ifs->Register( node, h ) );
         ASSERT_EQ( QC_STATUS_OK, Ifs->UnRegister( h ) );
-        
+
         // Optional safety: double UnRegister should fail safely
         if ( ( i % 1000 ) == 0 )
         {
@@ -1308,8 +1308,8 @@ TEST_P( Test_QCMemorymanager_Stress,
             // The ID is released back to the pool after UnRegister, making it
             // available for reuse in subsequent iterations across any thread.
             uint8_t nodeId = acquireId();
-            
-            //printf( "test %d times with nodeId: %u\n", i, nodeId );
+
+            // printf( "test %d times with nodeId: %u\n", i, nodeId );
 
             // Rotate through node types based on iteration
             QCNodeType_e nodeType = static_cast<QCNodeType_e>( QC_NODE_TYPE_CUSTOM_0 + ( i % 4 ) );
@@ -1338,7 +1338,10 @@ TEST_P( Test_QCMemorymanager_Stress,
             QCBufferDescriptorBase_t direct{};
             status = Ifs->AllocateBuffer( h, QC_MEMORY_ALLOCATOR_HEAP, req, direct );
             ASSERT_TRUE( QC_STATUS_OK == status );
-            if (status == QC_STATUS_OK){ ASSERT_NE( nullptr, direct.pBuf );}
+            if ( status == QC_STATUS_OK )
+            {
+                ASSERT_NE( nullptr, direct.pBuf );
+            }
             // 3) Create a small pool on the same node
             QCMemoryPoolInitConfig_t cfg;
             cfg.buff.size = 1024;
@@ -1353,16 +1356,19 @@ TEST_P( Test_QCMemorymanager_Stress,
             // 4) Allocate one buffer from pool
             QCBufferDescriptorBase_t poolBuf{};
             status = Ifs->AllocateBufferFromPool( ph, poolBuf );
-            if (status == QC_STATUS_OK){ ASSERT_NE( nullptr, poolBuf.pBuf );}
+            if ( status == QC_STATUS_OK )
+            {
+                ASSERT_NE( nullptr, poolBuf.pBuf );
+            }
             // 5) Return buffer to pool
             status = Ifs->PutBufferToPool( ph, poolBuf );
             ASSERT_TRUE( QC_STATUS_OK == status );
             // 6) Destroy pool
-            status =  Ifs->DestroyPool( ph );
-            ASSERT_TRUE( QC_STATUS_OK == status ); 
+            status = Ifs->DestroyPool( ph );
+            ASSERT_TRUE( QC_STATUS_OK == status );
             // 7) Reclaim all resources owned by the node
             status = Ifs->ReclaimResources( h );
-            EXPECT_TRUE( status == QC_STATUS_OK  );
+            EXPECT_TRUE( status == QC_STATUS_OK );
             // 8) Free the direct buffer (may already be reclaimed); accept OK or BAD_ARGUMENTS
             status = Ifs->FreeBuffer( h, direct );
             EXPECT_TRUE( status == QC_STATUS_BAD_ARGUMENTS );
@@ -1374,13 +1380,15 @@ TEST_P( Test_QCMemorymanager_Stress,
             // Optional safety checks every 1000 iterationss
             if ( ( i % 1000 ) == 0 )
             {
-                status = Ifs->UnRegister( h ) ;
+                status = Ifs->UnRegister( h );
                 EXPECT_TRUE( status == QC_STATUS_BAD_ARGUMENTS || status == QC_STATUS_BAD_STATE )
                         << "Double unregister should fail for thread " << tid;
             }
             if ( ( i % 10000 ) == 0 )
             {
-                printf( "Concurrent_Register_CreatePool_DestroyPool_AllocateFromPool_PutBuffer_8Threads %d itersPerThread %d\n", i, itersPerThread );
+                printf( "Concurrent_Register_CreatePool_DestroyPool_AllocateFromPool_PutBuffer_"
+                        "8Threads %d itersPerThread %d\n",
+                        i, itersPerThread );
             }
         }
     };
@@ -1572,7 +1580,7 @@ TEST_P( Test_QCMemorymanager_Stress, Concurrent_Allocate_vs_Reclaim_2Threads )
         while ( !start.load() ) std::this_thread::yield();
         for ( int i = 0; i < reclaimAttempts; ++i )
         {
-            //std::this_thread::sleep_for( std::chrono::milliseconds( 1 ) );
+            std::this_thread::sleep_for( std::chrono::milliseconds( 10 ) );
             QCStatus_e st = Ifs->ReclaimResources( h );
             EXPECT_TRUE( st == QC_STATUS_OK ||
                          st == QC_STATUS_FAIL );   // May fail if allocator fails
@@ -1640,7 +1648,7 @@ INSTANTIATE_TEST_SUITE_P( StressLevels, Test_QCMemorymanager_Stress,
                                              50000,       // Heavy stress
                                              1000000000   // Extreme stress
                                              ),
-                                             
+
                           // Custom test name generator for readable output
                           []( const ::testing::TestParamInfo<int> &info ) {
                               return "Iters_" + std::to_string( info.param );
