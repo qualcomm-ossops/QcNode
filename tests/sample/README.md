@@ -66,6 +66,7 @@ Note: the "-n componentX_name -t componentX_type" must be in the begin for each 
 | -t        | true     | string    | The component type name, options from [DataReader, Camera, Remap, Qnn, C2D, PostProcCenternet, TinyViz, VideoEncoder, VideoDecoder, Recorder, PlrPre, PlrPost, DataOnline, CL2DFlex, GL2DFlex, SharedRing, FpsAdapter, OpticalFlow, OpticalFlowViz, FrameSync, DepthFromStereo, DepthFromStereoViz, Radar, C2C, Temporal, ComputeLidarCoord] |
 | -k        | true     | string    | The unique component attribute name |
 | -v        | true     | string    | The attribute value for the previous attribute name |
+| -c        | false    | string    | Specify the client name for HeteroScheduler |
 | -d        | false    |   -       | Direct the QCNode log to stdout |
 | -T        | false    | int       | Specify the time in seconds that the QCNodeSampleApp runs, if not specified or value 0, it means that the QCNodeSampleApp will run forever until stop signal(Ctrl + C).  |
 | -V        | false    |   -       | Prints the QCNode application version information to the standard output. |
