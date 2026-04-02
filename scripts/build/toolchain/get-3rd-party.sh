@@ -38,7 +38,7 @@ qcdownload() {
 
 if [ "$ENABLE_TINYVIZ" == "ON" ] ; then
   qcdownload https://www.libsdl.org/release/SDL2-2.0.14.tar.gz SDL2-2.0.14.tar.gz 76ed4e6da9c07bd168b2acd9bfefab1b
-  qcdownload http://www.ferzkopp.net/Software/SDL2_gfx/SDL2_gfx-1.0.4.tar.gz SDL2_gfx-1.0.4.tar.gz 15f9866c6464ca298f28f62fe5b36d9f
+  qcdownload https://sourceforge.net/projects/sdl2gfx/files/SDL2_gfx-1.0.4.tar.gz SDL2_gfx-1.0.4.tar.gz 15f9866c6464ca298f28f62fe5b36d9f
   qcdownload https://www.libsdl.org/projects/SDL_ttf/release/SDL2_ttf-2.0.15.tar.gz SDL2_ttf-2.0.15.tar.gz 04fe06ff7623d7bdcb704e82f5f88391
   qcdownload https://dl.dafont.com/dl/?f=liberation_sans liberation_sans.zip c553a360214638956a561ce5538e49cc
 fi # ENABLE_TINYVIZ
