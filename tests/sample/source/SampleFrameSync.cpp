@@ -159,7 +159,7 @@ void SampleFrameSync::threadWindowMain()
                         outFrames.Add( frame );
                     }
                 }
-                if ( m_perms.size() <= outFrames.frames.size() )
+                if ( ( m_perms.size() > 0 ) && ( m_perms.size() <= outFrames.frames.size() ) )
                 {
                     DataFrames_t newFrames;
                     for ( auto i : m_perms )
