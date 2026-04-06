@@ -929,9 +929,9 @@ TEST( NodeRemapStateMachine, DeInitializeInWrongState )
 TEST( NodeRemapStateMachine, ProcessFrameDescriptorNotRunning )
 {
     QCNodeIfs *pRemap = new QC::Node::Remap();
-    BufferManager bufMgr( { "MANAGER", QC_NODE_TYPE_FADAS_REMAP, 0 } );
     NodeFrameDescriptor frameDesc( 3 );
-    EXPECT_NE( QC_STATUS_OK, pRemap->ProcessFrameDescriptor( frameDesc ) );
+    QCStatus_e ret = pRemap->ProcessFrameDescriptor( frameDesc ) ;
+    EXPECT_EQ( QC_STATUS_BAD_STATE, ret );
     delete pRemap;
 }
 
@@ -1221,7 +1221,7 @@ TEST( NodeRemap, MapDimensionsValidation )
 
     // Config parsing should succeed
     QCStatus_e ret = remap.Initialize( config );
-    EXPECT_NE( QC_STATUS_OK, ret );
+    EXPECT_EQ( QC_STATUS_OK, ret );
 }
 
 TEST( NodeRemap, GlobalBufferIdMapWrongType_CoversGlobalBufferIdMapInvalidBranch )
