@@ -830,9 +830,9 @@ QCStatus_e VoxelizationImpl::DeRegisterBuffer( QCBufferDescriptorBase_t &buffer 
     {
         m_plrPre.DeregBuf( buffer.pBuf );
     }
-    m_bufferMap.erase( bufferHandle );
-
     QC_INFO( "Buffer(%p) deregister", buffer.pBuf );
+
+    m_bufferMap.erase( bufferHandle );
 
     return ret;
 }
@@ -843,8 +843,8 @@ QCStatus_e VoxelizationImpl::DeRegisterAllBuffers()
     while ( false == m_bufferMap.empty() )
     {
         auto it = m_bufferMap.begin();
-        auto &info = it->second;
-        QCStatus_e ret = DeRegisterBuffer( info.bufDesc );
+        QCBufferDescriptorBase_t bufDesc = it->second.bufDesc;
+        QCStatus_e ret = DeRegisterBuffer( bufDesc );
         if ( ret != QC_STATUS_OK )
         {
             status = ret;
