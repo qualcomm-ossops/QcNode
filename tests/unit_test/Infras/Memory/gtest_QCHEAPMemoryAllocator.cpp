@@ -483,6 +483,11 @@ TEST_F( Test_HeapAllocator, ST_HEAP_AllocFree_128_Loop_100000 )
 
     for ( int i = 0; i < iters; ++i )
     {
+        if ( ( i % 10000 ) == 0 )
+        {
+            printf( "ST_HEAP_AllocFree_128_Loop_100000 %d iters %d\n", i, iters );
+        }
+
         // Build a standard 128-byte request with default alignment/cache attributes
         QCBufferPropBase_t request;
         request.size = 128;
@@ -542,6 +547,13 @@ TEST_F( Test_HeapAllocator, Concurrency_HEAP_AllocFree_ProducerConsumer_2Threads
     auto producer = [&] {
         for ( int i = 0; i < iters; ++i )
         {
+            if ( ( i % 10000 ) == 0 )
+            {
+                printf( "Concurrency_HEAP_AllocFree_ProducerConsumer_2Threads_128_Loop_100000 %d "
+                        "iters %d\n",
+                        i, iters );
+            }
+
             QCBufferPropBase_t request{};
             request.size = 128;
             request.alignment = QC_MEMORY_DEFAULT_ALLIGNMENT;

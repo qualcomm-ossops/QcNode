@@ -182,6 +182,12 @@ private:
         std::map<QCMemoryPoolHandle_t, std::reference_wrapper<QCMemoryPoolIfs>> poolMap;
         mutable std::shared_mutex poolMutex;
 
+        /**
+         * @var poolSequenceCounter
+         * @brief Per-node monotonic counter incremented on every CreatePool call.
+         */
+        uint8_t poolSequenceCounter{ 0 };
+
         PoolMapWithMutex() = default;
 
         // Delete copy constructor and assignment operator to prevent copying of mutex

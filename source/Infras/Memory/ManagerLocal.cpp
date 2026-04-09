@@ -346,8 +346,9 @@ QCStatus_e ManagerLocal::CreatePool( const QCMemoryHandle_t &handle,
             poolHandle.SetRandomNumber( distribution( randomNumbersGenerator ) );
 
             // set new pool count
-            uint64_t count = m_pools[nodeIndex].poolMap.size();
-            poolHandle.SetPoolCount( static_cast<uint16_t>( count + 1 ) );
+            uint8_t count = m_pools[nodeIndex].poolSequenceCounter;
+            m_pools[nodeIndex].poolSequenceCounter++;
+            poolHandle.SetPoolCount( count );
             QC_DEBUG( "Memory Pool Handle node type %d count %d random Number %" PRIu32
                       " pid %" PRIu32 "",
                       poolHandle.GetMemoryHandle().GetNodeType(),
