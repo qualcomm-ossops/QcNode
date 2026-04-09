@@ -1049,6 +1049,11 @@ TEST_P( Test_QCMemorymanager_Stress, ST_RegisterUnregister_Loop )
 
     for ( int i = 0; i < iters; ++i )
     {
+        if ( ( i % 10000 ) == 0 )
+        {
+            printf( "ST_RegisterUnregister_Loop %d iters %d\n", i, iters );
+        }
+
         QCNodeID_t node = { "ChurnNode", (QCNodeType_e) ( QC_NODE_TYPE_FADAS_REMAP + ( i % 4 ) ),
                             (uint8_t) ( i % 4 ) };
         QCMemoryHandle_t h;
@@ -1077,6 +1082,11 @@ TEST_P( Test_QCMemorymanager_Stress, ST_Stability_Register_Alloc_Free_Unregister
 
     for ( int i = 0; i < iters; ++i )
     {
+        if ( ( i % 10000 ) == 0 )
+        {
+            printf( "ST_Stability_Register_Alloc_Free_Unregister_Loop %d iters %d\n", i, iters );
+        }
+
         // 1) Register a node
         QCNodeID_t node = { "StabilityNode", QC_NODE_TYPE_CUSTOM_0, (uint8_t) ( i % 4 ) };
         QCMemoryHandle_t h;
@@ -1131,6 +1141,13 @@ TEST_P( Test_QCMemorymanager_Stress,
 
     for ( int i = 0; i < iters; ++i )
     {
+        if ( ( i % 10000 ) == 0 )
+        {
+            printf( "ST_Lifecycle_Churn_Register_Alloc_CreatePool_AllocFromPool_Reclaim_Free_"
+                    "Unregister %d iters %d\n",
+                    i, iters );
+        }
+
         // 1) Register a node
         QCNodeID_t node = { "LifecycleChurn", QC_NODE_TYPE_CUSTOM_0, (uint8_t) ( i % 4 ) };
         QCMemoryHandle_t h;
@@ -1224,6 +1241,11 @@ TEST_P( Test_QCMemorymanager_Stress, ST_AllocFromPool_PutBuffertoPool )
     QCBufferDescriptorBase_t poolBuf{};
     for ( int i = 0; i < iters; ++i )
     {
+        if ( ( i % 10000 ) == 0 )
+        {
+            printf( "ST_AllocFromPool_PutBuffertoPool %d iters %d\n", i, iters );
+        }
+
         ASSERT_EQ( QC_STATUS_OK, Ifs->AllocateBufferFromPool( ph, poolBuf ) );
         ASSERT_NE( nullptr, poolBuf.pBuf );
         ASSERT_NE( nullptr, poolBuf.pBuf );
@@ -1468,6 +1490,13 @@ TEST_P( Test_QCMemorymanager_Stress, Concurrent_Register_Unregister_UniqueNodes_
                 EXPECT_EQ( QC_STATUS_BAD_ARGUMENTS, Ifs->UnRegister( h ) )
                         << "Double unregister should fail for thread " << tid;
             }
+
+            if ( ( i % 10000 ) == 0 )
+            {
+                printf( "Concurrent_Register_Unregister_UniqueNodes_4Threads %d itersPerThread "
+                        "%d\n",
+                        i, itersPerThread );
+            }
         }
     };
     std::vector<std::thread> ts;
@@ -1510,6 +1539,11 @@ TEST_P( Test_QCMemorymanager_Stress, Concurrent_Pool_Operations_SameNode_8Thread
             ASSERT_NE( nullptr, buf.pBuf );
             ASSERT_EQ( QC_STATUS_OK, Ifs->PutBufferToPool( ph, buf ) );
             ASSERT_EQ( QC_STATUS_OK, Ifs->DestroyPool( ph ) );
+            if ( ( i % 10000 ) == 0 )
+            {
+                printf( "Concurrent_Pool_Operations_SameNode_8Threads %d itersPerThread %d\n", i,
+                        itersPerThread );
+            }
         }
     };
     std::vector<std::thread> ts;
@@ -1541,6 +1575,11 @@ TEST_P( Test_QCMemorymanager_Stress, Concurrent_AllocateBuffer_SameNode_8Threads
                        Ifs->AllocateBuffer( h, QC_MEMORY_ALLOCATOR_HEAP, req, resp ) );
             ASSERT_NE( nullptr, resp.pBuf );
             ASSERT_EQ( QC_STATUS_OK, Ifs->FreeBuffer( h, resp ) );
+            if ( ( i % 10000 ) == 0 )
+            {
+                printf( "Concurrent_AllocateBuffer_SameNode_8Threads %d itersPerThread %d\n", i,
+                        allocsPerThread );
+            }
         }
     };
     std::vector<std::thread> ts;
@@ -1580,6 +1619,12 @@ TEST_P( Test_QCMemorymanager_Stress, Concurrent_Allocate_vs_Reclaim_2Threads )
         while ( !start.load() ) std::this_thread::yield();
         for ( int i = 0; i < reclaimAttempts; ++i )
         {
+            if ( ( i % 10000 ) == 0 )
+            {
+                printf( "Concurrent_Allocate_vs_Reclaim_2Threads %d reclaimAttempts %d\n", i,
+                        reclaimAttempts );
+            }
+
             std::this_thread::sleep_for( std::chrono::milliseconds( 10 ) );
             QCStatus_e st = Ifs->ReclaimResources( h );
             EXPECT_TRUE( st == QC_STATUS_OK ||
@@ -1630,6 +1675,12 @@ TEST_P( Test_QCMemorymanager_Stress, Concurrent_Pool_Exhaustion_Refill_8Threads 
             {
                 // Pool exhausted, retry
                 EXPECT_EQ( QC_STATUS_OUT_OF_BOUND, st );
+            }
+
+            if ( ( i % 10000 ) == 0 )
+            {
+                printf( "Concurrent_Pool_Exhaustion_Refill_8Threads %d itersPerThread %d\n", i,
+                        itersPerThread );
             }
         }
     };
