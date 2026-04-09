@@ -210,6 +210,7 @@ set( QC_VIDC_FILEDEMUX_LIBS
 # qcarcam
 if( DEFINED ENV{BSP_ROOT} )
 include_directories( $ENV{BSP_ROOT}/AMSS/multimedia/qcamera/camera_qcx/cdk_qcx/api/qcarcam/ )
+include_directories( $ENV{BSP_ROOT}/install/usr/include/amss/multimedia/camera_qcx )
 add_link_options( "-L$ENV{BSP_ROOT}/install/aarch64le/lib/camera_qcx/" )
 endif()
 
