@@ -28,6 +28,7 @@
 #define PLRPOST_OUT_METADATA 9
 #define MAX_INPUTS 64
 
+#define CRC_RET_SUCCESS_VALUE 0
 typedef struct
 {
     qurt_mutex_t mutex;
@@ -202,8 +203,8 @@ AEEResult FadasIface_FadasInitSafe( remote_handle64 handle, int32_t *status, uin
         struct scatter_buffer sbRx[1] = {};
         sbRx[0].buf = reinterpret_cast<const char *>( status );
         sbRx[0].len = sizeof( *status );
-        if ( error_type::SUCCESS !=
-             crc32_generate_scatter( sbRx, 1, reinterpret_cast<sl_u32_t *>( crcRx ) ) )
+        if ( CRC_RET_SUCCESS_VALUE !=
+             (int)crc32_generate_scatter( sbRx, 1, reinterpret_cast<sl_u32_t *>( crcRx ) ) )
         {
             FARF( ERROR, "CRC generation failed in FadasIface_FadasInitSafe!" );
             ret = AEE_EFAILED;
@@ -227,7 +228,7 @@ AEEResult FadasIface_FadasVersionSafe( remote_handle64 handle, uint8_t *ver_int,
         struct scatter_buffer sbTx[1] = {};
         sbTx[0].buf = reinterpret_cast<const char *>( &ver_intLen );
         sbTx[0].len = sizeof( ver_intLen );
-        if ( error_type::SUCCESS != crc32_verify_scatter( sbTx, 1, crcTx ) )
+        if ( CRC_RET_SUCCESS_VALUE != (int)crc32_verify_scatter( sbTx, 1, crcTx ) )
         {
             FARF( ERROR, "CRC validation failed in FadasIface_FadasVersionSafe!" );
             ret = AEE_EBADPARM;
@@ -244,8 +245,8 @@ AEEResult FadasIface_FadasVersionSafe( remote_handle64 handle, uint8_t *ver_int,
             struct scatter_buffer sbRx[1] = {};
             sbRx[0].buf = reinterpret_cast<const char *>( ver_int );
             sbRx[0].len = static_cast<sl_size_t>( sizeof( *ver_int ) * ver_intLen );
-            if ( error_type::SUCCESS !=
-                 crc32_generate_scatter( sbRx, 1, reinterpret_cast<sl_u32_t *>( crcRx ) ) )
+            if ( CRC_RET_SUCCESS_VALUE !=
+                 (int)crc32_generate_scatter( sbRx, 1, reinterpret_cast<sl_u32_t *>( crcRx ) ) )
             {
                 FARF( ERROR, "CRC generation failed in FadasIface_FadasVersionSafe!" );
                 ret = AEE_EFAILED;
@@ -301,7 +302,7 @@ AEEResult FadasIface_FadasRemap_CreateMapFromMapSafe(
         sbTx[sbNum].len = sizeof( imgFormat ); sbNum++;
         sbTx[sbNum].buf = reinterpret_cast<const char *>( &borderConst );
         sbTx[sbNum].len = sizeof( borderConst ); sbNum++;
-        if ( error_type::SUCCESS != crc32_verify_scatter( sbTx, sbNum, crcTx ) )
+        if ( CRC_RET_SUCCESS_VALUE != (int)crc32_verify_scatter( sbTx, sbNum, crcTx ) )
         {
             FARF( ERROR, "CRC validation failed in FadasIface_FadasRemap_CreateMapFromMapSafe!" );
             ret = AEE_EBADPARM;
@@ -332,8 +333,8 @@ AEEResult FadasIface_FadasRemap_CreateMapFromMapSafe(
             struct scatter_buffer sbRx[1] = {};
             sbRx[0].buf = reinterpret_cast<const char *>( mapPtr );
             sbRx[0].len = sizeof( *mapPtr );
-            if ( error_type::SUCCESS !=
-                 crc32_generate_scatter( sbRx, 1, reinterpret_cast<sl_u32_t *>( crcRx ) ) )
+            if ( CRC_RET_SUCCESS_VALUE !=
+                 (int)crc32_generate_scatter( sbRx, 1, reinterpret_cast<sl_u32_t *>( crcRx ) ) )
             {
                 FARF( ERROR, "CRC generation failed in FadasIface_FadasRemap_CreateMapFromMap!" );
                 ret = AEE_EFAILED;
@@ -372,7 +373,7 @@ AEEResult FadasIface_FadasRemap_CreateMapNoUndistortionSafe(
         sbTx[sbNum].len = sizeof( imgFormat ); sbNum++;
         sbTx[sbNum].buf = reinterpret_cast<const char *>( &borderConst );
         sbTx[sbNum].len = sizeof( borderConst ); sbNum++;
-        if ( error_type::SUCCESS != crc32_verify_scatter( sbTx, sbNum, crcTx ) )
+        if ( CRC_RET_SUCCESS_VALUE != (int)crc32_verify_scatter( sbTx, sbNum, crcTx ) )
         {
             FARF( ERROR,
                   "CRC validation failed in FadasIface_FadasRemap_CreateMapNoUndistortionSafe!" );
@@ -401,8 +402,8 @@ AEEResult FadasIface_FadasRemap_CreateMapNoUndistortionSafe(
             struct scatter_buffer sbRx[1] = {};
             sbRx[0].buf = reinterpret_cast<const char *>( mapPtr );
             sbRx[0].len = sizeof( *mapPtr );
-            if ( error_type::SUCCESS !=
-                 crc32_generate_scatter( sbRx, 1, reinterpret_cast<sl_u32_t *>( crcRx ) ) )
+            if ( CRC_RET_SUCCESS_VALUE !=
+                 (int)crc32_generate_scatter( sbRx, 1, reinterpret_cast<sl_u32_t *>( crcRx ) ) )
             {
                 FARF( ERROR,
                       "CRC generation failed in FadasIface_FadasRemap_CreateMapNoUndistortionSafe!" );
@@ -427,7 +428,7 @@ AEEResult FadasIface_FadasRemap_DestroyMapSafe( remote_handle64 handle, uint64 m
         struct scatter_buffer sbTx[1] = {};
         sbTx[0].buf = reinterpret_cast<const char *>( &mapPtr );
         sbTx[0].len = sizeof( mapPtr );
-        if ( error_type::SUCCESS != crc32_verify_scatter( sbTx, 1, crcTx ) )
+        if ( CRC_RET_SUCCESS_VALUE != (int)crc32_verify_scatter( sbTx, 1, crcTx ) )
         {
             FARF( ERROR, "CRC validation failed in FadasIface_FadasRemap_DestroyMapSafe!" );
             ret = AEE_EBADPARM;
@@ -462,7 +463,7 @@ AEEResult FadasIface_FadasRemap_CreateWorkersSafe( remote_handle64 handle, uint6
         sbTx[sbNum].len = sizeof( nThreads ); sbNum++;
         sbTx[sbNum].buf = reinterpret_cast<const char *>( &imgFormat );
         sbTx[sbNum].len = sizeof( imgFormat ); sbNum++;
-        if ( error_type::SUCCESS != crc32_verify_scatter( sbTx, sbNum, crcTx ) )
+        if ( CRC_RET_SUCCESS_VALUE != (int)crc32_verify_scatter( sbTx, sbNum, crcTx ) )
         {
             FARF( ERROR, "CRC validation failed in FadasIface_FadasRemap_CreateWorkersSafe!" );
             ret = AEE_EBADPARM;
@@ -490,8 +491,8 @@ AEEResult FadasIface_FadasRemap_CreateWorkersSafe( remote_handle64 handle, uint6
             struct scatter_buffer sbRx[1] = {};
             sbRx[0].buf = reinterpret_cast<const char *>( worker_ptr );
             sbRx[0].len = sizeof( *worker_ptr );
-            if ( error_type::SUCCESS !=
-                 crc32_generate_scatter( sbRx, 1, reinterpret_cast<sl_u32_t *>( crcRx ) ) )
+            if ( CRC_RET_SUCCESS_VALUE !=
+                 (int)crc32_generate_scatter( sbRx, 1, reinterpret_cast<sl_u32_t *>( crcRx ) ) )
             {
                 FARF( ERROR, "CRC generation failed in FadasIface_FadasRemap_CreateWorkersSafe!" );
                 ret = AEE_EFAILED;
@@ -515,7 +516,7 @@ AEEResult FadasIface_FadasRemap_DestroyWorkersSafe( remote_handle64 handle, uint
         struct scatter_buffer sbTx[1] = {};
         sbTx[0].buf = reinterpret_cast<const char *>( &worker_ptr );
         sbTx[0].len = sizeof( worker_ptr );
-        if ( error_type::SUCCESS != crc32_verify_scatter( sbTx, 1, crcTx ) )
+        if ( CRC_RET_SUCCESS_VALUE != (int)crc32_verify_scatter( sbTx, 1, crcTx ) )
         {
             FARF( ERROR, "CRC validation failed in FadasIface_FadasRemap_DestroyWorkersSafe!" );
             ret = AEE_EBADPARM;
@@ -626,7 +627,7 @@ AEEResult FadasIface_FadasRemap_RunMTSafe(
         sbTx[sbNum].buf = reinterpret_cast<const char *>( &normlzLen );
         sbTx[sbNum].len = sizeof( normlzLen ); sbNum++;
 
-        if ( error_type::SUCCESS != crc32_verify_scatter( sbTx, sbNum, crcTx ) )
+        if ( CRC_RET_SUCCESS_VALUE != (int)crc32_verify_scatter( sbTx, sbNum, crcTx ) )
         {
             FARF( ERROR, "CRC validation failed in FadasIface_FadasRemap_RunMTSafe!" );
             ret = AEE_EBADPARM;
@@ -774,7 +775,7 @@ AEEResult FadasIface_mmapSafe( remote_handle64 handle, int32_t bufFd, uint32_t b
         sbTx[sbNum].len = sizeof( bufFd ); sbNum++;
         sbTx[sbNum].buf = reinterpret_cast<const char *>( &bufSize );
         sbTx[sbNum].len = sizeof( bufSize ); sbNum++;
-        if ( error_type::SUCCESS != crc32_verify_scatter( sbTx, sbNum, crcTx ) )
+        if ( CRC_RET_SUCCESS_VALUE != (int)crc32_verify_scatter( sbTx, sbNum, crcTx ) )
         {
             FARF( ERROR, "CRC validation failed in FadasIface_mmapSafe!" );
             ret = AEE_EBADPARM;
@@ -821,7 +822,7 @@ AEEResult FadasIface_munmapSafe( remote_handle64 handle, int32_t bufFd, uint32_t
         sbTx[sbNum].len = sizeof( bufFd ); sbNum++;
         sbTx[sbNum].buf = reinterpret_cast<const char *>( &bufSize );
         sbTx[sbNum].len = sizeof( bufSize ); sbNum++;
-        if ( error_type::SUCCESS != crc32_verify_scatter( sbTx, sbNum, crcTx ) )
+        if ( CRC_RET_SUCCESS_VALUE != (int)crc32_verify_scatter( sbTx, sbNum, crcTx ) )
         {
             FARF( ERROR, "CRC validation failed in FadasIface_munmapSafe!" );
             ret = AEE_EBADPARM;
@@ -875,7 +876,7 @@ AEEResult FadasIface_FadasRegBufSafe( remote_handle64 handle, FadasIface_FadasBu
         sbTx[sbNum].len = sizeof( bufOffset ); sbNum++;
         sbTx[sbNum].buf = reinterpret_cast<const char *>( &batch );
         sbTx[sbNum].len = sizeof( batch ); sbNum++;
-        if ( error_type::SUCCESS != crc32_verify_scatter( sbTx, sbNum, crcTx ) )
+        if ( CRC_RET_SUCCESS_VALUE != (int)crc32_verify_scatter( sbTx, sbNum, crcTx ) )
         {
             FARF( ERROR, "CRC validation failed in FadasIface_FadasRegBufSafe!" );
             ret = AEE_EBADPARM;
@@ -933,7 +934,7 @@ AEEResult FadasIface_FadasDeregBufSafe( remote_handle64 handle, int32_t bufFd, u
         sbTx[sbNum].len = sizeof( bufOffset ); sbNum++;
         sbTx[sbNum].buf = reinterpret_cast<const char *>( &batch );
         sbTx[sbNum].len = sizeof( batch ); sbNum++;
-        if ( error_type::SUCCESS != crc32_verify_scatter( sbTx, sbNum, crcTx ) )
+        if ( CRC_RET_SUCCESS_VALUE != (int)crc32_verify_scatter( sbTx, sbNum, crcTx ) )
         {
             FARF( ERROR, "CRC validation failed in FadasIface_FadasDeregBufSafe!" );
             ret = AEE_EBADPARM;
@@ -1017,7 +1018,7 @@ AEEResult FadasIface_PointPillarCreateSafe( remote_handle64 handle,
         sbTx[sbNum].len = sizeof( maxNumPtsPerPlr ); sbNum++;
         sbTx[sbNum].buf = reinterpret_cast<const char *>( &numOutFeatureDim );
         sbTx[sbNum].len = sizeof( numOutFeatureDim ); sbNum++;
-        if ( error_type::SUCCESS != crc32_verify_scatter( sbTx, sbNum, crcTx ) )
+        if ( CRC_RET_SUCCESS_VALUE != (int)crc32_verify_scatter( sbTx, sbNum, crcTx ) )
         {
             FARF( ERROR, "CRC validation failed in FadasIface_PointPillarCreateSafe!" );
             ret = AEE_EBADPARM;
@@ -1054,8 +1055,8 @@ AEEResult FadasIface_PointPillarCreateSafe( remote_handle64 handle,
             struct scatter_buffer sbRx[1] = {};
             sbRx[0].buf = reinterpret_cast<const char *>( phPreProc );
             sbRx[0].len = sizeof( *phPreProc );
-            if ( error_type::SUCCESS !=
-                 crc32_generate_scatter( sbRx, 1, reinterpret_cast<sl_u32_t *>( crcRx ) ) )
+            if ( CRC_RET_SUCCESS_VALUE !=
+                 (int)crc32_generate_scatter( sbRx, 1, reinterpret_cast<sl_u32_t *>( crcRx ) ) )
             {
                 FARF( ERROR, "CRC generation failed in FadasIface_PointPillarCreateSafe!" );
                 ret = AEE_EFAILED;
@@ -1107,7 +1108,7 @@ AEEResult FadasIface_PointPillarRunSafe( remote_handle64 handle, uint64_t hPrePr
         sbTx[sbNum].len = sizeof( outFeatureOffset ); sbNum++;
         sbTx[sbNum].buf = reinterpret_cast<const char *>( &outFeatureSize );
         sbTx[sbNum].len = sizeof( outFeatureSize ); sbNum++;
-        if ( error_type::SUCCESS != crc32_verify_scatter( sbTx, sbNum, crcTx ) )
+        if ( CRC_RET_SUCCESS_VALUE != (int)crc32_verify_scatter( sbTx, sbNum, crcTx ) )
         {
             FARF( ERROR, "CRC validation failed in FadasIface_PointPillarRunSafe!" );
             ret = AEE_EBADPARM;
@@ -1162,8 +1163,8 @@ AEEResult FadasIface_PointPillarRunSafe( remote_handle64 handle, uint64_t hPrePr
         struct scatter_buffer sbRx[1] = {};
         sbRx[0].buf = reinterpret_cast<const char *>( pNumOutPlrs );
         sbRx[0].len = sizeof( *pNumOutPlrs );
-        if ( error_type::SUCCESS !=
-             crc32_generate_scatter( sbRx, 1, reinterpret_cast<sl_u32_t *>( crcRx ) ) )
+        if ( CRC_RET_SUCCESS_VALUE !=
+             (int)crc32_generate_scatter( sbRx, 1, reinterpret_cast<sl_u32_t *>( crcRx ) ) )
         {
             FARF( ERROR, "CRC generation failed in FadasIface_PointPillarRunSafe!" );
             ret = AEE_EFAILED;
@@ -1186,7 +1187,7 @@ AEEResult FadasIface_PointPillarDestroySafe( remote_handle64 handle, uint64_t hP
         struct scatter_buffer sbTx[1] = {};
         sbTx[0].buf = reinterpret_cast<const char *>( &hPreProc );
         sbTx[0].len = sizeof( hPreProc );
-        if ( error_type::SUCCESS != crc32_verify_scatter( sbTx, 1, crcTx ) )
+        if ( CRC_RET_SUCCESS_VALUE != (int)crc32_verify_scatter( sbTx, 1, crcTx ) )
         {
             FARF( ERROR, "CRC validation failed in FadasIface_PointPillarDestroySafe!" );
             ret = AEE_EBADPARM;
@@ -1268,7 +1269,7 @@ AEEResult FadasIface_ExtractBBoxCreateSafe( remote_handle64 handle, uint32_t max
         sbTx[sbNum].len = sizeof( labelSelectLen ); sbNum++;
         sbTx[sbNum].buf = reinterpret_cast<const char *>( &maxNumFilter );
         sbTx[sbNum].len = sizeof( maxNumFilter ); sbNum++;
-        if ( error_type::SUCCESS != crc32_verify_scatter( sbTx, sbNum, crcTx ) )
+        if ( CRC_RET_SUCCESS_VALUE != (int)crc32_verify_scatter( sbTx, sbNum, crcTx ) )
         {
             FARF( ERROR, "CRC validation failed in FadasIface_ExtractBBoxCreateSafe!" );
             ret = AEE_EBADPARM;
@@ -1330,8 +1331,8 @@ AEEResult FadasIface_ExtractBBoxCreateSafe( remote_handle64 handle, uint32_t max
             struct scatter_buffer sbRx[1] = {};
             sbRx[0].buf = reinterpret_cast<const char *>( phPostProc );
             sbRx[0].len = sizeof( *phPostProc );
-            if ( error_type::SUCCESS !=
-                 crc32_generate_scatter( sbRx, 1, reinterpret_cast<sl_u32_t *>( crcRx ) ) )
+            if ( CRC_RET_SUCCESS_VALUE !=
+                 (int)crc32_generate_scatter( sbRx, 1, reinterpret_cast<sl_u32_t *>( crcRx ) ) )
             {
                 FARF( ERROR, "CRC generation failed in FadasIface_ExtractBBoxCreateSafe!" );
                 ret = AEE_EFAILED;
@@ -1392,7 +1393,7 @@ AEEResult FadasIface_ExtractBBoxRunSafe( remote_handle64 handle, uint64_t hPostP
         sbTx[sbNum].len = sizeof( bMapPtsToBBox ); sbNum++;
         sbTx[sbNum].buf = reinterpret_cast<const char *>( &bBBoxFilter );
         sbTx[sbNum].len = sizeof( bBBoxFilter ); sbNum++;
-        if ( error_type::SUCCESS != crc32_verify_scatter( sbTx, sbNum, crcTx ) )
+        if ( CRC_RET_SUCCESS_VALUE != (int)crc32_verify_scatter( sbTx, sbNum, crcTx ) )
         {
             FARF( ERROR, "CRC validation failed in FadasIface_ExtractBBoxRunSafe!" );
             ret = AEE_EBADPARM;
@@ -1513,8 +1514,8 @@ AEEResult FadasIface_ExtractBBoxRunSafe( remote_handle64 handle, uint64_t hPostP
         struct scatter_buffer sbRx[1] = {};
         sbRx[0].buf = reinterpret_cast<const char *>( pNumDetOut );
         sbRx[0].len = sizeof( *pNumDetOut );
-        if ( error_type::SUCCESS !=
-             crc32_generate_scatter( sbRx, 1, reinterpret_cast<sl_u32_t *>( crcRx ) ) )
+        if ( CRC_RET_SUCCESS_VALUE !=
+             (int)crc32_generate_scatter( sbRx, 1, reinterpret_cast<sl_u32_t *>( crcRx ) ) )
         {
             FARF( ERROR, "CRC generation failed in FadasIface_ExtractBBoxRunSafe!" );
             ret = AEE_EFAILED;
@@ -1537,7 +1538,7 @@ AEEResult FadasIface_ExtractBBoxDestroySafe( remote_handle64 handle, uint64_t hP
         struct scatter_buffer sbTx[1] = {};
         sbTx[0].buf = reinterpret_cast<const char *>( &hPostProc );
         sbTx[0].len = sizeof( hPostProc );
-        if ( error_type::SUCCESS != crc32_verify_scatter( sbTx, 1, crcTx ) )
+        if ( CRC_RET_SUCCESS_VALUE != (int)crc32_verify_scatter( sbTx, 1, crcTx ) )
         {
             FARF( ERROR, "CRC validation failed in FadasIface_ExtractBBoxDestroySafe!" );
             ret = AEE_EBADPARM;
