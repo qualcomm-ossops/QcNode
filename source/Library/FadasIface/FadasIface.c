@@ -6,7 +6,6 @@
 #include "FadasIface.h"
 #include <string.h>
 #ifndef _WIN32
-#include "HAP_farf.h"
 #include <inttypes.h>
 #endif   //_WIN32 for HAP_farf
 #ifndef _ALLOCATOR_H
@@ -14,6 +13,11 @@
 
 #include <stdint.h>
 #include <stdlib.h>
+
+#define _QAIC_FARF(level, fmt, ...) \
+    do { \
+        printf(fmt, ##__VA_ARGS__); \
+    } while (0)
 
 typedef struct _heap _heap;
 struct _heap
