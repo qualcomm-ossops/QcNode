@@ -15,8 +15,8 @@ namespace Node
 
 /** @brief The QCNode Camera Version */
 #define QCNODE_CAMERA_VERSION_MAJOR 2U
-#define QCNODE_CAMERA_VERSION_MINOR 2U
-#define QCNODE_CAMERA_VERSION_PATCH 0U
+#define QCNODE_CAMERA_VERSION_MINOR 3U
+#define QCNODE_CAMERA_VERSION_PATCH 2U
 
 #define QCNODE_CAMERA_VERSION                                                                      \
     ( ( QCNODE_CAMERA_VERSION_MAJOR << 16U ) | ( QCNODE_CAMERA_VERSION_MINOR << 8U ) |             \
@@ -82,7 +82,7 @@ public:
      *         "ispUseCase": "ISP use case defined by qcarcam, type: uint32_t",
      *         "camFrameDropPattern": "Frame drop pattern defined by qcarcam. Set to 0 when frame
      *                                drop is not used, type: uint32_t",
-     *         "camFrameDropPeriod": "Frame drop period defined by qcarcam, type: uint32_t",
+     *         "camFrameDropPeriod": "Frame drop period defined by qcarcam, type: uint8_t",
      *         "opMode": "Operation mode defined by qcarcam, type: uint32_t",
      *         "streamConfigs": "Configuration for each camera stream, type: data tree array",
      *         [
@@ -161,6 +161,11 @@ public:
     {}
 
     /**
+     * @brief TODO: Copy constructor for CameraMonitor.
+     */
+    CameraMonitor( const CameraMonitor &camMonitor ) = delete;
+
+    /**
      * @brief Destructor for CameraMonitor.
      */
     ~CameraMonitor() {}
@@ -208,8 +213,8 @@ public:
     virtual QCStatus_e Place( void *pData, uint32_t &size ) { return QC_STATUS_UNSUPPORTED; }
 
 private:
-    CameraImpl *m_pCamImpl;
     Logger &m_logger;
+    CameraImpl *m_pCamImpl;
     std::string m_options;
 };
 

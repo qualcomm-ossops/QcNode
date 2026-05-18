@@ -11,6 +11,20 @@ namespace sample
 SampleRemap::SampleRemap() {}
 SampleRemap::~SampleRemap() {}
 
+#ifdef QC_ENABLE_HS
+std::function<void( const std::uint32_t *, std::size_t )> SampleRemap::GetRunnableCallback()
+{
+    m_bOrchestratorEnabled = true;
+    return std::bind( &SampleRemap::RunnableCallback, this, std::placeholders::_1,
+                      std::placeholders::_2 );
+}
+
+void SampleRemap::RunnableCallback( const std::uint32_t *rids, std::size_t count )
+{
+    Execute();
+}
+#endif
+
 QCStatus_e SampleRemap::ParseConfig( SampleConfig_t &config )
 {
     QCStatus_e ret = QC_STATUS_OK;
@@ -28,13 +42,13 @@ QCStatus_e SampleRemap::ParseConfig( SampleConfig_t &config )
 
     m_bNoPadding = Get( config, "no_padding", false );
 
-    QCProcessorType_e processor = Get( config, "processor", QC_PROCESSOR_HTP0 );
-    if ( QC_PROCESSOR_MAX == processor )
+    m_processor = Get( config, "processor", QC_PROCESSOR_HTP0 );
+    if ( QC_PROCESSOR_MAX == m_processor )
     {
         QC_ERROR( "invalid processor %s\n", Get( config, "processor", "" ).c_str() );
         ret = QC_STATUS_BAD_ARGUMENTS;
     }
-    m_dataTree.SetProcessorType( "static.processorType", processor );
+    m_dataTree.SetProcessorType( "static.processorType", m_processor );
 
     uint32_t coreId = Get( config, "core_id", 0 );
     if ( NSP_CORES_ID_MAX < coreId )
@@ -43,6 +57,9 @@ QCStatus_e SampleRemap::ParseConfig( SampleConfig_t &config )
         ret = QC_STATUS_BAD_ARGUMENTS;
     }
     m_dataTree.Set<uint32_t>( "static.coreId", coreId );
+
+    m_coreIds = { coreId };
+    m_rsmPriority = Get( config, "rsm_priority", 0 );
 
     m_outputWidth = Get( config, "output_width", 1920 );
     if ( 0 == m_outputWidth )
@@ -314,6 +331,11 @@ QCStatus_e SampleRemap::Init( std::string name, SampleConfig_t &config )
 
     if ( QC_STATUS_OK == ret )
     {
+        ret = SampleIF::Init( m_processor, m_rsmPriority, m_coreIds );
+    }
+
+    if ( QC_STATUS_OK == ret )
+    {
         ImageProps_t imgProp;
         imgProp.batchSize = m_numOfInputs;
         imgProp.width = m_outputWidth;
@@ -432,77 +454,101 @@ QCStatus_e SampleRemap::Start()
     if ( QC_STATUS_OK == ret )
     {
         m_stop = false;
-        m_thread = std::thread( &SampleRemap::ThreadMain, this );
+#ifdef QC_ENABLE_HS
+        if ( !m_bOrchestratorEnabled )
+        {
+#endif
+            m_thread = std::thread( &SampleRemap::ThreadMain, this );
+#ifdef QC_ENABLE_HS
+        }
+#endif
     }
 
     return ret;
 }
 
-void SampleRemap::ThreadMain()
+void SampleRemap::Execute()
 {
     QCStatus_e ret;
     NodeFrameDescriptor frameDesc( m_numOfInputs + 1 );
-    while ( false == m_stop )
+
+    DataFrames_t frames;
+    uint32_t timeout = 1000;
+#ifdef QC_ENABLE_HS
+    if ( m_bOrchestratorEnabled )
     {
-        DataFrames_t frames;
-        ret = m_sub.Receive( frames );
-        if ( QC_STATUS_OK == ret )
+        timeout = 0;
+    }
+#endif
+    ret = m_sub.Receive( frames, timeout );
+    if ( QC_STATUS_OK == ret )
+    {
+        QC_DEBUG( "receive frameId %" PRIu64 ", timestamp %" PRIu64 "\n", frames.FrameId( 0 ),
+                  frames.Timestamp( 0 ) );
+        m_frameId = frames.FrameId( 0 );
+        std::shared_ptr<SharedBuffer_t> bufferOutput = m_imagePool.Get();
+        ret = SampleIF::Lock();
+        if ( ( nullptr != bufferOutput ) && ( QC_STATUS_OK == ret ) )
         {
-            QC_DEBUG( "receive frameId %" PRIu64 ", timestamp %" PRIu64 "\n", frames.FrameId( 0 ),
-                      frames.Timestamp( 0 ) );
-            std::shared_ptr<SharedBuffer_t> bufferOutput = m_imagePool.Get();
-            if ( nullptr != bufferOutput )
+            PROFILER_BEGIN();
+            frameDesc.Clear();
+            uint32_t globalIdx = 0;
+
+            for ( auto &frame : frames.frames )
             {
-                PROFILER_BEGIN();
-                frameDesc.Clear();
-                uint32_t globalIdx = 0;
+                std::shared_ptr<SharedBuffer_t> sbuf = frame.buffer;
+                QCBufferDescriptorBase_t &buffer = frame.GetBuffer();
+                ImageDescriptor_t *pImage = dynamic_cast<ImageDescriptor_t *>( &buffer );
+                ret = frameDesc.SetBuffer( globalIdx, *pImage );
+                if ( QC_STATUS_OK != ret )
+                {
+                    break;
+                }
+                globalIdx++;
+            }
 
-                for ( auto &frame : frames.frames )
-                {
-                    std::shared_ptr<SharedBuffer_t> sbuf = frame.buffer;
-                    QCBufferDescriptorBase_t &buffer = frame.GetBuffer();
-                    ImageDescriptor_t *pImage = dynamic_cast<ImageDescriptor_t *>( &buffer );
-                    ret = frameDesc.SetBuffer( globalIdx, *pImage );
-                    if ( QC_STATUS_OK != ret )
-                    {
-                        break;
-                    }
-                    globalIdx++;
-                }
+            if ( QC_STATUS_OK == ret )
+            {
+                ret = frameDesc.SetBuffer( globalIdx, bufferOutput->imgDesc );
+                globalIdx++;
+            }
 
-                if ( QC_STATUS_OK == ret )
-                {
-                    ret = frameDesc.SetBuffer( globalIdx, bufferOutput->imgDesc );
-                    if ( QC_STATUS_OK != ret )
-                    {
-                        break;
-                    }
-                    globalIdx++;
-                }
+            if ( QC_STATUS_OK == ret )
+            {
+                ret = m_remap.ProcessFrameDescriptor( frameDesc );
+            }
 
-                if ( QC_STATUS_OK == ret )
-                {
-                    ret = m_remap.ProcessFrameDescriptor( frameDesc );
-                }
-
-                if ( QC_STATUS_OK == ret )
-                {
-                    PROFILER_END();
-                    DataFrames_t outFrames;
-                    DataFrame_t frame;
-                    frame.buffer = bufferOutput;
-                    frame.frameId = frames.FrameId( 0 );
-                    frame.timestamp = frames.Timestamp( 0 );
-                    outFrames.Add( frame );
-                    m_pub.Publish( outFrames );
-                }
-                else
-                {
-                    QC_ERROR( "Remap execute failed for %" PRIu64 " : %d", frames.FrameId( 0 ),
-                              ret );
-                }
+            if ( QC_STATUS_OK == ret )
+            {
+                PROFILER_END();
+                DataFrames_t outFrames;
+                DataFrame_t frame;
+                frame.buffer = bufferOutput;
+                frame.frameId = frames.FrameId( 0 );
+                frame.timestamp = frames.Timestamp( 0 );
+                outFrames.Add( frame );
+                m_pub.Publish( outFrames );
+            }
+            else
+            {
+                QC_ERROR( "Remap execute failed for %" PRIu64 " : %d", frames.FrameId( 0 ), ret );
             }
         }
+        (void) SampleIF::Unlock();
+    }
+#ifdef QC_ENABLE_HS
+    else if ( m_bOrchestratorEnabled )
+    {
+        QC_ERROR( "Remap receive failed : %d after %" PRIu64, ret, m_frameId );
+    }
+#endif
+}
+
+void SampleRemap::ThreadMain()
+{
+    while ( false == m_stop )
+    {
+        Execute();
     }
 }
 
@@ -511,10 +557,17 @@ QCStatus_e SampleRemap::Stop()
     QCStatus_e ret = QC_STATUS_OK;
 
     m_stop = true;
-    if ( m_thread.joinable() )
+#ifdef QC_ENABLE_HS
+    if ( !m_bOrchestratorEnabled )
     {
-        m_thread.join();
+#endif
+        if ( m_thread.joinable() )
+        {
+            m_thread.join();
+        }
+#ifdef QC_ENABLE_HS
     }
+#endif
 
     ret = m_remap.Stop();
     PROFILER_SHOW();

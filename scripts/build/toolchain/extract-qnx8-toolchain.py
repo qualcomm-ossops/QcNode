@@ -181,6 +181,9 @@ copyList = [ { "desc":"host files", "src":"qnx_ap/qnx_bins/prebuilt_" + sdpStrin
              { "desc":"license files", "src":"qnx_ap/qnx_bins/prebuilt_" + sdpString + "_patches/license", "dst":"license", "op":"copy" } ]
 
 for item in copyList:
+    if os.name == "nt":
+        print("Skip copy toolchian on windows.")
+        break
     srcDir = inputDir + '/' + item["src"]
     dstDir = tcRootPath + '/' + item["dst"]
     print( "Copying " + item["desc"] + "\n  source: " + srcDir + "\n  destination: " + dstDir + "\n" )
@@ -212,10 +215,19 @@ incList = [ inputDir  + "/qnx_ap/AMSS/inc/AEEStdDef.h",
             inputDir  + "/qnx_ap/AMSS/inc/rpcmem.h",
             inputDir  + "/qnx_ap/AMSS/inc/remote.h",
             inputDir  + "/qnx_ap/AMSS/inc/AEEStdErr.h",
+            inputDir  + "/qnx_ap/AMSS/inc/HAP_farf.h",
+            inputDir  + "/qnx_ap/AMSS/inc/HAP_debug.h",
             inputDir  + "/qnx_ap/AMSS/inc/graphics-fusa/include/private/C2D/c2d2.h",
             srcIncDir + "/amss/multimedia/apdf/apdf.h",
             srcIncDir + "/amss/multimedia/camera_qcx/qcarcam.h",
             srcIncDir + "/amss/multimedia/camera_qcx/qcarcam_types.h",
+            srcIncDir + "/amss/multimedia/camera_qcx/qcarcam_metadata.h",
+            srcIncDir + "/amss/multimedia/camera_qcx/camera_vendor_tags.h",
+            srcIncDir + "/amss/multimedia/camera_qcx/camera_metadata.h",
+            srcIncDir + "/amss/multimedia/camera_qcx/camera_metadata_tags.h",
+            srcIncDir + "/amss/crc32.h",
+            srcIncDir + "/amss/crc.h",
+            srcIncDir + "/amss/safetylibs_types.h",
           ]
 
 mm_video_path = inputDir + "/qnx_ap/AMSS/multimedia/video"
@@ -254,6 +266,28 @@ for L in OneOfIncList:
     else:
         incList.append(h)
 
+CompResIncList = [
+    FindFile(inputDir  + "/qnx_ap/AMSS/compute_ressched", "compressched_client.h") + [
+        srcIncDir + "/compressched_client.h",
+    ],
+    FindFile(inputDir  + "/qnx_ap/AMSS/compute_resmon", "compresmon.h") + [
+        srcIncDir + "/amss/compresmon.h",
+    ],
+    FindFile(inputDir  + "/qnx_ap/AMSS/compute", "compresmgr_client_api.h") + [
+        srcIncDir + "/compresmgr_client_api.h",
+    ]
+]
+
+for L in CompResIncList:
+    h = None
+    for x in L:
+        if os.path.isfile(x):
+            h = x
+            break
+    if h is None:
+        print(f"warining: header {os.path.basename(L[0])} not found")
+    else:
+        incList.append(h)
 
 for inc in incList:
     print( "Copying header file: " + inc + " to: " + tcIncDir )
@@ -319,17 +353,20 @@ libListC2C = [ "libc2c.so", "libep_client.so", "librc_client.so", "libmhi_client
 libListXml = [ "libsafe_xml.so", "libxml2_no_sock.so", "libsafe_xml_c.so" ]
 libListPmem  = [ "libpmem_client.so", "libpmemext.so" , "libsmmu_client.so"]
 libListFastADAS = [ "libfadas.so", "libfastrpc.so", "libfastrpc_pmem.so", "libfastrpc_pmem.so.1" ]
-libListQcx = [ "libqcxclient.so", "libqcxosal.so", "libmemorylogger.so" ]
+libListQcx = [ "libqcxclient.so", "libqcxosal.so", "libmemorylogger.so", "libcamera_metadata.a" ]
 libListSv = [ "libsvplatform.so", "libsvcl.so", "libdevioClient.so", "libsoftsku.so.1", "libpm_client.so" ]
+libListFuSa = [ "libFuSa-CRC32.so" ]
+libListCompRes = [ "libcompressched.so", "libcompresmon.so", "libcompresmgr_client.so", "libcompute_osal.so",
+                    "libprocinfo.so.1", "libfdt_procinfo.so.1", "libfdt_utils.so.1" ]
 libList = libListVidc + libListPmem + libListFastADAS + libListQcx + [
         "libplanedef.so", "libcdsprpc.so", "libapdf.so", "libaosal.so", "libfastrpc_pmem.so",
         "liblibstd.so", "libmmap_peer.so", "libOSAbstraction.so"
-    ] + libListDemux + libListSv + libListXml + libListC2C
+    ] + libListDemux + libListSv + libListXml + libListC2C + libListFuSa + libListCompRes
 targetLibDirs = [
         inputDir + '/qnx_ap/install/aarch64le/lib',
     ]
 
-AllowMissingLibs = libListSv + libListXml + libListC2C
+AllowMissingLibs = libListSv + libListXml + libListC2C + libListCompRes
 
 for lib in libList:
     print( "Copying library/symbol file: " + lib + " to: " + tcLibDir )

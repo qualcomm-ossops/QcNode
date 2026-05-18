@@ -24,12 +24,19 @@
 #include <rsm_client_v2.h>
 #endif
 
+#if defined( WITH_COMP_RES_SCHED )
+#include <compressched_client.h>
+#endif
+
 namespace QC
 {
 namespace sample
 {
 
 using namespace QC::Node;
+
+/** @brief Maximum number of cores per processor  */
+#define QC_SAMPLE_PROCESSOR_CORE_MAX 4
 
 typedef std::map<std::string, std::string> SampleConfig_t;
 
@@ -113,6 +120,21 @@ public:
      */
     virtual QCStatus_e Deinit() = 0;
 
+#ifdef QC_ENABLE_HS
+    /**
+     * @brief Retrieves the runnable callback for the sample.
+     *
+     * Returns a function object that serves as a callback for execution. This is
+     * typically used when the sample is running in a heterogeneous scheduling environment.
+     *
+     * @return A std::function object representing the callback.
+     *  Default implementation returns nullptr.
+     */
+    virtual std::function<void( const std::uint32_t *, std::size_t )> GetRunnableCallback()
+    {
+        return nullptr;
+    }
+#endif
 
     /**
      * @brief Retrieves the unique name of the QC sample instance.
@@ -219,7 +241,8 @@ public:
 protected:
     QCStatus_e Init( std::string name, QCNodeType_e type = QC_NODE_TYPE_CUSTOM_0 );
 
-    QCStatus_e Init( QCProcessorType_e processor, int rsmPriority = 0 );
+    QCStatus_e Init( QCProcessorType_e processor, int rsmPriority = 0,
+                     std::vector<uint32_t> coreIds = { 0u } );
     QCStatus_e Lock();
     QCStatus_e Unlock();
 
@@ -245,20 +268,34 @@ protected:
     QCNodeID_t m_nodeId;
     Profiler m_profiler;
     SysTrace m_systrace;
+#ifdef QC_ENABLE_HS
+    bool m_bOrchestratorEnabled = false;
+#endif
     QC_DECLARE_NODETRACE();
     QC_DECLARE_LOGGER();
 
 private:
+#if defined( WITH_RSM_V2 ) || defined( WITH_COMP_RES_SCHED )
+    bool m_bRsmDisabled = false;
+#endif
+
 #if defined( WITH_RSM_V2 )
     rsm_acquire_cmd_v2 m_acquireCmdV2;
     rsm_acquire_rsp_v2 m_acquireRspV2;
     rsm_handle m_handle = 0;
-    bool m_bRsmDisabled = false;
+#endif
+
+#if defined( WITH_COMP_RES_SCHED )
+    compressched_acquire_rsp m_crsAcquireRsp = {};
+    compressched_handle m_crsHandle = 0;
+    compressched_platform_query m_crsPlatfromQuery = {};
+    void SetupCompResSchedCmd( compressched_acquire_cmd &cmd );
 #endif
 
     QCProcessorType_e m_processor = QC_PROCESSOR_MAX;
+    std::vector<uint32_t> m_coreIds = { 0u };
 
-    static std::mutex s_locks[QC_PROCESSOR_MAX];
+    static std::mutex s_locks[QC_PROCESSOR_MAX * QC_SAMPLE_PROCESSOR_CORE_MAX];
 
     static std::mutex s_bufMapLock;
     static std::map<std::string, std::vector<std::reference_wrapper<QCBufferDescriptorBase_t>>>

@@ -59,10 +59,11 @@ set( QC_LIB_PATHS
     ${CMAKE_SYSROOT}/usr/lib
 )
 
-# pmem
+# common header files
 if( DEFINED ENV{BSP_ROOT} )
 include_directories( $ENV{BSP_ROOT}/AMSS/inc )
 include_directories( $ENV{BSP_ROOT}/install/usr/include )
+include_directories( $ENV{BSP_ROOT}/install/usr/include/amss )
 endif()
 
 # apdf
@@ -102,6 +103,7 @@ set( QC_VIDC_FILEDEMUX_LIBS
 # qcarcam
 if( DEFINED ENV{BSP_ROOT} )
 include_directories( $ENV{BSP_ROOT}/AMSS/multimedia/qcamera/camera_qcx/cdk_qcx/api/qcarcam/ )
+include_directories( $ENV{BSP_ROOT}/install/usr/include/amss/multimedia/camera_qcx )
 add_link_options( "-L$ENV{BSP_ROOT}/install/aarch64le/lib/camera_qcx/" )
 endif()
 set( QC_CAMERA_EXTRA_LIBS xml2 )
