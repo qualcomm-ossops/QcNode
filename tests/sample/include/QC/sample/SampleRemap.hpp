@@ -42,6 +42,12 @@ public:
     /// @return QC_STATUS_OK on success, others on failure
     QCStatus_e Deinit();
 
+#ifdef QC_ENABLE_HS
+    /// @brief Get the runnable callback for HeteroScheduler
+    /// @return The runnable callback function
+    std::function<void( const std::uint32_t *, std::size_t )> GetRunnableCallback() override;
+#endif
+
     /**
      * @brief Retrieves the version identifier of the Node Remap.
      */
@@ -50,6 +56,11 @@ public:
 private:
     QCStatus_e ParseConfig( SampleConfig_t &config );
     void ThreadMain();
+    void Execute();
+
+#ifdef QC_ENABLE_HS
+    void RunnableCallback( const std::uint32_t *rids, std::size_t count );
+#endif
 
 private:
     uint32_t m_poolSize = 4;
@@ -62,6 +73,10 @@ private:
     std::thread m_thread;
     SharedBufferPool m_imagePool;
     bool m_stop;
+
+    QCProcessorType_e m_processor;
+    std::vector<uint32_t> m_coreIds = { 0u };
+    int m_rsmPriority;
 
     DataSubscriber<DataFrames_t> m_sub;
     DataPublisher<DataFrames_t> m_pub;
@@ -77,6 +92,7 @@ private:
     TensorDescriptor_t m_mapXBufferDesc[QC_MAX_INPUTS];
     TensorDescriptor_t m_mapYBufferDesc[QC_MAX_INPUTS];
     BufferManager *m_pBufMgr = nullptr;
+    uint64_t m_frameId = 0; /* track current processed frame Id */
 };   // class SampleRemap
 
 }   // namespace sample

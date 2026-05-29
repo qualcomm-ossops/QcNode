@@ -4,6 +4,7 @@
 #ifndef QC_NODE_CAMERA_IMPL_HPP
 #define QC_NODE_CAMERA_IMPL_HPP
 
+#include <atomic>
 #include <mutex>
 #include <queue>
 #include <unordered_map>
@@ -152,7 +153,7 @@ typedef struct Camera_Config : public QCNodeConfigBase_t
     uint32_t inputMode;
     uint32_t ispUseCase;
     uint32_t camFrameDropPattern;
-    uint32_t camFrameDropPeriod;
+    uint8_t camFrameDropPeriod;
     uint32_t opMode;
     bool bRequestMode;
     bool bPrimary;
@@ -275,11 +276,12 @@ private:
 
     QCStatus_e QueryInputs();
     QCStatus_e GetInputsInfo( CameraInputs_t *pCamInputs );
-    CameraFrameDescriptor_t *GetFrame( const QCarCamFrameInfo_t *pFrameInfo );
+    QCStatus_e GetFrame( const QCarCamFrameInfo_t &camFrameInfo, uint32_t &bufferListId,
+                         uint32_t &bufferIdx );
     QCStatus_e ValidateConfig( const CameraImplConfig_t *pConfig );
 
     void FrameCallback( CameraFrameDescriptor_t *pFrame );
-    void EventCallback( const uint32_t eventId, const void *pPayload );
+    void EventCallback( const uint32_t eventId, const QCarCamEventPayload_t *pPayLoad );
 
     static QCarCamRet_e QcarcamEventCb( const QCarCamHndl_t hndl, const uint32_t eventId,
                                         const QCarCamEventPayload_t *pPayload, void *pPrivateData );
@@ -303,12 +305,12 @@ private:
     bool m_bQCarCamInitialized = false;
     bool m_bRequestPatternMode = false;
 
-    uint32_t m_streamNum;
-    uint32_t m_metaDataNum;
+    size_t m_streamNum;
+    size_t m_metaDataNum;
+    size_t m_maxBufCnt;
     uint32_t m_inputId;
-    uint32_t m_requestId;
+    std::atomic<uint32_t> m_requestId;
     uint32_t m_clientId;
-    uint32_t m_maxBufCnt;
     uint32_t m_refStreamId = QCNODE_CAMERA_MAX_STREAM_NUM;
     uint32_t m_submitRequestPattern[QCNODE_CAMERA_MAX_STREAM_NUM];
     uint64_t m_frameId[QCNODE_CAMERA_MAX_STREAM_NUM] = { 0 };

@@ -41,6 +41,12 @@ public:
     /// @return QC_STATUS_OK on success, others on failure
     QCStatus_e Deinit();
 
+#ifdef QC_ENABLE_HS
+    /// @brief Get the runnable callback for HeteroScheduler
+    /// @return The runnable callback function
+    std::function<void( const std::uint32_t *, std::size_t )> GetRunnableCallback() override;
+#endif
+
     /**
      * @brief Retrieves the version identifier of the Node QNN.
      */
@@ -49,8 +55,13 @@ public:
 private:
     QCStatus_e ParseConfig( SampleConfig_t &config );
     void ThreadMain();
+    void Execute();
 
     QCStatus_e ConvertDtToInfo( DataTree &dt, TensorInfo_t &info );
+
+#ifdef QC_ENABLE_HS
+    void RunnableCallback( const std::uint32_t *rids, std::size_t count );
+#endif
 
     void EventCallback( const QCNodeEventInfo_t &info );
 
@@ -90,9 +101,11 @@ private:
     Qnn m_qnn;
     uint64_t m_asyncResult;
     QCProcessorType_e m_processor;
+    std::vector<uint32_t> m_coreIds = { 0u };
     int m_rsmPriority;
 
     NodeFrameDescriptorPool *m_pFrameDescPool = nullptr;
+    uint64_t m_frameId = 0; /* track current processed frame Id */
 };   // class SampleQnn
 
 }   // namespace sample

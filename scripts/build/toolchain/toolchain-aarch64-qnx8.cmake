@@ -10,6 +10,9 @@ set( CMAKE_CXX_COMPILER_TARGET ${arch} )
 
 set( CMAKE_SYSROOT $ENV{QNX_TARGET}/aarch64le/ )
 
+if( DEFINED ENV{BSP_ROOT} )
+add_link_options("--sysroot=$ENV{BSP_ROOT}/install/aarch64le")
+endif()
 
 set( CMAKE_FIND_LIBRARY_PREFIXES lib )
 set( CMAKE_FIND_LIBRARY_SUFFIXES .so )
@@ -119,6 +122,7 @@ endif()
 # common header files and libraries
 if( DEFINED ENV{BSP_ROOT} )
 include_directories( $ENV{BSP_ROOT}/install/usr/include )
+include_directories( $ENV{BSP_ROOT}/install/usr/include/amss )
 include_directories( $ENV{BSP_ROOT}/install/aarch64le/usr/include )
 add_link_options( "-L$ENV{BSP_ROOT}/install/aarch64le/lib" )
 add_link_options( "-L$ENV{BSP_ROOT}/install/aarch64le/usr/lib" )
@@ -206,6 +210,7 @@ set( QC_VIDC_FILEDEMUX_LIBS
 # qcarcam
 if( DEFINED ENV{BSP_ROOT} )
 include_directories( $ENV{BSP_ROOT}/AMSS/multimedia/qcamera/camera_qcx/cdk_qcx/api/qcarcam/ )
+include_directories( $ENV{BSP_ROOT}/install/usr/include/amss/multimedia/camera_qcx )
 add_link_options( "-L$ENV{BSP_ROOT}/install/aarch64le/lib/camera_qcx/" )
 endif()
 
@@ -242,6 +247,13 @@ find_header_dir(
     NAMES svUtils.h svStereoDisparity.h svLme.h
 )
 include_directories( ${SV_AUTO_INCLUDE_DIR} )
+
+find_header_dir(
+    OUT_VAR SV_AUTO_INCLUDE_DIR_2
+    BASE_DIR $ENV{BSP_ROOT}/AMSS/multimedia/eva/svcl/public/amss/multimedia/sv
+    NAMES svUtils.h svStereoDisparity.h svLme.h
+)
+include_directories( ${SV_AUTO_INCLUDE_DIR_2} )
 
 include_directories( $ENV{BSP_ROOT}/install/usr/include/amss/multimedia/sv )
 set( QC_SV_EXTRA_LIBS softsku smmu_client pm_client )

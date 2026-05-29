@@ -11,38 +11,98 @@ namespace sample
 SampleCamera::SampleCamera() {}
 SampleCamera ::~SampleCamera() {}
 
+#ifdef QC_ENABLE_HS
+std::function<void( const std::uint32_t *, std::size_t )> SampleCamera::GetRunnableCallback()
+{
+    m_bOrchestratorEnabled = true;
+    return std::bind( &SampleCamera::RunnableCallback, this, std::placeholders::_1,
+                      std::placeholders::_2 );
+}
+
+void SampleCamera::RunnableCallback( const std::uint32_t *rids, std::size_t count )
+{
+    CameraFrameDescriptor_t camFrameDesc;
+    std::unique_lock<std::mutex> lck( m_mutex );
+
+    if ( m_camFrameQueue.empty() )
+    {
+        (void) m_condVar.wait_for( lck, std::chrono::milliseconds( 1000 ) );
+    }
+
+    if ( !m_camFrameQueue.empty() )
+    {
+        camFrameDesc = m_camFrameQueue.front();
+        m_camFrameQueue.pop();
+        lck.unlock();
+        ProcessFrame( &camFrameDesc );
+    }
+    else
+    {
+        QC_ERROR( "camera frame timeout." );
+    }
+}
+#endif
+
 void SampleCamera::ProcessDoneCb( const QCNodeEventInfo_t &eventInfo )
 {
     QCStatus_e status = QC_STATUS_OK;
     QCFrameDescriptorNodeIfs &frameDescIfs = eventInfo.frameDesc;
     QCBufferDescriptorBase_t &bufDesc = frameDescIfs.GetBuffer( 0 );
-    const CameraFrameDescriptor_t *pCamFrameDesc =
-            dynamic_cast<const CameraFrameDescriptor_t *>( &bufDesc );
 
-    if ( nullptr == pCamFrameDesc )
+    if ( QC_STATUS_OK == eventInfo.status )
     {
-        QC_ERROR( "Frame pointer is empty" );
-    }
-    else
-    {
-        if ( ( m_stop == false ) )
+        // frame event
+        const CameraFrameDescriptor_t *pCamFrameDesc =
+                dynamic_cast<const CameraFrameDescriptor_t *>( &bufDesc );
+
+        if ( nullptr == pCamFrameDesc )
         {
-            std::unique_lock<std::mutex> lck( m_mutex );
-            m_camFrameQueue.push( *pCamFrameDesc );
-            m_condVar.notify_one();
+            QC_ERROR( "Frame pointer is empty" );
         }
         else
         {
-            uint32_t streamId = pCamFrameDesc->streamId;
-            NodeFrameDescriptor frameDesc( 1 );
-            (void) frameDesc.SetBuffer( 0, bufDesc );
-            m_profilers[streamId].Begin();
-            status = m_camera.ProcessFrameDescriptor( frameDesc );
-            m_profilers[streamId].End();
-            if ( QC_STATUS_OK != status )
+            if ( ( m_stop == false ) )
             {
-                QC_ERROR( "Failed to process frame descriptor, status=%u", status );
+                std::unique_lock<std::mutex> lck( m_mutex );
+                m_camFrameQueue.push( *pCamFrameDesc );
+                m_condVar.notify_one();
             }
+            else
+            {
+                uint32_t streamId = pCamFrameDesc->streamId;
+                NodeFrameDescriptor frameDesc( 1 );
+                (void) frameDesc.SetBuffer( 0, bufDesc );
+                m_profilers[streamId].Begin();
+                status = m_camera.ProcessFrameDescriptor( frameDesc );
+                m_profilers[streamId].End();
+                if ( QC_STATUS_OK != status )
+                {
+                    QC_ERROR( "Failed to process frame descriptor, status=%u", status );
+                }
+            }
+        }
+    }
+    else
+    {
+        // error event
+        QCarCamEventPayload_t *pEventPayLoad = (QCarCamEventPayload_t *) bufDesc.pBuf;
+        if ( pEventPayLoad == nullptr )
+        {
+            QC_ERROR( "EventPayLoad pointer is empty" );
+        }
+        else
+        {
+            uint32_t evtType = pEventPayLoad->u32Data;
+            uint32_t errCode = pEventPayLoad->errInfo.errorCode;
+            uint32_t inputId = pEventPayLoad->errInfo.inputId;
+            uint32_t bufferListId = pEventPayLoad->errInfo.bufferlistId;
+            uint32_t frameIdx = pEventPayLoad->errInfo.frameId;
+            uint32_t requestId = pEventPayLoad->errInfo.requestId;
+            uint64_t timestamp = pEventPayLoad->errInfo.timestamp;
+            QC_DEBUG( "Camera Error Event, QCNode status: %u, event type: %u, , error code: %u, "
+                      "inputId: %u, bufferListId: %u, frameIdx: %u, timestamp: %lu",
+                      eventInfo.status, evtType, errCode, inputId, bufferListId, frameIdx,
+                      requestId, timestamp );
         }
     }
 }
@@ -276,7 +336,14 @@ QCStatus_e SampleCamera::Start()
     if ( QC_STATUS_OK == ret )
     {
         m_stop = false;
-        m_thread = std::thread( &SampleCamera::ThreadMain, this );
+#ifdef QC_ENABLE_HS
+        if ( !m_bOrchestratorEnabled )
+        {
+#endif
+            m_thread = std::thread( &SampleCamera::ThreadMain, this );
+#ifdef QC_ENABLE_HS
+        }
+#endif
     }
 
     return ret;
@@ -358,7 +425,9 @@ void SampleCamera::ProcessFrame( CameraFrameDescriptor_t *pCamFrameDesc )
             camFrameDesc.frameIdx = framdIdx;
             camFrameDesc.streamId = pSharedBuffer->pubHandle >> 32;
             (void) frameDesc.SetBuffer( 0, camFrameDesc );
+            m_profilers[streamId].Begin();
             m_camera.ProcessFrameDescriptor( frameDesc );
+            m_profilers[streamId].End();
         }
     }
 }
@@ -387,10 +456,18 @@ QCStatus_e SampleCamera::Stop()
     QCStatus_e ret = QC_STATUS_OK;
 
     m_stop = true;
-    if ( m_thread.joinable() )
+    m_condVar.notify_all();
+#ifdef QC_ENABLE_HS
+    if ( !m_bOrchestratorEnabled )
     {
-        m_thread.join();
+#endif
+        if ( m_thread.joinable() )
+        {
+            m_thread.join();
+        }
+#ifdef QC_ENABLE_HS
     }
+#endif
 
     CameraFrameDescriptor_t camFrameDesc;
     while ( !m_camFrameQueue.empty() )
